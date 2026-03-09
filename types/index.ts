@@ -1,0 +1,75 @@
+export type UserWithRelations = {
+  id: string;
+  email: string;
+  name: string | null;
+  facebookId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type Stage = {
+  id: string;
+  name: string;
+  order: number;
+  eventName: string;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type Tag = {
+  id: string;
+  name: string;
+  userId: string;
+  createdAt: Date;
+};
+
+export type LeadTag = {
+  id: string;
+  leadId: string;
+  tagId: string;
+  tag: Tag;
+  createdAt: Date;
+};
+
+export type Lead = {
+  id: string;
+  name: string;
+  phone: string;
+  userId: string;
+  stageId: string | null;
+  stage: Stage | null;
+  tags: LeadTag[];
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type Pixel = {
+  id: string;
+  pixelId: string;
+  accessToken: string;
+  adAccountId: string | null;
+  metaAdsToken: string | null;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type KanbanColumn = Stage & {
+  leads: Lead[];
+};
+
+export type AnalyticsData = {
+  totalLeads: number;
+  leadsByStage: Array<{
+    stageId: string;
+    stageName: string;
+    count: number;
+    percentage: number;
+  }>;
+  conversionRate: number;
+};
+
+export type ActionResult<T = void> =
+  | { success: true; data?: T }
+  | { success: false; error: string };
