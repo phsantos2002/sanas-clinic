@@ -9,17 +9,18 @@ datasource db {
 }
 
 model User {
-  id         String    @id @default(cuid())
-  email      String    @unique
-  name       String?
-  facebookId String?   @unique
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  pixels     Pixel[]
-  leads      Lead[]
-  tags       Tag[]
-  stages     Stage[]
-  aiConfig   AIConfig?
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String?
+  facebookId      String?          @unique
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  pixels          Pixel[]
+  leads           Lead[]
+  tags            Tag[]
+  stages          Stage[]
+  aiConfig        AIConfig?
+  whatsappConfig  WhatsAppConfig?
 }
 
 model AIConfig {
@@ -93,6 +94,17 @@ model LeadStageHistory {
   stageId   String
   stage     Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+model WhatsAppConfig {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneNumberId String
+  accessToken   String
+  verifyToken   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Tag {

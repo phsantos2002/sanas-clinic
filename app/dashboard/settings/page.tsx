@@ -2,18 +2,21 @@ import { getPixel } from "@/app/actions/pixel";
 import { getTags } from "@/app/actions/tags";
 import { getStages } from "@/app/actions/stages";
 import { getAIConfig } from "@/app/actions/aiConfig";
+import { getWhatsAppConfig } from "@/app/actions/whatsapp";
 import { FacebookPixelForm } from "@/components/forms/FacebookPixelForm";
+import { WhatsAppConfigForm } from "@/components/forms/WhatsAppConfigForm";
 import { ManageTagsModal } from "@/components/modals/ManageTagsModal";
 import { ManageStagesSection } from "@/components/settings/ManageStagesSection";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
 import { Separator } from "@/components/ui/separator";
 
 export default async function SettingsPage() {
-  const [pixel, tags, stages, aiConfig] = await Promise.all([
+  const [pixel, tags, stages, aiConfig, whatsappConfig] = await Promise.all([
     getPixel(),
     getTags(),
     getStages(),
     getAIConfig(),
+    getWhatsAppConfig(),
   ]);
 
   return (
@@ -33,6 +36,18 @@ export default async function SettingsPage() {
           </p>
         </div>
         <FacebookPixelForm pixel={pixel} />
+      </section>
+
+      <Separator />
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-base font-medium">WhatsApp Business</h2>
+          <p className="text-sm text-zinc-500">
+            Configure o número do WhatsApp para receber mensagens e responder automaticamente com IA.
+          </p>
+        </div>
+        <WhatsAppConfigForm config={whatsappConfig} />
       </section>
 
       <Separator />

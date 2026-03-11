@@ -1,124 +1,166 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateAIReply } from "@/services/aiChat";
-import { sendWhatsAppMessage, sendWhatsAppAudio } from "@/services/evolutionApi";
+import { sendWhatsAppMessage } from "@/services/whatsappCloud";
 import { sendFacebookEvent } from "@/services/facebookEvents";
 import { getAIConfigByUserId } from "@/app/actions/aiConfig";
-import { generateAudio } from "@/services/textToSpeech";
 
-// Evolution API webhook payload
-type EvolutionPayload = {
-  event: string;
-  instance: string;
-  data: {
-    key: { remoteJid: string; fromMe: boolean; id: string };
-    message?: { conversation?: string; extendedTextMessage?: { text: string } };
-    pushName?: string;
-  };
+// Meta WhatsApp Cloud API webhook payload
+type MetaEntry = {
+  id: string;
+  changes: {
+    value: {
+      messaging_product: string;
+      metadata: { display_phone_number: string; phone_number_id: string };
+      contacts?: { profile: { name: string }; wa_id: string }[];
+      messages?: {
+        from: string;
+        id: string;
+        timestamp: string;
+        type: string;
+        text?: { body: string };
+      }[];
+    };
+    field: string;
+  }[];
 };
 
-function extractText(payload: EvolutionPayload): string | null {
-  const msg = payload.data.message;
-  if (!msg) return null;
-  return msg.conversation ?? msg.extendedTextMessage?.text ?? null;
-}
+type MetaPayload = {
+  object: string;
+  entry: MetaEntry[];
+};
 
-function normalizePhone(jid: string): string {
-  // "5511999999999@s.whatsapp.net" → "5511999999999"
-  return jid.replace(/@.*$/, "").replace(/\D/g, "");
+// GET — webhook verification by Meta
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const mode = searchParams.get("hub.mode");
+  const token = searchParams.get("hub.verify_token");
+  const challenge = searchParams.get("hub.challenge");
+
+  if (mode === "subscribe") {
+    // Find any user whose verifyToken matches
+    const config = await prisma.whatsAppConfig.findFirst({
+      where: { verifyToken: token ?? "" },
+    });
+
+    if (config) {
+      return new Response(challenge, { status: 200 });
+    }
+  }
+
+  return new Response("Forbidden", { status: 403 });
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as EvolutionPayload;
+    const body = (await req.json()) as MetaPayload;
 
-    // Only process incoming text messages
-    if (body.event !== "messages.upsert" || body.data.key.fromMe) {
+    if (body.object !== "whatsapp_business_account") {
       return NextResponse.json({ ok: true });
     }
 
-    const text = extractText(body);
-    if (!text?.trim()) return NextResponse.json({ ok: true });
+    for (const entry of body.entry) {
+      for (const change of entry.changes) {
+        if (change.field !== "messages") continue;
 
-    const phone = normalizePhone(body.data.key.remoteJid);
-    const pushName = body.data.pushName ?? "";
+        const value = change.value;
+        const phoneNumberId = value.metadata.phone_number_id;
+        const messages = value.messages;
+        if (!messages?.length) continue;
 
-    // Find lead by phone (match last 9 digits to be flexible)
-    const phoneSuffix = phone.slice(-9);
-    const lead = await prisma.lead.findFirst({
-      where: { phone: { endsWith: phoneSuffix } },
-      include: {
-        messages: { orderBy: { createdAt: "asc" } },
-        stage: true,
-        user: true,
-      },
-    });
-
-    if (!lead) return NextResponse.json({ ok: true });
-
-    // Save incoming message
-    await prisma.message.create({
-      data: { leadId: lead.id, role: "user", content: text.trim() },
-    });
-
-    if (!lead.aiEnabled) return NextResponse.json({ ok: true });
-
-    // Load AI config for this user
-    const aiConfig = await getAIConfigByUserId(lead.userId);
-
-    // Build conversation history for AI
-    const history = [
-      ...lead.messages.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-      { role: "user" as const, content: text.trim() },
-    ];
-
-    const { reply, newStageEventName } = await generateAIReply(
-      history,
-      lead.name || pushName,
-      {
-        clinicName: aiConfig?.clinicName ?? undefined,
-        systemPrompt: aiConfig?.systemPrompt ?? undefined,
-      }
-    );
-
-    // Save AI reply
-    await prisma.message.create({
-      data: { leadId: lead.id, role: "assistant", content: reply },
-    });
-
-    // Send text reply on WhatsApp
-    await sendWhatsAppMessage(phone, reply);
-
-    // Send audio if configured
-    if (aiConfig?.sendAudio && aiConfig.openaiKey) {
-      const audioBuffer = await generateAudio(reply, aiConfig.openaiKey);
-      if (audioBuffer) {
-        await sendWhatsAppAudio(phone, audioBuffer);
-      }
-    }
-
-    // Update stage if AI determined a new one
-    if (newStageEventName && newStageEventName !== lead.stage?.eventName) {
-      const newStage = await prisma.stage.findFirst({
-        where: { userId: lead.userId, eventName: newStageEventName },
-      });
-
-      if (newStage) {
-        await prisma.lead.update({
-          where: { id: lead.id },
-          data: { stageId: newStage.id },
+        // Find which user owns this phone number
+        const whatsappConfig = await prisma.whatsAppConfig.findFirst({
+          where: { phoneNumberId },
+          include: { user: true },
         });
-        await prisma.leadStageHistory.create({
-          data: { leadId: lead.id, stageId: newStage.id },
-        });
-        await sendFacebookEvent({
-          userId: lead.userId,
-          phone: lead.phone,
-          eventName: newStage.eventName,
-        });
+        if (!whatsappConfig) continue;
+
+        for (const msg of messages) {
+          if (msg.type !== "text" || !msg.text?.body?.trim()) continue;
+
+          const text = msg.text.body.trim();
+          const phone = msg.from;
+          const pushName = value.contacts?.[0]?.profile?.name ?? "";
+
+          // Find lead by phone
+          const phoneSuffix = phone.slice(-9);
+          const lead = await prisma.lead.findFirst({
+            where: {
+              userId: whatsappConfig.userId,
+              phone: { endsWith: phoneSuffix },
+            },
+            include: {
+              messages: { orderBy: { createdAt: "asc" } },
+              stage: true,
+              user: true,
+            },
+          });
+
+          if (!lead) continue;
+
+          // Save incoming message
+          await prisma.message.create({
+            data: { leadId: lead.id, role: "user", content: text },
+          });
+
+          if (!lead.aiEnabled) continue;
+
+          // Load AI config
+          const aiConfig = await getAIConfigByUserId(lead.userId);
+
+          // Build conversation history
+          const history = [
+            ...lead.messages.map((m) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+            })),
+            { role: "user" as const, content: text },
+          ];
+
+          const { reply, newStageEventName } = await generateAIReply(
+            history,
+            lead.name || pushName,
+            {
+              clinicName: aiConfig?.clinicName ?? undefined,
+              systemPrompt: aiConfig?.systemPrompt ?? undefined,
+            }
+          );
+
+          // Save AI reply
+          await prisma.message.create({
+            data: { leadId: lead.id, role: "assistant", content: reply },
+          });
+
+          // Send reply via WhatsApp Cloud API
+          await sendWhatsAppMessage(
+            whatsappConfig.phoneNumberId,
+            whatsappConfig.accessToken,
+            phone,
+            reply
+          );
+
+          // Update stage if AI determined a new one
+          if (newStageEventName && newStageEventName !== lead.stage?.eventName) {
+            const newStage = await prisma.stage.findFirst({
+              where: { userId: lead.userId, eventName: newStageEventName },
+            });
+
+            if (newStage) {
+              await prisma.lead.update({
+                where: { id: lead.id },
+                data: { stageId: newStage.id },
+              });
+              await prisma.leadStageHistory.create({
+                data: { leadId: lead.id, stageId: newStage.id },
+              });
+              await sendFacebookEvent({
+                userId: lead.userId,
+                phone: lead.phone,
+                eventName: newStage.eventName,
+              });
+            }
+          }
+        }
       }
     }
 
