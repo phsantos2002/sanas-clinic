@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SourceIcon, sourceConfig } from "@/components/icons/SourceIcons";
 import { deleteLead } from "@/app/actions/leads";
 import { toast } from "sonner";
 import type { Lead } from "@/types";
@@ -41,6 +42,8 @@ export function LeadCard({ lead, onClickLead }: Props) {
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const config = lead.source ? sourceConfig[lead.source] : null;
+
   async function handleDelete() {
     if (!confirmDelete) {
       setConfirmDelete(true);
@@ -59,21 +62,21 @@ export function LeadCard({ lead, onClickLead }: Props) {
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm group cursor-pointer hover:border-slate-300"
+      className="bg-white border border-slate-100 rounded-xl p-3.5 shadow-sm group cursor-pointer hover:shadow-md hover:border-slate-200 transition-all"
       onClick={() => onClickLead?.(lead.id)}
     >
       <div className="flex items-start gap-2">
         <button
           {...attributes}
           {...listeners}
-          className="mt-0.5 text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing"
+          className="mt-0.5 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <GripVertical className="h-4 w-4" />
         </button>
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-900 truncate">{lead.name}</p>
-          <div className="flex items-center gap-1 mt-1 text-slate-500">
+          <p className="text-sm font-semibold text-slate-900 truncate">{lead.name}</p>
+          <div className="flex items-center gap-1 mt-1 text-slate-400">
             <Phone className="h-3 w-3" />
             <span className="text-xs">{lead.phone}</span>
           </div>
@@ -81,17 +84,22 @@ export function LeadCard({ lead, onClickLead }: Props) {
           {lead.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {lead.tags.map(({ tag }) => (
-                <Badge key={tag.id} variant="secondary" className="text-xs py-0 h-5">
+                <Badge key={tag.id} variant="secondary" className="text-[10px] py-0 h-5 rounded-md">
                   {tag.name}
                 </Badge>
               ))}
             </div>
           )}
 
-          {lead.source && (
-            <p className="text-[10px] text-slate-400 mt-1.5">
-              {lead.source === "meta" ? "Meta Ads" : lead.source === "google" ? "Google Ads" : lead.source === "whatsapp" ? "WhatsApp" : lead.source === "manual" ? "Manual" : lead.source}
-            </p>
+          {config && (
+            <div className="flex items-center gap-1.5 mt-2">
+              <div className={`flex items-center justify-center w-5 h-5 rounded ${config.bg}`}>
+                <SourceIcon source={lead.source} size={12} />
+              </div>
+              <span className={`text-[10px] font-medium ${config.text}`}>
+                {config.label}
+              </span>
+            </div>
           )}
         </div>
 
@@ -100,13 +108,13 @@ export function LeadCard({ lead, onClickLead }: Props) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-900"
+              className="h-7 w-7 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-900 transition-opacity"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuContent align="end" className="w-44 rounded-xl">
             <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
@@ -128,7 +136,6 @@ export function LeadCard({ lead, onClickLead }: Props) {
             <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
-                // TODO: edit modal
                 toast.info("Edição em breve");
               }}
             >

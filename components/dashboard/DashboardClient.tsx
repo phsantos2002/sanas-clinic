@@ -8,6 +8,7 @@ import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { LeadsTable } from "@/components/dashboard/LeadsTable";
 import { LeadDetailModal } from "@/components/modals/LeadDetailModal";
 import { SourceCards } from "@/components/dashboard/SourceCards";
+import { SourceIcon } from "@/components/icons/SourceIcons";
 import type { Lead, KanbanColumn, LeadSourceStats, Stage, Tag } from "@/types";
 
 type SavedFilter = {
@@ -148,42 +149,47 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
   }, [columns, filteredLeads]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Source counter cards */}
       <SourceCards stats={stats} activeFilter={sourceFilter} onFilter={setSourceFilter} />
 
       {/* Filter bar */}
-      <div className="flex items-center gap-2 flex-wrap bg-white border border-slate-200 rounded-xl px-4 py-2.5">
+      <div className="flex items-center gap-3 flex-wrap bg-white border border-slate-100 rounded-2xl px-5 py-3 shadow-sm">
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
           <Input
             placeholder="Buscar Nome ou parte do telefone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-8 text-xs border-slate-200"
+            className="pl-9 h-9 text-sm border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white"
           />
         </div>
 
         {/* Origin dropdown */}
-        <select
-          value={sourceFilter ?? ""}
-          onChange={(e) => setSourceFilter(e.target.value || null)}
-          className="h-8 text-xs border border-slate-200 rounded-md px-2 bg-white text-slate-700 outline-none focus:ring-1 focus:ring-zinc-300"
-        >
-          <option value="">Todas as Origens</option>
-          <option value="meta">Meta Ads</option>
-          <option value="google">Google Ads</option>
-          <option value="whatsapp">WhatsApp</option>
-          <option value="manual">Manual</option>
-          <option value="unknown">Não Rastreada</option>
-        </select>
+        <div className="relative">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+            <SourceIcon source={sourceFilter} size={16} />
+          </div>
+          <select
+            value={sourceFilter ?? ""}
+            onChange={(e) => setSourceFilter(e.target.value || null)}
+            className="h-9 text-sm border border-slate-200 rounded-xl pl-9 pr-8 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 appearance-none cursor-pointer"
+          >
+            <option value="">Todas as Origens</option>
+            <option value="meta">Meta Ads</option>
+            <option value="google">Google Ads</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="manual">Manual</option>
+            <option value="unknown">Não Rastreada</option>
+          </select>
+        </div>
 
         {/* Stage dropdown */}
         <select
           value={stageFilter ?? ""}
           onChange={(e) => setStageFilter(e.target.value || null)}
-          className="h-8 text-xs border border-slate-200 rounded-md px-2 bg-white text-slate-700 outline-none focus:ring-1 focus:ring-zinc-300"
+          className="h-9 text-sm border border-slate-200 rounded-xl px-3 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 cursor-pointer"
         >
           <option value="">Todas as Etapas</option>
           {stages.map((s) => (
@@ -196,7 +202,7 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
           <select
             value={tagFilter ?? ""}
             onChange={(e) => setTagFilter(e.target.value || null)}
-            className="h-8 text-xs border border-slate-200 rounded-md px-2 bg-white text-slate-700 outline-none focus:ring-1 focus:ring-zinc-300"
+            className="h-9 text-sm border border-slate-200 rounded-xl px-3 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 cursor-pointer"
           >
             <option value="">Todas as Tags</option>
             {tags.map((t) => (
@@ -209,15 +215,15 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
         {hasActiveFilters && (
           <button
             onClick={clearFilters}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors whitespace-nowrap"
           >
-            <X className="h-3 w-3" />
+            <X className="h-3.5 w-3.5" />
             Limpar Filtros
           </button>
         )}
 
         {/* Separator */}
-        <div className="h-5 w-px bg-slate-200 mx-1" />
+        <div className="h-6 w-px bg-slate-200 mx-1" />
 
         {/* Saved filters */}
         <div className="relative">
@@ -225,44 +231,44 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
             variant="outline"
             size="sm"
             onClick={() => setShowSavedDropdown(!showSavedDropdown)}
-            className="h-8 text-xs gap-1.5 border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+            className="h-9 text-sm gap-2 rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-medium"
           >
-            <SlidersHorizontal className="h-3 w-3" />
+            <SlidersHorizontal className="h-3.5 w-3.5" />
             Filtros Salvos
           </Button>
 
           {showSavedDropdown && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowSavedDropdown(false)} />
-              <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg min-w-[200px] py-1">
+              <div className="absolute right-0 top-full mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-xl min-w-[220px] py-1.5">
                 {savedFilters.length === 0 ? (
-                  <p className="text-xs text-slate-400 px-3 py-2">Nenhum filtro salvo</p>
+                  <p className="text-sm text-slate-400 px-4 py-3">Nenhum filtro salvo</p>
                 ) : (
                   savedFilters.map((f, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between px-3 py-1.5 hover:bg-slate-50/80 cursor-pointer"
+                      className="flex items-center justify-between px-4 py-2 hover:bg-slate-50 cursor-pointer"
                     >
                       <button
                         onClick={() => applySavedFilter(f)}
-                        className="text-xs text-slate-700 flex-1 text-left"
+                        className="text-sm text-slate-700 flex-1 text-left font-medium"
                       >
                         {f.name}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); removeSavedFilter(i); }}
-                        className="text-slate-400 hover:text-red-500 ml-2"
+                        className="text-slate-300 hover:text-red-500 ml-2 transition-colors"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   ))
                 )}
-                <div className="border-t border-zinc-100 mt-1 pt-1">
+                <div className="border-t border-slate-100 mt-1 pt-1">
                   <button
                     onClick={saveCurrentFilter}
                     disabled={!hasActiveFilters}
-                    className="w-full text-left text-xs px-3 py-1.5 text-indigo-600 hover:bg-indigo-50 disabled:text-slate-300 disabled:hover:bg-transparent"
+                    className="w-full text-left text-sm px-4 py-2 text-indigo-600 hover:bg-indigo-50 disabled:text-slate-300 disabled:hover:bg-transparent font-medium"
                   >
                     + Salvar filtro atual
                   </button>
@@ -277,36 +283,36 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
           variant="outline"
           size="sm"
           onClick={exportCSV}
-          className="h-8 text-xs gap-1.5"
+          className="h-9 text-sm gap-2 rounded-xl"
           title="Exportar CSV"
         >
-          <Download className="h-3 w-3" />
+          <Download className="h-3.5 w-3.5" />
         </Button>
 
         {/* View toggle */}
-        <div className="flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 ml-auto">
+        <div className="flex items-center gap-1 border border-slate-200 rounded-xl p-1 ml-auto bg-slate-50">
           <button
             onClick={() => setView("kanban")}
-            className={`p-1.5 rounded ${
-              view === "kanban" ? "bg-slate-900 text-white" : "text-slate-400 hover:text-slate-600"
+            className={`p-2 rounded-lg transition-all ${
+              view === "kanban" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
             }`}
           >
-            <Kanban className="h-3.5 w-3.5" />
+            <Kanban className="h-4 w-4" />
           </button>
           <button
             onClick={() => setView("table")}
-            className={`p-1.5 rounded ${
-              view === "table" ? "bg-slate-900 text-white" : "text-slate-400 hover:text-slate-600"
+            className={`p-2 rounded-lg transition-all ${
+              view === "table" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
             }`}
           >
-            <List className="h-3.5 w-3.5" />
+            <List className="h-4 w-4" />
           </button>
         </div>
       </div>
 
       {/* Results count */}
       {hasActiveFilters && (
-        <p className="text-xs text-slate-500">
+        <p className="text-sm text-slate-500 font-medium">
           {filteredLeads.length} de {leads.length} leads
         </p>
       )}

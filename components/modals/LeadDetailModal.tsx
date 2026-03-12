@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+import { SourceIcon, sourceConfig, getStageColor } from "@/components/icons/SourceIcons";
 import { getLeadDetail } from "@/app/actions/leads";
 import type { LeadDetail } from "@/types";
 
@@ -35,19 +36,12 @@ const platformLabels: Record<string, string> = {
   whatsapp: "WhatsApp",
 };
 
-const sourceLabels: Record<string, string> = {
-  meta: "Meta Ads",
-  google: "Google Ads",
-  whatsapp: "WhatsApp Direto",
-  manual: "Cadastro Manual",
-};
-
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
-    <div className="flex items-start justify-between py-2 border-b border-slate-100 last:border-0">
-      <span className="text-xs text-slate-500 min-w-[140px]">{label}</span>
-      <span className="text-xs font-medium text-slate-900 text-right">{value}</span>
+    <div className="flex items-start justify-between py-2.5 border-b border-slate-100 last:border-0">
+      <span className="text-xs text-slate-400 min-w-[140px]">{label}</span>
+      <span className="text-xs font-medium text-slate-800 text-right">{value}</span>
     </div>
   );
 }
@@ -86,12 +80,13 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
   const lastStageChange = lead?.stageHistory?.length
     ? lead.stageHistory[lead.stageHistory.length - 1]
     : null;
+  const config = lead?.source ? sourceConfig[lead.source] : null;
 
   return (
     <Dialog open={!!leadId} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Detalhes do Lead</DialogTitle>
+          <DialogTitle className="text-lg">Detalhes do Lead</DialogTitle>
         </DialogHeader>
 
         {loading && (
@@ -100,10 +95,29 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
 
         {!loading && lead && (
           <div className="space-y-5">
+            {/* Lead header card */}
+            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
+              <div className={`flex items-center justify-center w-12 h-12 rounded-xl ${config?.bg ?? "bg-orange-50"}`}>
+                <SourceIcon source={lead.source} size={24} />
+              </div>
+              <div className="flex-1">
+                <p className="text-base font-bold text-slate-900">{lead.name}</p>
+                <p className="text-sm text-slate-500">{lead.phone}</p>
+              </div>
+              {lead.stage && (() => {
+                const stageColor = getStageColor(lead.stage.name);
+                return (
+                  <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${stageColor.bg} ${stageColor.text}`}>
+                    {lead.stage.name}
+                  </span>
+                );
+              })()}
+            </div>
+
             {/* Section 1: Informações da Conversa */}
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5" />
+                <Phone className="h-3.5 w-3.5 text-indigo-500" />
                 Informações da Conversa
               </h4>
               <div className="bg-slate-50 rounded-xl p-3">
@@ -111,7 +125,7 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
                 <InfoRow label="Nome" value={lead.name} />
                 <InfoRow
                   label="Origem"
-                  value={lead.source ? (sourceLabels[lead.source] ?? lead.source) : "Não rastreada"}
+                  value={config?.label ?? "Não rastreada"}
                 />
                 <InfoRow
                   label="Etapa da Jornada"
@@ -138,9 +152,9 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
             </div>
 
             {lead.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5">
                 {lead.tags.map(({ tag }) => (
-                  <Badge key={tag.id} variant="secondary" className="text-xs py-0 h-5">
+                  <Badge key={tag.id} variant="secondary" className="text-xs py-0.5 h-6 rounded-lg">
                     {tag.name}
                   </Badge>
                 ))}
@@ -149,10 +163,10 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
 
             <Separator />
 
-            {/* Section 2: Informações do Método de Rastreamento */}
+            {/* Section 2: Rastreamento */}
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-                <Target className="h-3.5 w-3.5" />
+                <Target className="h-3.5 w-3.5 text-indigo-500" />
                 Informações do Método de Rastreamento
               </h4>
               {!lead.source || (lead.source !== "meta" && lead.source !== "google") ? (
@@ -189,14 +203,14 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
             {/* Section 3: Disparos de Pixel */}
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5" />
+                <Zap className="h-3.5 w-3.5 text-indigo-500" />
                 Disparos de Pixel
               </h4>
               {!lead.pixelEvents || lead.pixelEvents.length === 0 ? (
                 <p className="text-xs text-slate-400 py-2">Nenhum disparo de pixel registrado.</p>
               ) : (
                 <div className="bg-slate-50 rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-[1fr_80px_90px_60px] gap-1 px-3 py-1.5 bg-slate-100 text-[10px] font-medium text-slate-500 uppercase tracking-wide">
+                  <div className="grid grid-cols-[1fr_80px_90px_60px] gap-1 px-3 py-2 bg-slate-100/80 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                     <span>Data</span>
                     <span>Etapa</span>
                     <span>Evento</span>
@@ -205,11 +219,11 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
                   {lead.pixelEvents.map((evt) => (
                     <div
                       key={evt.id}
-                      className="grid grid-cols-[1fr_80px_90px_60px] gap-1 px-3 py-1.5 text-xs border-b border-slate-100 last:border-0"
+                      className="grid grid-cols-[1fr_80px_90px_60px] gap-1 px-3 py-2 text-xs border-b border-slate-100 last:border-0"
                     >
                       <span className="text-slate-600">{formatDate(evt.createdAt)}</span>
                       <span className="text-slate-700 truncate">{evt.stageName}</span>
-                      <Badge variant="secondary" className="text-[10px] py-0 h-4 w-fit">
+                      <Badge variant="secondary" className="text-[10px] py-0 h-4 w-fit rounded-md">
                         {evt.eventName}
                       </Badge>
                       {evt.success ? (
@@ -228,24 +242,27 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
             {/* Section 4: Histórico de Estágios */}
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5" />
+                <Clock className="h-3.5 w-3.5 text-indigo-500" />
                 Histórico de Estágios
               </h4>
               {lead.stageHistory.length === 0 ? (
                 <p className="text-xs text-slate-400 py-2">Nenhuma movimentação registrada.</p>
               ) : (
-                <div className="space-y-1">
-                  {lead.stageHistory.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex items-center justify-between text-xs py-1"
-                    >
-                      <Badge variant="secondary" className="text-xs py-0 h-5">
-                        {entry.stage.name}
-                      </Badge>
-                      <span className="text-slate-400">{formatDate(entry.createdAt)}</span>
-                    </div>
-                  ))}
+                <div className="space-y-1.5">
+                  {lead.stageHistory.map((entry) => {
+                    const sc = getStageColor(entry.stage.name);
+                    return (
+                      <div
+                        key={entry.id}
+                        className="flex items-center justify-between text-xs py-1"
+                      >
+                        <span className={`px-2 py-0.5 rounded-md font-semibold ${sc.bg} ${sc.text}`}>
+                          {entry.stage.name}
+                        </span>
+                        <span className="text-slate-400">{formatDate(entry.createdAt)}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -255,7 +272,7 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
             {/* Section 5: Últimas Mensagens */}
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-                <MessageCircle className="h-3.5 w-3.5" />
+                <MessageCircle className="h-3.5 w-3.5 text-indigo-500" />
                 Últimas Mensagens ({lead.messages.length})
               </h4>
               {lead.messages.length === 0 ? (
@@ -269,14 +286,14 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
                     .map((msg) => (
                       <div
                         key={msg.id}
-                        className={`text-xs p-2 rounded-md ${
+                        className={`text-xs p-2.5 rounded-xl ${
                           msg.role === "user"
                             ? "bg-slate-100 text-slate-700"
-                            : "bg-black/5 text-slate-600"
+                            : "bg-indigo-50 text-indigo-800"
                         }`}
                       >
                         <div className="flex justify-between mb-0.5">
-                          <span className="font-medium">
+                          <span className="font-semibold">
                             {msg.role === "user" ? lead.name : "IA"}
                           </span>
                           <span className="text-slate-400">{formatDate(msg.createdAt)}</span>
@@ -292,7 +309,7 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                className="flex-1"
+                className="flex-1 rounded-xl"
                 onClick={() => {
                   onClose();
                   router.push(`/dashboard/chat?leadId=${lead.id}`);
