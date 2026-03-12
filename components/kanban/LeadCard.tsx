@@ -1,8 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Phone, Trash2 } from "lucide-react";
+import { GripVertical, Phone, Trash2, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { deleteLead } from "@/app/actions/leads";
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export function LeadCard({ lead }: Props) {
+  const router = useRouter();
   const {
     attributes,
     listeners,
@@ -29,11 +31,17 @@ export function LeadCard({ lead }: Props) {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  async function handleDelete() {
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
     const result = await deleteLead(lead.id);
     if (!result.success) {
       toast.error(result.error);
     }
+  }
+
+  function handleOpenChat(e: React.MouseEvent) {
+    e.stopPropagation();
+    router.push(`/dashboard/chat?leadId=${lead.id}`);
   }
 
   return (
@@ -69,14 +77,24 @@ export function LeadCard({ lead }: Props) {
           )}
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-600"
-          onClick={handleDelete}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex flex-col gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-black"
+            onClick={handleOpenChat}
+          >
+            <MessageCircle className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-600"
+            onClick={handleDelete}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );
