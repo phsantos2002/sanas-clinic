@@ -222,7 +222,7 @@ export function DashboardOverviewClient({ initialStats }: Props) {
             </div>
 
             {/* Bar chart */}
-            <OriginBarChart data={filteredDaily} />
+            <OriginBarChart data={filteredDaily} startDate={startDate} endDate={endDate} />
           </CardContent>
         </Card>
       </div>

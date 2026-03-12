@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Eye } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { LeadDetailModal } from "@/components/modals/LeadDetailModal";
 
@@ -100,25 +99,10 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
       {/* Chat area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {selectedLead ? (
-          <>
-            {/* Header with detail button */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-100 bg-zinc-50/50">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium">{selectedLead.name}</p>
-                <p className="text-xs text-zinc-400">{selectedLead.phone}</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDetailLeadId(selectedLead.id)}
-                className="h-7 text-xs gap-1.5"
-              >
-                <Eye className="h-3 w-3" />
-                Ver Detalhes
-              </Button>
-            </div>
-            <ChatPanel lead={selectedLead} />
-          </>
+          <ChatPanel
+            lead={selectedLead}
+            onViewDetails={() => setDetailLeadId(selectedLead.id)}
+          />
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-sm text-zinc-400">Selecione uma conversa</p>

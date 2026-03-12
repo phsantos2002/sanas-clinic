@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, BotOff } from "lucide-react";
+import { Send, Bot, BotOff, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -26,9 +26,10 @@ type Lead = {
 
 type Props = {
   lead: Lead;
+  onViewDetails?: () => void;
 };
 
-export function ChatPanel({ lead }: Props) {
+export function ChatPanel({ lead, onViewDetails }: Props) {
   const [messages, setMessages] = useState(lead.messages);
   const [aiEnabled, setAiEnabled] = useState(lead.aiEnabled);
   const [text, setText] = useState("");
@@ -97,6 +98,17 @@ export function ChatPanel({ lead }: Props) {
             {aiEnabled ? <Bot className="h-3.5 w-3.5" /> : <BotOff className="h-3.5 w-3.5" />}
             IA {aiEnabled ? "Ativa" : "Desativada"}
           </Button>
+          {onViewDetails && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onViewDetails}
+              className="gap-1.5 text-xs h-7"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Ver Detalhes
+            </Button>
+          )}
         </div>
       </div>
 

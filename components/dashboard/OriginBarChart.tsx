@@ -14,6 +14,8 @@ import type { DailyOriginStats } from "@/app/actions/leads";
 
 type Props = {
   data: DailyOriginStats[];
+  startDate?: string;
+  endDate?: string;
 };
 
 function formatDateLabel(dateStr: string) {
@@ -21,8 +23,29 @@ function formatDateLabel(dateStr: string) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
 
-export function OriginBarChart({ data }: Props) {
-  if (data.length === 0) {
+function fillDays(data: DailyOriginStats[], startDate?: string, endDate?: string): DailyOriginStats[] {
+  if (data.length === 0 && !startDate) return data;
+
+  const dataMap = new Map<string, DailyOriginStats>();
+  for (const d of data) dataMap.set(d.date, d);
+
+  const start = startDate ? new Date(startDate + "T12:00:00") : new Date(data[0].date + "T12:00:00");
+  const end = endDate ? new Date(endDate + "T12:00:00") : new Date(data[data.length - 1].date + "T12:00:00");
+
+  const result: DailyOriginStats[] = [];
+  const current = new Date(start);
+  while (current <= end) {
+    const key = current.toISOString().slice(0, 10);
+    result.push(dataMap.get(key) ?? { date: key, meta: 0, google: 0, other: 0, unknown: 0 });
+    current.setDate(current.getDate() + 1);
+  }
+  return result;
+}
+
+export function OriginBarChart({ data, startDate, endDate }: Props) {
+  const filledData = fillDays(data, startDate, endDate);
+
+  if (filledData.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] text-sm text-zinc-400">
         Nenhum dado no período selecionado
@@ -30,7 +53,7 @@ export function OriginBarChart({ data }: Props) {
     );
   }
 
-  const chartData = data.map((d) => ({
+  const chartData = filledData.map((d) => ({
     date: formatDateLabel(d.date),
     "Meta Ads": d.meta,
     "Google Ads": d.google,
@@ -47,6 +70,7 @@ export function OriginBarChart({ data }: Props) {
           tick={{ fontSize: 11, fill: "#71717a" }}
           tickLine={false}
           axisLine={false}
+          interval={Math.max(0, Math.floor(chartData.length / 15))}
         />
         <YAxis
           tick={{ fontSize: 11, fill: "#71717a" }}

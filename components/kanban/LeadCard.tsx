@@ -1,11 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Phone, Trash2, MessageCircle } from "lucide-react";
+import { GripVertical, Phone, MoreHorizontal, MessageCircle, Eye, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { deleteLead } from "@/app/actions/leads";
 import { toast } from "sonner";
 import type { Lead } from "@/types";
@@ -17,6 +25,7 @@ type Props = {
 
 export function LeadCard({ lead, onClickLead }: Props) {
   const router = useRouter();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const {
     attributes,
     listeners,
@@ -32,17 +41,18 @@ export function LeadCard({ lead, onClickLead }: Props) {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  async function handleDelete(e: React.MouseEvent) {
-    e.stopPropagation();
+  async function handleDelete() {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
     const result = await deleteLead(lead.id);
     if (!result.success) {
       toast.error(result.error);
+    } else {
+      toast.success("Lead excluído");
     }
-  }
-
-  function handleOpenChat(e: React.MouseEvent) {
-    e.stopPropagation();
-    router.push(`/dashboard/chat?leadId=${lead.id}`);
+    setConfirmDelete(false);
   }
 
   return (
@@ -77,26 +87,67 @@ export function LeadCard({ lead, onClickLead }: Props) {
               ))}
             </div>
           )}
+
+          {lead.source && (
+            <p className="text-[10px] text-zinc-400 mt-1.5">
+              {lead.source === "meta" ? "Meta Ads" : lead.source === "google" ? "Google Ads" : lead.source === "whatsapp" ? "WhatsApp" : lead.source === "manual" ? "Manual" : lead.source}
+            </p>
+          )}
         </div>
 
-        <div className="flex flex-col gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-black"
-            onClick={handleOpenChat}
-          >
-            <MessageCircle className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-600"
-            onClick={handleDelete}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        <DropdownMenu onOpenChange={() => setConfirmDelete(false)}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-black"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onClickLead?.(lead.id);
+              }}
+            >
+              <Eye className="h-3.5 w-3.5 mr-2" />
+              Ver Detalhes
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/dashboard/chat?leadId=${lead.id}`);
+              }}
+            >
+              <MessageCircle className="h-3.5 w-3.5 mr-2" />
+              Abrir Chat
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                // TODO: edit modal
+                toast.info("Edição em breve");
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-2" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
+              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-2" />
+              {confirmDelete ? "Confirmar Exclusão" : "Excluir"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
