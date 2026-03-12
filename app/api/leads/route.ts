@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, name, phone, source, medium, campaign, adName, platform, referrer } = body;
+    const { userId, name, phone, source, medium, campaign, adSetName, adName, adAccountName, platform, referrer } = body;
 
     if (!userId || !name || !phone) {
       return NextResponse.json(
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       if (!existing.source && source) {
         await prisma.lead.update({
           where: { id: existing.id },
-          data: { source, medium, campaign, adName, platform, referrer },
+          data: { source, medium, campaign, adSetName, adName, adAccountName, platform, referrer },
         });
       }
       return NextResponse.json({ id: existing.id, created: false });
@@ -66,7 +66,9 @@ export async function POST(req: NextRequest) {
         source: source ?? null,
         medium: medium ?? null,
         campaign: campaign ?? null,
+        adSetName: adSetName ?? null,
         adName: adName ?? null,
+        adAccountName: adAccountName ?? null,
         platform: platform ?? null,
         referrer: referrer ?? null,
       },

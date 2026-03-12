@@ -60,14 +60,17 @@ model Lead {
   stageHistory LeadStageHistory[]
   messages     Message[]
   aiEnabled    Boolean            @default(true)
-  source       String?            // "meta", "google", "whatsapp", "manual"
-  medium       String?            // "cpc", "organic", "social", "referral"
-  campaign     String?            // campaign name
-  adName       String?            // ad/adset name
-  platform     String?            // "facebook", "instagram", "google", "whatsapp"
-  referrer     String?            // original referrer URL
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  source         String?            // "meta", "google", "whatsapp", "manual"
+  medium         String?            // "cpc", "organic", "social", "referral"
+  campaign       String?            // campaign name
+  adSetName      String?            // ad set / conjunto de anúncios
+  adName         String?            // ad name
+  adAccountName  String?            // ad account name
+  platform       String?            // "facebook", "instagram", "google", "whatsapp"
+  referrer       String?            // original referrer URL
+  pixelEvents    PixelEvent[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 }
 
 model Message {
@@ -112,6 +115,17 @@ model WhatsAppConfig {
   verifyToken   String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model PixelEvent {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  eventName String
+  stageName String
+  platform  String   @default("facebook") // "facebook", "google"
+  success   Boolean  @default(true)
+  createdAt DateTime @default(now())
 }
 
 model GAConfig {

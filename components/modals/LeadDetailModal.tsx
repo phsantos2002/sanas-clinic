@@ -14,12 +14,11 @@ import { Separator } from "@/components/ui/separator";
 import {
   Phone,
   MessageCircle,
-  Globe,
-  Megaphone,
-  Monitor,
   Clock,
-  Bot,
-  ExternalLink,
+  Target,
+  Zap,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { getLeadDetail } from "@/app/actions/leads";
 import type { LeadDetail } from "@/types";
@@ -42,6 +41,16 @@ const sourceLabels: Record<string, string> = {
   whatsapp: "WhatsApp Direto",
   manual: "Cadastro Manual",
 };
+
+function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-start justify-between py-2 border-b border-zinc-100 last:border-0">
+      <span className="text-xs text-zinc-500 min-w-[140px]">{label}</span>
+      <span className="text-xs font-medium text-black text-right">{value}</span>
+    </div>
+  );
+}
 
 export function LeadDetailModal({ leadId, onClose }: Props) {
   const router = useRouter();
@@ -70,6 +79,14 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
     });
   }
 
+  const firstMessage = lead?.messages?.length
+    ? lead.messages[lead.messages.length - 1]
+    : null;
+  const lastMessage = lead?.messages?.length ? lead.messages[0] : null;
+  const lastStageChange = lead?.stageHistory?.length
+    ? lead.stageHistory[lead.stageHistory.length - 1]
+    : null;
+
   return (
     <Dialog open={!!leadId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
@@ -83,110 +100,145 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
 
         {!loading && lead && (
           <div className="space-y-5">
-            {/* Basic Info */}
-            <div className="space-y-2">
-              <h3 className="text-base font-semibold text-black">{lead.name}</h3>
-              <div className="flex items-center gap-2 text-sm text-zinc-600">
+            {/* Section 1: Informações da Conversa */}
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-black flex items-center gap-1.5">
                 <Phone className="h-3.5 w-3.5" />
-                <span>{lead.phone}</span>
+                Informações da Conversa
+              </h4>
+              <div className="bg-zinc-50 rounded-lg p-3">
+                <InfoRow label="WhatsApp" value={lead.phone} />
+                <InfoRow label="Nome" value={lead.name} />
+                <InfoRow
+                  label="Origem"
+                  value={lead.source ? (sourceLabels[lead.source] ?? lead.source) : "Não rastreada"}
+                />
+                <InfoRow
+                  label="Etapa da Jornada"
+                  value={lead.stage?.name ?? "Sem estágio"}
+                />
+                <InfoRow
+                  label="Primeira Mensagem"
+                  value={firstMessage ? formatDate(firstMessage.createdAt) : "—"}
+                />
+                <InfoRow
+                  label="Última Mensagem"
+                  value={lastMessage ? formatDate(lastMessage.createdAt) : "—"}
+                />
+                <InfoRow
+                  label="Última Mudança de Etapa"
+                  value={lastStageChange ? formatDate(lastStageChange.createdAt) : "—"}
+                />
+                <InfoRow
+                  label="IA"
+                  value={lead.aiEnabled ? "Ativada" : "Desativada"}
+                />
+                <InfoRow label="Criado em" value={formatDate(lead.createdAt)} />
               </div>
-              {lead.stage && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-zinc-500">Estágio:</span>
-                  <Badge variant="secondary">{lead.stage.name}</Badge>
+            </div>
+
+            {lead.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {lead.tags.map(({ tag }) => (
+                  <Badge key={tag.id} variant="secondary" className="text-xs py-0 h-5">
+                    {tag.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Section 2: Informações do Método de Rastreamento */}
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-black flex items-center gap-1.5">
+                <Target className="h-3.5 w-3.5" />
+                Informações do Método de Rastreamento
+              </h4>
+              {!lead.source || (lead.source !== "meta" && lead.source !== "google") ? (
+                <p className="text-xs text-zinc-400 py-2">
+                  {lead.source === "whatsapp"
+                    ? "Lead chegou diretamente pelo WhatsApp, sem dados de campanha."
+                    : lead.source === "manual"
+                    ? "Lead cadastrado manualmente."
+                    : "Nenhuma informação de rastreamento disponível."}
+                </p>
+              ) : (
+                <div className="bg-zinc-50 rounded-lg p-3">
+                  <InfoRow
+                    label="Método de Rastreamento"
+                    value={
+                      lead.source === "meta"
+                        ? "Campanha do Meta Ads"
+                        : "Campanha do Google Ads"
+                    }
+                  />
+                  <InfoRow label="Plataforma" value={lead.platform ? (platformLabels[lead.platform] ?? lead.platform) : null} />
+                  <InfoRow label="Conta de Anúncio" value={lead.adAccountName} />
+                  <InfoRow label="Nome da Campanha" value={lead.campaign} />
+                  <InfoRow label="Conjunto de Anúncios" value={lead.adSetName} />
+                  <InfoRow label="Nome do Anúncio" value={lead.adName} />
+                  <InfoRow label="Meio" value={lead.medium} />
+                  <InfoRow label="Referrer" value={lead.referrer} />
                 </div>
               )}
-              {lead.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {lead.tags.map(({ tag }) => (
-                    <Badge key={tag.id} variant="secondary" className="text-xs py-0 h-5">
-                      {tag.name}
-                    </Badge>
+            </div>
+
+            <Separator />
+
+            {/* Section 3: Disparos de Pixel */}
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-black flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5" />
+                Disparos de Pixel
+              </h4>
+              {!lead.pixelEvents || lead.pixelEvents.length === 0 ? (
+                <p className="text-xs text-zinc-400 py-2">Nenhum disparo de pixel registrado.</p>
+              ) : (
+                <div className="bg-zinc-50 rounded-lg overflow-hidden">
+                  <div className="grid grid-cols-[1fr_80px_90px_60px] gap-1 px-3 py-1.5 bg-zinc-100 text-[10px] font-medium text-zinc-500 uppercase tracking-wide">
+                    <span>Data</span>
+                    <span>Etapa</span>
+                    <span>Evento</span>
+                    <span>Status</span>
+                  </div>
+                  {lead.pixelEvents.map((evt) => (
+                    <div
+                      key={evt.id}
+                      className="grid grid-cols-[1fr_80px_90px_60px] gap-1 px-3 py-1.5 text-xs border-b border-zinc-100 last:border-0"
+                    >
+                      <span className="text-zinc-600">{formatDate(evt.createdAt)}</span>
+                      <span className="text-zinc-700 truncate">{evt.stageName}</span>
+                      <Badge variant="secondary" className="text-[10px] py-0 h-4 w-fit">
+                        {evt.eventName}
+                      </Badge>
+                      {evt.success ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      ) : (
+                        <XCircle className="h-3.5 w-3.5 text-red-500" />
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
-              <div className="flex items-center gap-2 text-xs text-zinc-400">
-                <Clock className="h-3 w-3" />
-                <span>Criado em {formatDate(lead.createdAt)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-zinc-400">
-                <Bot className="h-3 w-3" />
-                <span>IA {lead.aiEnabled ? "ativada" : "desativada"}</span>
-              </div>
             </div>
 
             <Separator />
 
-            {/* Attribution / Origin */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-black">Origem do Lead</h4>
-              {!lead.source && !lead.platform && !lead.campaign ? (
-                <p className="text-xs text-zinc-400">
-                  Nenhuma informação de origem disponível. Leads via WhatsApp ou cadastro manual não possuem dados de campanha.
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {lead.source && (
-                    <div className="space-y-0.5">
-                      <span className="text-xs text-zinc-400 flex items-center gap-1">
-                        <Globe className="h-3 w-3" /> Fonte
-                      </span>
-                      <p className="text-sm font-medium">{sourceLabels[lead.source] ?? lead.source}</p>
-                    </div>
-                  )}
-                  {lead.platform && (
-                    <div className="space-y-0.5">
-                      <span className="text-xs text-zinc-400 flex items-center gap-1">
-                        <Monitor className="h-3 w-3" /> Plataforma
-                      </span>
-                      <p className="text-sm font-medium">{platformLabels[lead.platform] ?? lead.platform}</p>
-                    </div>
-                  )}
-                  {lead.campaign && (
-                    <div className="space-y-0.5">
-                      <span className="text-xs text-zinc-400 flex items-center gap-1">
-                        <Megaphone className="h-3 w-3" /> Campanha
-                      </span>
-                      <p className="text-sm font-medium">{lead.campaign}</p>
-                    </div>
-                  )}
-                  {lead.adName && (
-                    <div className="space-y-0.5">
-                      <span className="text-xs text-zinc-400">Anúncio</span>
-                      <p className="text-sm font-medium">{lead.adName}</p>
-                    </div>
-                  )}
-                  {lead.medium && (
-                    <div className="space-y-0.5">
-                      <span className="text-xs text-zinc-400">Meio</span>
-                      <p className="text-sm font-medium">{lead.medium}</p>
-                    </div>
-                  )}
-                  {lead.referrer && (
-                    <div className="col-span-2 space-y-0.5">
-                      <span className="text-xs text-zinc-400 flex items-center gap-1">
-                        <ExternalLink className="h-3 w-3" /> Referrer
-                      </span>
-                      <p className="text-sm font-medium truncate">{lead.referrer}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Stage History */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-black">Histórico de Estágios</h4>
+            {/* Section 4: Histórico de Estágios */}
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-black flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                Histórico de Estágios
+              </h4>
               {lead.stageHistory.length === 0 ? (
-                <p className="text-xs text-zinc-400">Nenhuma movimentação registrada.</p>
+                <p className="text-xs text-zinc-400 py-2">Nenhuma movimentação registrada.</p>
               ) : (
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {lead.stageHistory.map((entry) => (
                     <div
                       key={entry.id}
-                      className="flex items-center justify-between text-xs"
+                      className="flex items-center justify-between text-xs py-1"
                     >
                       <Badge variant="secondary" className="text-xs py-0 h-5">
                         {entry.stage.name}
@@ -200,13 +252,14 @@ export function LeadDetailModal({ leadId, onClose }: Props) {
 
             <Separator />
 
-            {/* Recent Messages */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-black">
+            {/* Section 5: Últimas Mensagens */}
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-black flex items-center gap-1.5">
+                <MessageCircle className="h-3.5 w-3.5" />
                 Últimas Mensagens ({lead.messages.length})
               </h4>
               {lead.messages.length === 0 ? (
-                <p className="text-xs text-zinc-400">Nenhuma mensagem.</p>
+                <p className="text-xs text-zinc-400 py-2">Nenhuma mensagem.</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {lead.messages

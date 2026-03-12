@@ -1,16 +1,17 @@
-import { getLeads } from "@/app/actions/leads";
+import { getLeads, getLeadSourceStats } from "@/app/actions/leads";
 import { getStages } from "@/app/actions/stages";
 import { getTags } from "@/app/actions/tags";
-import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { CreateLeadModal } from "@/components/modals/CreateLeadModal";
 import { ManageTagsModal } from "@/components/modals/ManageTagsModal";
+import { DashboardClient } from "@/components/dashboard/DashboardClient";
 import type { KanbanColumn } from "@/types";
 
 export default async function DashboardPage() {
-  const [leads, stages, tags] = await Promise.all([
+  const [leads, stages, tags, stats] = await Promise.all([
     getLeads(),
     getStages(),
     getTags(),
+    getLeadSourceStats(),
   ]);
 
   const columns: KanbanColumn[] = stages.map((stage) => ({
@@ -31,7 +32,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <KanbanBoard columns={columns} />
+      <DashboardClient leads={leads} columns={columns} stats={stats} />
     </div>
   );
 }

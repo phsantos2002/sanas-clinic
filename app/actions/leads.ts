@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
 import { sendFacebookEvent } from "@/services/facebookEvents";
-import type { ActionResult, Lead, LeadDetail } from "@/types";
+import type { ActionResult, Lead, LeadDetail, LeadSourceStats } from "@/types";
 
 export async function getLeads(): Promise<Lead[]> {
   const user = await getCurrentUser();
@@ -68,6 +68,8 @@ export async function createLead(
         userId: user.id,
         phone: lead.phone,
         eventName: lead.stage.eventName,
+        leadId: lead.id,
+        stageName: lead.stage.name,
       });
     }
 
@@ -105,6 +107,8 @@ export async function moveLead(
       userId: user.id,
       phone: lead.phone,
       eventName: stage.eventName,
+      leadId: lead.id,
+      stageName: stage.name,
     });
 
     revalidatePath("/dashboard");
@@ -128,10 +132,31 @@ export async function getLeadDetail(leadId: string): Promise<LeadDetail | null> 
         include: { stage: true },
         orderBy: { createdAt: "asc" },
       },
+      pixelEvents: { orderBy: { createdAt: "desc" }, take: 20 },
     },
   });
 
   return lead as LeadDetail | null;
+}
+
+export async function getLeadSourceStats(): Promise<LeadSourceStats> {
+  const user = await getCurrentUser();
+  if (!user) return { total: 0, meta: 0, google: 0, whatsapp: 0, manual: 0, unknown: 0 };
+
+  const leads = await prisma.lead.findMany({
+    where: { userId: user.id },
+    select: { source: true },
+  });
+
+  const stats: LeadSourceStats = { total: leads.length, meta: 0, google: 0, whatsapp: 0, manual: 0, unknown: 0 };
+  for (const lead of leads) {
+    if (lead.source === "meta") stats.meta++;
+    else if (lead.source === "google") stats.google++;
+    else if (lead.source === "whatsapp") stats.whatsapp++;
+    else if (lead.source === "manual") stats.manual++;
+    else stats.unknown++;
+  }
+  return stats;
 }
 
 export async function deleteLead(leadId: string): Promise<ActionResult> {

@@ -5,6 +5,8 @@ type SendEventParams = {
   userId: string;
   phone: string;
   eventName: string;
+  leadId?: string;
+  stageName?: string;
 };
 
 function hashPhone(phone: string): string {
@@ -16,7 +18,10 @@ export async function sendFacebookEvent({
   userId,
   phone,
   eventName,
+  leadId,
+  stageName,
 }: SendEventParams): Promise<void> {
+  let success = false;
   try {
     const pixel = await prisma.pixel.findUnique({ where: { userId } });
     if (!pixel?.pixelId || !pixel?.accessToken) return;
@@ -44,11 +49,30 @@ export async function sendFacebookEvent({
       body: JSON.stringify(payload),
     });
 
+    success = response.ok;
+
     if (!response.ok) {
       const err = await response.text();
       console.error("[Facebook Events] Erro:", err);
     }
   } catch (err) {
     console.error("[Facebook Events] Falha ao enviar evento:", err);
+  }
+
+  // Track pixel fire
+  if (leadId) {
+    try {
+      await prisma.pixelEvent.create({
+        data: {
+          leadId,
+          eventName,
+          stageName: stageName ?? eventName,
+          platform: "facebook",
+          success,
+        },
+      });
+    } catch {
+      // non-critical
+    }
   }
 }

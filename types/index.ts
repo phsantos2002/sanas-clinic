@@ -43,7 +43,9 @@ export type Lead = {
   source: string | null;
   medium: string | null;
   campaign: string | null;
+  adSetName: string | null;
   adName: string | null;
+  adAccountName: string | null;
   platform: string | null;
   referrer: string | null;
   createdAt: Date;
@@ -77,10 +79,30 @@ export type LeadStageHistory = {
   createdAt: Date;
 };
 
+export type PixelEvent = {
+  id: string;
+  leadId: string;
+  eventName: string;
+  stageName: string;
+  platform: string;
+  success: boolean;
+  createdAt: Date;
+};
+
 export type LeadDetail = Lead & {
   messages: Message[];
   stageHistory: LeadStageHistory[];
+  pixelEvents: PixelEvent[];
   aiEnabled: boolean;
+};
+
+export type LeadSourceStats = {
+  total: number;
+  meta: number;
+  google: number;
+  whatsapp: number;
+  manual: number;
+  unknown: number;
 };
 
 export type KanbanColumn = Stage & {
