@@ -102,7 +102,7 @@ export async function getMetaCampaigns(): Promise<{
     const json = await graphGet(`${config.adAccountId}/campaigns`, config.metaAdsToken, {
       fields: [
         "id", "name", "status", "objective",
-        "daily_budget", "lifetime_budget", "bid_strategy", "bid_amount",
+        "daily_budget", "lifetime_budget", "bid_strategy",
         "insights.date_preset(last_30d){spend,impressions,reach,clicks,ctr,cpm,cpc}",
       ].join(","),
       effective_status: '["ACTIVE","PAUSED"]',
@@ -359,7 +359,7 @@ export async function getSelectedCampaignData(): Promise<{
       graphGet(selectedId, config.metaAdsToken, {
         fields: [
           "id", "name", "status", "objective",
-          "daily_budget", "lifetime_budget", "bid_strategy", "bid_amount",
+          "daily_budget", "lifetime_budget", "bid_strategy",
           "insights.date_preset(last_30d){spend,impressions,reach,clicks,ctr,cpm,cpc}",
         ].join(","),
       }),
