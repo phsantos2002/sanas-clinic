@@ -82,9 +82,9 @@ export async function POST(req: NextRequest) {
           const phone = msg.from;
           const pushName = value.contacts?.[0]?.profile?.name ?? "";
 
-          // Find lead by phone
+          // Find lead by phone or auto-create
           const phoneSuffix = phone.slice(-9);
-          const lead = await prisma.lead.findFirst({
+          let lead = await prisma.lead.findFirst({
             where: {
               userId: whatsappConfig.userId,
               phone: { endsWith: phoneSuffix },
@@ -96,7 +96,38 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          if (!lead) continue;
+          if (!lead) {
+            // Auto-create lead from incoming WhatsApp message
+            const firstStage = await prisma.stage.findFirst({
+              where: { userId: whatsappConfig.userId },
+              orderBy: { order: "asc" },
+            });
+
+            const created = await prisma.lead.create({
+              data: {
+                name: pushName || phone,
+                phone,
+                userId: whatsappConfig.userId,
+                stageId: firstStage?.id ?? null,
+                source: "whatsapp",
+                platform: "whatsapp",
+                medium: "organic",
+              },
+              include: {
+                messages: { orderBy: { createdAt: "asc" } },
+                stage: true,
+                user: true,
+              },
+            });
+
+            if (firstStage) {
+              await prisma.leadStageHistory.create({
+                data: { leadId: created.id, stageId: firstStage.id },
+              });
+            }
+
+            lead = created;
+          }
 
           // Save incoming message
           await prisma.message.create({

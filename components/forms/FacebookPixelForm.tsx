@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { savePixel } from "@/app/actions/pixel";
+import { savePixel, testPixelConnection } from "@/app/actions/pixel";
 import { toast } from "sonner";
 import type { Pixel } from "@/types";
 
@@ -18,6 +18,7 @@ export function FacebookPixelForm({ pixel }: Props) {
   const [adAccountId, setAdAccountId] = useState(pixel?.adAccountId ?? "");
   const [metaAdsToken, setMetaAdsToken] = useState(pixel?.metaAdsToken ?? "");
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -82,9 +83,30 @@ export function FacebookPixelForm({ pixel }: Props) {
         </div>
       </div>
 
-      <Button type="submit" disabled={loading}>
-        {loading ? "Salvando..." : "Salvar Pixel"}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={loading}>
+          {loading ? "Salvando..." : "Salvar Pixel"}
+        </Button>
+        {pixel && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={testing}
+            onClick={async () => {
+              setTesting(true);
+              const result = await testPixelConnection();
+              setTesting(false);
+              if (result.success) {
+                toast.success("Pixel funcionando! Evento de teste enviado.");
+              } else {
+                toast.error(result.error);
+              }
+            }}
+          >
+            {testing ? "Testando..." : "Testar Pixel"}
+          </Button>
+        )}
+      </div>
     </form>
   );
 }

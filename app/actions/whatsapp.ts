@@ -43,3 +43,30 @@ export async function saveWhatsAppConfig(
 export async function getWhatsAppConfigByUserId(userId: string) {
   return prisma.whatsAppConfig.findUnique({ where: { userId } });
 }
+
+export async function testWhatsAppConnection(): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: "Não autenticado" };
+
+    const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
+    if (!dbUser) return { success: false, error: "Usuário não encontrado" };
+
+    const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
+    if (!config) return { success: false, error: "WhatsApp não configurado" };
+
+    const res = await fetch(
+      `https://graph.facebook.com/v18.0/${config.phoneNumberId}?access_token=${config.accessToken}`
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      return { success: false, error: err.error?.message ?? "Falha na conexão" };
+    }
+
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao testar conexão" };
+  }
+}

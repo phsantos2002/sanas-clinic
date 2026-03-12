@@ -13,6 +13,7 @@ import {
 import { useState, useEffect } from "react";
 import { KanbanColumn } from "./KanbanColumn";
 import { LeadCard } from "./LeadCard";
+import { LeadDetailModal } from "@/components/modals/LeadDetailModal";
 import { moveLead } from "@/app/actions/leads";
 import { toast } from "sonner";
 import type { KanbanColumn as KanbanColumnType } from "@/types";
@@ -24,6 +25,7 @@ type Props = {
 export function KanbanBoard({ columns: initialColumns }: Props) {
   const [columns, setColumns] = useState(initialColumns);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
 
   useEffect(() => {
     setColumns(initialColumns);
@@ -92,6 +94,7 @@ export function KanbanBoard({ columns: initialColumns }: Props) {
   }
 
   return (
+    <>
     <DndContext
       sensors={sensors}
       collisionDetection={closestCorners}
@@ -100,7 +103,7 @@ export function KanbanBoard({ columns: initialColumns }: Props) {
     >
       <div className="flex gap-4 overflow-x-auto pb-4">
         {columns.map((column) => (
-          <KanbanColumn key={column.id} column={column} />
+          <KanbanColumn key={column.id} column={column} onClickLead={setSelectedLeadId} />
         ))}
       </div>
 
@@ -108,5 +111,11 @@ export function KanbanBoard({ columns: initialColumns }: Props) {
         {activeLead ? <LeadCard lead={activeLead} /> : null}
       </DragOverlay>
     </DndContext>
+
+    <LeadDetailModal
+      leadId={selectedLeadId}
+      onClose={() => setSelectedLeadId(null)}
+    />
+    </>
   );
 }

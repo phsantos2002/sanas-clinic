@@ -46,3 +46,44 @@ export async function savePixel(
     return { success: false, error: "Erro ao salvar pixel" };
   }
 }
+
+export async function testPixelConnection(): Promise<ActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Não autenticado" };
+
+    const pixel = await prisma.pixel.findUnique({ where: { userId: user.id } });
+    if (!pixel) return { success: false, error: "Pixel não configurado" };
+
+    // Send a test event
+    const payload = {
+      data: [
+        {
+          event_name: "TestEvent",
+          event_time: Math.floor(Date.now() / 1000),
+          user_data: { ph: ["0000000000000000000000000000000000000000000000000000000000000000"] },
+          action_source: "system_generated",
+        },
+      ],
+      test_event_code: "TEST" + Date.now().toString().slice(-5),
+    };
+
+    const res = await fetch(
+      `https://graph.facebook.com/v18.0/${pixel.pixelId}/events?access_token=${pixel.accessToken}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      return { success: false, error: err.error?.message ?? "Falha no teste do Pixel" };
+    }
+
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao testar Pixel" };
+  }
+}

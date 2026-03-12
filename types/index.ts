@@ -40,6 +40,12 @@ export type Lead = {
   stageId: string | null;
   stage: Stage | null;
   tags: LeadTag[];
+  source: string | null;
+  medium: string | null;
+  campaign: string | null;
+  adName: string | null;
+  platform: string | null;
+  referrer: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -53,6 +59,28 @@ export type Pixel = {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type Message = {
+  id: string;
+  leadId: string;
+  role: string;
+  content: string;
+  createdAt: Date;
+};
+
+export type LeadStageHistory = {
+  id: string;
+  leadId: string;
+  stageId: string;
+  stage: Stage;
+  createdAt: Date;
+};
+
+export type LeadDetail = Lead & {
+  messages: Message[];
+  stageHistory: LeadStageHistory[];
+  aiEnabled: boolean;
 };
 
 export type KanbanColumn = Stage & {

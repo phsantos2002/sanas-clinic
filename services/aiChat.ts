@@ -38,6 +38,8 @@ Seus objetivos em ordem:
   return base + BASE_INSTRUCTIONS;
 }
 
+const MAX_HISTORY_MESSAGES = 20;
+
 export async function generateAIReply(
   messages: ChatMessage[],
   leadName: string,
@@ -47,19 +49,30 @@ export async function generateAIReply(
   const systemPrompt = buildSystemPrompt(clinicName, config?.systemPrompt);
   const systemWithName = `${systemPrompt}\n\nNome do lead atual: ${leadName}`;
 
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 500,
-    system: systemWithName,
-    messages: messages.map((m) => ({ role: m.role, content: m.content })),
-  });
+  // Limit history to last N messages to control token usage
+  const recentMessages = messages.slice(-MAX_HISTORY_MESSAGES);
 
-  const fullText =
-    response.content[0].type === "text" ? response.content[0].text : "";
+  try {
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 500,
+      system: systemWithName,
+      messages: recentMessages.map((m) => ({ role: m.role, content: m.content })),
+    });
 
-  const stageMatch = fullText.match(/STAGE:\s*(\w+)/);
-  const newStageEventName = stageMatch ? stageMatch[1] : null;
-  const reply = fullText.replace(/\n?STAGE:\s*\w+\n?/g, "").trim();
+    const fullText =
+      response.content[0].type === "text" ? response.content[0].text : "";
 
-  return { reply, newStageEventName };
+    const stageMatch = fullText.match(/STAGE:\s*(\w+)/);
+    const newStageEventName = stageMatch ? stageMatch[1] : null;
+    const reply = fullText.replace(/\n?STAGE:\s*\w+\n?/g, "").trim();
+
+    return { reply, newStageEventName };
+  } catch (err) {
+    console.error("[AI] Erro ao gerar resposta:", err);
+    return {
+      reply: `Olá! No momento não consegui processar sua mensagem automaticamente. Um atendente da ${clinicName} vai te responder em breve!`,
+      newStageEventName: null,
+    };
+  }
 }

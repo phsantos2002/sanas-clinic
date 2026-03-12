@@ -21,6 +21,7 @@ model User {
   stages          Stage[]
   aiConfig        AIConfig?
   whatsappConfig  WhatsAppConfig?
+  gaConfig        GAConfig?
 }
 
 model AIConfig {
@@ -59,6 +60,12 @@ model Lead {
   stageHistory LeadStageHistory[]
   messages     Message[]
   aiEnabled    Boolean            @default(true)
+  source       String?            // "meta", "google", "whatsapp", "manual"
+  medium       String?            // "cpc", "organic", "social", "referral"
+  campaign     String?            // campaign name
+  adName       String?            // ad/adset name
+  platform     String?            // "facebook", "instagram", "google", "whatsapp"
+  referrer     String?            // original referrer URL
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -103,6 +110,15 @@ model WhatsAppConfig {
   phoneNumberId String
   accessToken   String
   verifyToken   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model GAConfig {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  measurementId String   // G-XXXXXXXXXX
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

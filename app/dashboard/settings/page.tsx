@@ -3,20 +3,23 @@ import { getTags } from "@/app/actions/tags";
 import { getStages } from "@/app/actions/stages";
 import { getAIConfig } from "@/app/actions/aiConfig";
 import { getWhatsAppConfig } from "@/app/actions/whatsapp";
+import { getGAConfig } from "@/app/actions/ga";
 import { FacebookPixelForm } from "@/components/forms/FacebookPixelForm";
 import { WhatsAppConfigForm } from "@/components/forms/WhatsAppConfigForm";
+import { GAConfigForm } from "@/components/forms/GAConfigForm";
 import { ManageTagsModal } from "@/components/modals/ManageTagsModal";
 import { ManageStagesSection } from "@/components/settings/ManageStagesSection";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
 import { Separator } from "@/components/ui/separator";
 
 export default async function SettingsPage() {
-  const [pixel, tags, stages, aiConfig, whatsappConfig] = await Promise.all([
+  const [pixel, tags, stages, aiConfig, whatsappConfig, gaConfig] = await Promise.all([
     getPixel(),
     getTags(),
     getStages(),
     getAIConfig(),
     getWhatsAppConfig(),
+    getGAConfig(),
   ]);
 
   return (
@@ -36,6 +39,18 @@ export default async function SettingsPage() {
           </p>
         </div>
         <FacebookPixelForm pixel={pixel} />
+      </section>
+
+      <Separator />
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-base font-medium">Google Analytics</h2>
+          <p className="text-sm text-zinc-500">
+            Configure o Measurement ID para rastrear eventos e origem dos leads via Google Analytics.
+          </p>
+        </div>
+        <GAConfigForm config={gaConfig} />
       </section>
 
       <Separator />

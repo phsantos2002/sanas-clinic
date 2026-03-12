@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
 import { sendFacebookEvent } from "@/services/facebookEvents";
-import type { ActionResult, Lead } from "@/types";
+import type { ActionResult, Lead, LeadDetail } from "@/types";
 
 export async function getLeads(): Promise<Lead[]> {
   const user = await getCurrentUser();
@@ -26,13 +26,32 @@ export async function createLead(
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Não autenticado" };
 
+  // Phone validation
+  const cleanPhone = data.phone.replace(/\D/g, "");
+  if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+    return { success: false, error: "Telefone inválido. Use DDD + número (ex: 11999999999)" };
+  }
+
+  // Deduplication by phone
+  const phoneSuffix = cleanPhone.slice(-9);
+  const existing = await prisma.lead.findFirst({
+    where: {
+      userId: user.id,
+      phone: { endsWith: phoneSuffix },
+    },
+  });
+  if (existing) {
+    return { success: false, error: "Já existe um lead com esse telefone" };
+  }
+
   try {
     const lead = await prisma.lead.create({
       data: {
         name: data.name,
-        phone: data.phone,
+        phone: cleanPhone,
         userId: user.id,
         stageId: data.stageId ?? null,
+        source: "manual",
       },
       include: {
         stage: true,
@@ -93,6 +112,26 @@ export async function moveLead(
   } catch {
     return { success: false, error: "Erro ao mover lead" };
   }
+}
+
+export async function getLeadDetail(leadId: string): Promise<LeadDetail | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const lead = await prisma.lead.findFirst({
+    where: { id: leadId, userId: user.id },
+    include: {
+      stage: true,
+      tags: { include: { tag: true } },
+      messages: { orderBy: { createdAt: "desc" }, take: 50 },
+      stageHistory: {
+        include: { stage: true },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  return lead as LeadDetail | null;
 }
 
 export async function deleteLead(leadId: string): Promise<ActionResult> {

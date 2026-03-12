@@ -12,9 +12,10 @@ import type { Lead } from "@/types";
 
 type Props = {
   lead: Lead;
+  onClickLead?: (leadId: string) => void;
 };
 
-export function LeadCard({ lead }: Props) {
+export function LeadCard({ lead, onClickLead }: Props) {
   const router = useRouter();
   const {
     attributes,
@@ -48,7 +49,8 @@ export function LeadCard({ lead }: Props) {
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white border border-zinc-200 rounded-lg p-3 shadow-sm group"
+      className="bg-white border border-zinc-200 rounded-lg p-3 shadow-sm group cursor-pointer hover:border-zinc-300"
+      onClick={() => onClickLead?.(lead.id)}
     >
       <div className="flex items-start gap-2">
         <button

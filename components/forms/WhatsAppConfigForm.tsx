@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { saveWhatsAppConfig } from "@/app/actions/whatsapp";
+import { saveWhatsAppConfig, testWhatsAppConnection } from "@/app/actions/whatsapp";
 import { toast } from "sonner";
 
 type WhatsAppConfig = {
@@ -22,6 +22,7 @@ export function WhatsAppConfigForm({ config }: Props) {
   const [accessToken, setAccessToken] = useState(config?.accessToken ?? "");
   const [verifyToken, setVerifyToken] = useState(config?.verifyToken ?? "");
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -81,9 +82,30 @@ export function WhatsAppConfigForm({ config }: Props) {
         </p>
       </div>
 
-      <Button type="submit" disabled={loading}>
-        {loading ? "Salvando..." : "Salvar WhatsApp"}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={loading}>
+          {loading ? "Salvando..." : "Salvar WhatsApp"}
+        </Button>
+        {config && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={testing}
+            onClick={async () => {
+              setTesting(true);
+              const result = await testWhatsAppConnection();
+              setTesting(false);
+              if (result.success) {
+                toast.success("Conexão com WhatsApp OK!");
+              } else {
+                toast.error(result.error);
+              }
+            }}
+          >
+            {testing ? "Testando..." : "Testar Conexão"}
+          </Button>
+        )}
+      </div>
     </form>
   );
 }
