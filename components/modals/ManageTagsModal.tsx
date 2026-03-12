@@ -80,14 +80,14 @@ export function ManageTagsModal({ tags: initialTags }: Props) {
 
         <div className="flex flex-wrap gap-2 mt-2">
           {tags.length === 0 && (
-            <p className="text-sm text-zinc-500">Nenhuma tag criada.</p>
+            <p className="text-sm text-slate-500">Nenhuma tag criada.</p>
           )}
           {tags.map((tag) => (
             <div key={tag.id} className="flex items-center gap-1">
               <Badge variant="secondary">{tag.name}</Badge>
               <button
                 onClick={() => handleDelete(tag.id)}
-                className="text-zinc-400 hover:text-red-600 transition-colors"
+                className="text-slate-400 hover:text-red-600 transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>

@@ -80,10 +80,10 @@ export function ChatPanel({ lead, onViewDetails }: Props) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
         <div>
           <p className="font-medium text-sm">{lead.name}</p>
-          <p className="text-xs text-zinc-400">{lead.phone}</p>
+          <p className="text-xs text-slate-400">{lead.phone}</p>
         </div>
         <div className="flex items-center gap-2">
           {lead.stage && (
@@ -116,7 +116,7 @@ export function ChatPanel({ lead, onViewDetails }: Props) {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-zinc-400">Nenhuma mensagem ainda</p>
+            <p className="text-sm text-slate-400">Nenhuma mensagem ainda</p>
           </div>
         )}
         {messages.map((msg) => (
@@ -127,12 +127,12 @@ export function ChatPanel({ lead, onViewDetails }: Props) {
             <div
               className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
                 msg.role === "assistant"
-                  ? "bg-black text-white rounded-br-sm"
-                  : "bg-zinc-100 text-zinc-900 rounded-bl-sm"
+                  ? "bg-slate-900 text-white rounded-br-sm"
+                  : "bg-slate-100 text-slate-900 rounded-bl-sm"
               }`}
             >
               <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-              <p className={`text-[10px] mt-1 ${msg.role === "assistant" ? "text-zinc-400" : "text-zinc-400"}`}>
+              <p className={`text-[10px] mt-1 ${msg.role === "assistant" ? "text-slate-400" : "text-slate-400"}`}>
                 {formatTime(msg.createdAt)}
               </p>
             </div>
@@ -142,7 +142,7 @@ export function ChatPanel({ lead, onViewDetails }: Props) {
       </div>
 
       {/* Input */}
-      <div className="px-4 py-3 border-t border-zinc-200 flex gap-2">
+      <div className="px-4 py-3 border-t border-slate-200 flex gap-2">
         <Input
           value={text}
           onChange={(e) => setText(e.target.value)}

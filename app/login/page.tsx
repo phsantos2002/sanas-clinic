@@ -30,7 +30,7 @@ export default async function LoginPage({
       <div className="w-full max-w-sm space-y-6 px-4">
         <div className="text-center space-y-1">
           <Image src="/logo.png" alt="Sanas Clinic" width={72} height={72} className="mx-auto" />
-          <p className="text-zinc-500 text-sm">
+          <p className="text-slate-500 text-sm">
             CRM para clínicas de estética
           </p>
         </div>
@@ -61,7 +61,7 @@ export default async function LoginPage({
 
           <div className="text-center">
             <details className="group">
-              <summary className="text-xs text-zinc-400 hover:text-zinc-600 cursor-pointer">
+              <summary className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer">
                 Esqueci minha senha
               </summary>
               <form action={resetPassword} className="mt-2 space-y-2">
@@ -75,10 +75,10 @@ export default async function LoginPage({
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-zinc-200" />
+              <span className="w-full border-t border-slate-200" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-2 text-zinc-400">ou</span>
+              <span className="bg-white px-2 text-slate-400">ou</span>
             </div>
           </div>
 
@@ -92,7 +92,7 @@ export default async function LoginPage({
 
         </div>
 
-        <p className="text-center text-xs text-zinc-400">
+        <p className="text-center text-xs text-slate-400">
           Ao continuar, você concorda com nossos termos de uso.
         </p>
       </div>

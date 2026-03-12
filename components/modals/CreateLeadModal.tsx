@@ -86,7 +86,7 @@ export function CreateLeadModal({ stages }: Props) {
               id="stage"
               value={stageId}
               onChange={(e) => setStageId(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black"
+              className="flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black"
             >
               {stages.map((stage) => (
                 <option key={stage.id} value={stage.id}>

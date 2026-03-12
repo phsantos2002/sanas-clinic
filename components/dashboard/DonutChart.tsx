@@ -20,7 +20,7 @@ export function DonutChart({ tracked, untracked, total, trackedPercent, untracke
 
   if (total === 0) {
     return (
-      <div className="flex items-center justify-center h-[180px] text-sm text-zinc-400">
+      <div className="flex items-center justify-center h-[180px] text-sm text-slate-400">
         Sem dados
       </div>
     );
@@ -54,11 +54,11 @@ export function DonutChart({ tracked, untracked, total, trackedPercent, untracke
       <div className="space-y-2 text-xs">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-          <span className="text-zinc-600">{trackedPercent}% Rastreadas</span>
+          <span className="text-slate-600">{trackedPercent}% Rastreadas</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-orange-400" />
-          <span className="text-zinc-600">{untrackedPercent}% Não rastreadas</span>
+          <span className="text-slate-600">{untrackedPercent}% Não rastreadas</span>
         </div>
       </div>
     </div>

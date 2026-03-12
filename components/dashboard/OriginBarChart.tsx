@@ -47,7 +47,7 @@ export function OriginBarChart({ data, startDate, endDate }: Props) {
 
   if (filledData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[300px] text-sm text-zinc-400">
+      <div className="flex items-center justify-center h-[300px] text-sm text-slate-400">
         Nenhum dado no período selecionado
       </div>
     );

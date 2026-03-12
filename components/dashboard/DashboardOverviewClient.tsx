@@ -82,7 +82,7 @@ export function DashboardOverviewClient({ initialStats }: Props) {
   const sourceCards = [
     { key: "meta", label: "Meta Ads", count: stats.bySource.meta, color: "bg-blue-500", icon: "∞" },
     { key: "google", label: "Google Ads", count: stats.bySource.google, color: "bg-yellow-500", icon: "▲" },
-    { key: "other", label: "Outras Origens", count: stats.bySource.whatsapp + stats.bySource.manual, color: "bg-zinc-400", icon: "⊕" },
+    { key: "other", label: "Outras Origens", count: stats.bySource.whatsapp + stats.bySource.manual, color: "bg-slate-400", icon: "⊕" },
     { key: "unknown", label: "Não Rastreada", count: stats.bySource.unknown, color: "bg-orange-400", icon: "∅" },
   ];
 
@@ -92,18 +92,18 @@ export function DashboardOverviewClient({ initialStats }: Props) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-zinc-500">Início → Dashboard</p>
+          <p className="text-sm text-slate-500">Início → Dashboard</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* Date range */}
-          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-lg px-2 py-1">
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-1">
             <input
               type="date"
               value={startDate}
               onChange={(e) => applyDateFilter(e.target.value, endDate)}
               className="text-xs border-none outline-none bg-transparent"
             />
-            <span className="text-xs text-zinc-400">-</span>
+            <span className="text-xs text-slate-400">-</span>
             <input
               type="date"
               value={endDate}
@@ -116,7 +116,7 @@ export function DashboardOverviewClient({ initialStats }: Props) {
           <select
             value={sourceFilter}
             onChange={(e) => setSourceFilter(e.target.value)}
-            className="h-8 text-xs border border-zinc-200 rounded-md px-2 bg-white text-zinc-700 outline-none"
+            className="h-8 text-xs border border-slate-200 rounded-md px-2 bg-white text-slate-700 outline-none"
           >
             <option value="all">Todas as Origens</option>
             <option value="meta">Meta Ads</option>
@@ -137,7 +137,7 @@ export function DashboardOverviewClient({ initialStats }: Props) {
       </div>
 
       {isPending && (
-        <div className="text-xs text-zinc-400 text-center">Carregando...</div>
+        <div className="text-xs text-slate-400 text-center">Carregando...</div>
       )}
 
       {/* Main grid */}
@@ -150,36 +150,36 @@ export function DashboardOverviewClient({ initialStats }: Props) {
           <CardContent className="space-y-4">
             {/* Total */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-zinc-100 rounded-lg flex items-center justify-center">
-                <FileText className="h-5 w-5 text-zinc-500" />
+              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                <FileText className="h-5 w-5 text-slate-500" />
               </div>
               <div>
-                <p className="text-xs text-zinc-500">Total de Conversas Novas Ativas</p>
+                <p className="text-xs text-slate-500">Total de Conversas Novas Ativas</p>
                 <p className="text-3xl font-bold">{stats.total}</p>
               </div>
             </div>
 
             {/* Tracked / Untracked */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-zinc-50 rounded-lg p-3">
+              <div className="bg-slate-50 rounded-xl p-3">
                 <div className="flex items-center gap-1.5 mb-1">
                   <div className="w-4 h-4 bg-emerald-100 rounded flex items-center justify-center">
                     <span className="text-emerald-600 text-[10px]">✓</span>
                   </div>
-                  <span className="text-xs text-zinc-500">Conversas Rastreadas</span>
+                  <span className="text-xs text-slate-500">Conversas Rastreadas</span>
                 </div>
                 <p className="text-lg font-bold">{stats.tracked}</p>
-                <p className="text-xs text-zinc-400">{stats.trackedPercent}%</p>
+                <p className="text-xs text-slate-400">{stats.trackedPercent}%</p>
               </div>
-              <div className="bg-zinc-50 rounded-lg p-3">
+              <div className="bg-slate-50 rounded-xl p-3">
                 <div className="flex items-center gap-1.5 mb-1">
                   <div className="w-4 h-4 bg-red-100 rounded flex items-center justify-center">
                     <span className="text-red-600 text-[10px]">✗</span>
                   </div>
-                  <span className="text-xs text-zinc-500">Conversas não rastreadas</span>
+                  <span className="text-xs text-slate-500">Conversas não rastreadas</span>
                 </div>
                 <p className="text-lg font-bold">{stats.untracked}</p>
-                <p className="text-xs text-zinc-400">{stats.untrackedPercent}%</p>
+                <p className="text-xs text-slate-400">{stats.untrackedPercent}%</p>
               </div>
             </div>
 
@@ -206,16 +206,16 @@ export function DashboardOverviewClient({ initialStats }: Props) {
                 <button
                   key={s.key}
                   onClick={() => setSourceFilter(sourceFilter === s.key ? "all" : s.key)}
-                  className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all ${
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all ${
                     sourceFilter === s.key
-                      ? "border-zinc-800 bg-zinc-50"
-                      : "border-zinc-200 bg-white hover:border-zinc-300"
+                      ? "border-slate-800 bg-slate-50"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <span className={`w-2 h-2 rounded-full ${s.color}`} />
                   <div className="text-left">
                     <p className="text-lg font-bold leading-tight">{s.count}</p>
-                    <p className="text-[10px] text-zinc-500">{s.label}</p>
+                    <p className="text-[10px] text-slate-500">{s.label}</p>
                   </div>
                 </button>
               ))}

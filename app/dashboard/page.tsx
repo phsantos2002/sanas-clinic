@@ -20,11 +20,11 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Pipeline</h1>
-          <p className="text-sm text-zinc-500">{leads.length} leads no total</p>
+          <h1 className="text-lg font-semibold text-slate-900">Pipeline</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{leads.length} leads no total</p>
         </div>
         <div className="flex items-center gap-2">
           <ManageTagsModal tags={tags} />

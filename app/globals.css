@@ -1,9 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #09090b;
+  --background: #f8f9fb;
+  --foreground: #1a1d23;
   --font-sans: var(--font-geist-sans);
+
+  /* Brand / Accent */
+  --accent: #6366f1;
+  --accent-light: #eef2ff;
+  --accent-hover: #4f46e5;
+
+  /* Neutrals */
+  --muted: #f1f3f9;
+  --muted-foreground: #64748b;
+  --border: #e8ecf1;
+  --border-hover: #cbd5e1;
+  --card: #ffffff;
+  --card-foreground: #1a1d23;
+
+  /* Semantic */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --destructive: #ef4444;
 }
 
 body {
@@ -13,4 +31,25 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* Smooth transitions for interactive elements */
+button, a, input, select, textarea {
+  transition: all 0.15s ease;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

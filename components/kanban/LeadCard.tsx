@@ -59,21 +59,21 @@ export function LeadCard({ lead, onClickLead }: Props) {
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white border border-zinc-200 rounded-lg p-3 shadow-sm group cursor-pointer hover:border-zinc-300"
+      className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm group cursor-pointer hover:border-slate-300"
       onClick={() => onClickLead?.(lead.id)}
     >
       <div className="flex items-start gap-2">
         <button
           {...attributes}
           {...listeners}
-          className="mt-0.5 text-zinc-400 hover:text-zinc-600 cursor-grab active:cursor-grabbing"
+          className="mt-0.5 text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing"
         >
           <GripVertical className="h-4 w-4" />
         </button>
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-black truncate">{lead.name}</p>
-          <div className="flex items-center gap-1 mt-1 text-zinc-500">
+          <p className="text-sm font-medium text-slate-900 truncate">{lead.name}</p>
+          <div className="flex items-center gap-1 mt-1 text-slate-500">
             <Phone className="h-3 w-3" />
             <span className="text-xs">{lead.phone}</span>
           </div>
@@ -89,7 +89,7 @@ export function LeadCard({ lead, onClickLead }: Props) {
           )}
 
           {lead.source && (
-            <p className="text-[10px] text-zinc-400 mt-1.5">
+            <p className="text-[10px] text-slate-400 mt-1.5">
               {lead.source === "meta" ? "Meta Ads" : lead.source === "google" ? "Google Ads" : lead.source === "whatsapp" ? "WhatsApp" : lead.source === "manual" ? "Manual" : lead.source}
             </p>
           )}
@@ -100,7 +100,7 @@ export function LeadCard({ lead, onClickLead }: Props) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-black"
+              className="h-7 w-7 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-900"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="h-4 w-4" />

@@ -45,11 +45,11 @@ function Thermometer({ label, value, quality }: { label: string; value: string; 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-zinc-500">{label}</span>
+        <span className="text-slate-500">{label}</span>
         <span className={`font-semibold ${cfg.color}`}>{cfg.label}</span>
       </div>
       <p className="text-lg font-bold leading-none">{value}</p>
-      <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
         <div className={`h-full rounded-full ${cfg.bar}`} style={{ width: `${barWidth}%` }} />
       </div>
     </div>
@@ -66,19 +66,19 @@ function CampaignCard({ campaign, totalSpend }: { campaign: MetaCampaign; totalS
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-semibold line-clamp-1">{campaign.name}</CardTitle>
           <span className={`shrink-0 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
-            isActive ? "bg-emerald-100 text-emerald-700" : "bg-zinc-100 text-zinc-500"
+            isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
           }`}>
             {isActive ? <Zap className="h-3 w-3" /> : <ZapOff className="h-3 w-3" />}
             {isActive ? "Ativa" : "Pausada"}
           </span>
         </div>
-        {shareOfSpend > 0 && <p className="text-xs text-zinc-400">{shareOfSpend}% do gasto total</p>}
+        {shareOfSpend > 0 && <p className="text-xs text-slate-400">{shareOfSpend}% do gasto total</p>}
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-3 gap-3 mb-4">
-          <div><p className="text-xs text-zinc-500">Gasto</p><p className="text-base font-bold">{fmtBrl(campaign.spend)}</p></div>
-          <div><p className="text-xs text-zinc-500">Impressões</p><p className="text-base font-bold">{campaign.impressions.toLocaleString("pt-BR")}</p></div>
-          <div><p className="text-xs text-zinc-500">Cliques</p><p className="text-base font-bold">{campaign.clicks.toLocaleString("pt-BR")}</p></div>
+          <div><p className="text-xs text-slate-500">Gasto</p><p className="text-base font-bold">{fmtBrl(campaign.spend)}</p></div>
+          <div><p className="text-xs text-slate-500">Impressões</p><p className="text-base font-bold">{campaign.impressions.toLocaleString("pt-BR")}</p></div>
+          <div><p className="text-xs text-slate-500">Cliques</p><p className="text-base font-bold">{campaign.clicks.toLocaleString("pt-BR")}</p></div>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <Thermometer label="CTR" value={`${fmt(campaign.ctr)}%`} quality={scoreCTR(campaign.ctr)} />
@@ -137,7 +137,7 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">Analytics</h1>
-        <p className="text-sm text-zinc-500">Funil completo: Meta Ads → WhatsApp → Clientes</p>
+        <p className="text-sm text-slate-500">Funil completo: Meta Ads → WhatsApp → Clientes</p>
       </div>
 
       {/* KPI Cards */}
@@ -152,7 +152,7 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
           <Card key={kpi.label}>
             <CardContent className="pt-4 pb-3">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-[11px] font-medium text-zinc-500">{kpi.label}</p>
+                <p className="text-[11px] font-medium text-slate-500">{kpi.label}</p>
                 <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
               </div>
               <p className="text-2xl font-bold">{kpi.value}</p>
@@ -179,18 +179,18 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
               </AreaChart>
             </ResponsiveContainer>
             {/* Funnel steps below */}
-            <div className="space-y-2 mt-4 border-t border-zinc-100 pt-4">
+            <div className="space-y-2 mt-4 border-t border-slate-100 pt-4">
               {pipeline.funnelSteps.map((step, i) => (
                 <div key={step.label}>
                   <div className="flex items-center justify-between text-sm mb-1">
                     <div className="flex items-center gap-1.5">
-                      {i > 0 && <ArrowRight className="h-3 w-3 text-zinc-300" />}
+                      {i > 0 && <ArrowRight className="h-3 w-3 text-slate-300" />}
                       <span className="font-medium">{step.label}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-zinc-500">{step.count} · {step.rate}%</span>
+                      <span className="text-slate-500">{step.count} · {step.rate}%</span>
                       {metaAds && step.count > 0 && (
-                        <span className="text-xs text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
+                        <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
                           {fmtBrl(metaAds.spend / step.count)}/un
                         </span>
                       )}
@@ -210,7 +210,7 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
           </CardHeader>
           <CardContent>
             {sourceChartData.length === 0 ? (
-              <p className="text-sm text-zinc-400 text-center py-8">Sem dados</p>
+              <p className="text-sm text-slate-400 text-center py-8">Sem dados</p>
             ) : (
               <>
                 <ResponsiveContainer width="100%" height={200}>
@@ -237,7 +237,7 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
                     <div key={s.name} className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: SOURCE_COLORS[i % SOURCE_COLORS.length] }} />
-                        <span className="text-zinc-600">{s.name}</span>
+                        <span className="text-slate-600">{s.name}</span>
                       </div>
                       <span className="font-medium">{s.value} ({sourceStats.total > 0 ? Math.round(s.value / sourceStats.total * 100) : 0}%)</span>
                     </div>
@@ -292,7 +292,7 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
                   <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(_: unknown, __: unknown, props: { payload?: { raw?: string } }) => props.payload?.raw ?? ""} />
                 </RadarChart>
               </ResponsiveContainer>
-              <div className="grid grid-cols-3 gap-4 mt-4 border-t border-zinc-100 pt-4">
+              <div className="grid grid-cols-3 gap-4 mt-4 border-t border-slate-100 pt-4">
                 <Thermometer label="CTR médio" value={`${fmt(metaAds.ctr)}%`} quality={scoreCTR(metaAds.ctr)} />
                 <Thermometer label="CPM médio" value={fmtBrl(metaAds.cpm)} quality={scoreCPM(metaAds.cpm)} />
                 <Thermometer label="CPC médio" value={fmtBrl(metaAds.cpc)} quality={scoreCPC(metaAds.cpc)} />
@@ -307,8 +307,8 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
             <CardContent className="flex items-center justify-center h-[260px]">
               {!hasMetaConfig ? (
                 <div className="text-center space-y-1">
-                  <p className="text-sm font-medium text-zinc-600">Conecte o Meta Ads</p>
-                  <p className="text-xs text-zinc-400">Configure em Configurações → Pixel do Facebook</p>
+                  <p className="text-sm font-medium text-slate-600">Conecte o Meta Ads</p>
+                  <p className="text-xs text-slate-400">Configure em Configurações → Pixel do Facebook</p>
                 </div>
               ) : metaError ? (
                 <div className="text-center space-y-1">
@@ -316,7 +316,7 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
                   <p className="text-xs text-amber-600">Gere um novo token em Configurações</p>
                 </div>
               ) : (
-                <p className="text-sm text-zinc-400">Sem dados no período</p>
+                <p className="text-sm text-slate-400">Sem dados no período</p>
               )}
             </CardContent>
           </Card>
@@ -343,10 +343,10 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
                 { label: "Custo/Conversa", value: costPerConversation != null ? fmtBrl(costPerConversation) : "—", icon: MessageCircle },
                 { label: "Custo/Cliente", value: costPerClient != null ? fmtBrl(costPerClient) : "—", icon: TrendingUp },
               ].map((item) => (
-                <div key={item.label} className="bg-zinc-50 rounded-lg p-3">
+                <div key={item.label} className="bg-slate-50 rounded-xl p-3">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <item.icon className="h-3 w-3 text-zinc-400" />
-                    <p className="text-[11px] text-zinc-500">{item.label}</p>
+                    <item.icon className="h-3 w-3 text-slate-400" />
+                    <p className="text-[11px] text-slate-500">{item.label}</p>
                   </div>
                   <p className="text-sm font-bold">{item.value}</p>
                 </div>
@@ -370,8 +370,8 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
                 { label: "Custo por Agendamento", value: costPerScheduled, highlight: false },
                 { label: "Custo por Cliente", value: costPerClient, highlight: true },
               ].map((item) => (
-                <div key={item.label} className={`rounded-lg p-3 ${item.highlight ? "bg-blue-50" : "bg-zinc-50"}`}>
-                  <p className={`text-xs ${item.highlight ? "text-blue-600" : "text-zinc-500"}`}>{item.label}</p>
+                <div key={item.label} className={`rounded-xl p-3 ${item.highlight ? "bg-blue-50" : "bg-slate-50"}`}>
+                  <p className={`text-xs ${item.highlight ? "text-blue-600" : "text-slate-500"}`}>{item.label}</p>
                   <p className={`text-lg font-bold ${item.highlight ? "text-blue-700" : ""}`}>
                     {item.value != null ? fmtBrl(item.value) : "—"}
                   </p>

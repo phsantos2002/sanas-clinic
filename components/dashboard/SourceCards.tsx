@@ -32,15 +32,15 @@ export function SourceCards({ stats, activeFilter, onFilter }: Props) {
           <button
             key={card.key ?? "total"}
             onClick={() => onFilter(isActive ? null : card.key)}
-            className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-all ${
+            className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all ${
               isActive
-                ? "border-black bg-zinc-50 shadow-sm"
-                : "border-zinc-200 bg-white hover:border-zinc-300"
+                ? "border-black bg-slate-50 shadow-sm"
+                : "border-slate-200 bg-white hover:border-slate-300"
             }`}
           >
             <span className="text-lg">{card.icon}</span>
-            <span className="text-xl font-bold text-black">{count}</span>
-            <span className="text-[10px] text-zinc-500 leading-tight">{card.label}</span>
+            <span className="text-xl font-bold text-slate-900">{count}</span>
+            <span className="text-[10px] text-slate-500 leading-tight">{card.label}</span>
           </button>
         );
       })}
