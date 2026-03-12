@@ -6,12 +6,12 @@ import { LayoutDashboard, Kanban, BarChart3, MessageCircle, Settings } from "luc
 import { MetaIcon, GoogleAdsIcon } from "@/components/icons/SourceIcons";
 
 const navItems = [
+  { href: "/dashboard/overview", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/chat", label: "Chat", icon: MessageCircle },
   { href: "/dashboard", label: "Pipeline", icon: Kanban, exact: true },
-  { href: "/dashboard/overview", label: "Visão Geral", icon: LayoutDashboard },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/meta", label: "Meta", iconCustom: <MetaIcon size={16} /> },
   { href: "/dashboard/google", label: "Google", iconCustom: <GoogleAdsIcon size={16} /> },
-  { href: "/dashboard/chat", label: "Chat", icon: MessageCircle },
   { href: "/dashboard/settings", label: "Configurações", icon: Settings },
 ];
 
