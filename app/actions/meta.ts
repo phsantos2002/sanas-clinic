@@ -370,7 +370,7 @@ export async function getSelectedCampaignData(): Promise<{
     ]);
 
     if (campaignJson.error) {
-      console.error("[Meta] selected campaign error:", campaignJson.error.message);
+      console.error("[Meta] selected campaign error:", JSON.stringify(campaignJson.error));
       return { selectedCampaignId: selectedId, campaign: null, adSets: [], insights: null, config };
     }
 

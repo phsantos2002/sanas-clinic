@@ -254,7 +254,7 @@ export function MetaPageClient({
     );
   }
 
-  if (!selectedCampaignId || !selectedCampaign) {
+  if (!selectedCampaignId) {
     return (
       <div className="space-y-6">
         <div>
@@ -276,6 +276,33 @@ export function MetaPageClient({
                 {campaigns.length} campanha{campaigns.length > 1 ? "s" : ""} disponíve{campaigns.length > 1 ? "is" : "l"} na sua conta.
               </p>
             )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!selectedCampaign) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2"><MetaIcon size={24} /> Meta Ads</h1>
+          <p className="text-sm text-slate-400 mt-1">Gerencie campanhas, bid cap, criativos e eventos</p>
+        </div>
+        <Card className="border-red-100 bg-red-50/30 rounded-2xl">
+          <CardContent className="py-10 text-center space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center mx-auto">
+              <AlertCircle className="h-7 w-7 text-red-500" />
+            </div>
+            <p className="text-sm font-semibold text-red-900">Erro ao carregar campanha</p>
+            <p className="text-xs text-red-700/70 max-w-md mx-auto">
+              A campanha selecionada (ID: <span className="font-mono">{selectedCampaignId}</span>) não pôde ser carregada.
+              Verifique se o <span className="font-medium">Token de Acesso — Marketing API</span> tem permissão <span className="font-mono">ads_read</span> e se a campanha ainda existe.
+            </p>
+            <p className="text-xs text-slate-400 mt-2">
+              Vá em <span className="font-medium">Configurações → Pixel do Facebook</span> para verificar o token,
+              ou selecione outra campanha em <span className="font-medium">Configurações → Campanha Principal</span>.
+            </p>
           </CardContent>
         </Card>
       </div>
