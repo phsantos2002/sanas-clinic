@@ -4,7 +4,9 @@ import { useState, useTransition } from "react";
 import {
   Zap, ZapOff, DollarSign, Eye, MousePointerClick, Users,
   ChevronDown, ChevronRight, Play, Pause, Target,
-  Image as ImageIcon, Settings2, Send, AlertCircle,
+  Image as ImageIcon, Send, AlertCircle, Plus, Lightbulb,
+  TrendingUp, TrendingDown, Activity, TriangleAlert, Info,
+  ExternalLink, Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,9 +96,33 @@ function Thermometer({ label, value, quality }: { label: string; value: string; 
   );
 }
 
+// ─── Creative Health ───
+
+type CreativeHealth = "performing" | "saturating" | "declining" | "paused" | "new";
+
+function getCreativeHealth(ad: MetaAd): CreativeHealth {
+  if (ad.status !== "ACTIVE") return "paused";
+  if (ad.impressions === 0) return "new";
+  // Frequency > 4 = audience is seeing the ad too many times
+  if (ad.frequency >= 4) return "declining";
+  // Frequency > 2.5 with bad CTR = starting to saturate
+  if (ad.frequency >= 2.5 && ad.ctr < 0.8) return "saturating";
+  // Bad CTR alone
+  if (ad.ctr < 0.3 && ad.impressions > 1000) return "declining";
+  return "performing";
+}
+
+const healthConfig: Record<CreativeHealth, { label: string; color: string; bg: string; icon: typeof TrendingUp; tip: string }> = {
+  performing: { label: "Performando", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: TrendingUp, tip: "Criativo com bom desempenho. Mantenha ativo." },
+  saturating: { label: "Saturando", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: Activity, tip: "Frequência alta e CTR caindo. Prepare um criativo substituto." },
+  declining:  { label: "Esgotar/Pausar", color: "text-red-700", bg: "bg-red-50 border-red-200", icon: TrendingDown, tip: "Frequência muito alta ou CTR muito baixo. Considere pausar e substituir." },
+  paused:     { label: "Pausado", color: "text-slate-500", bg: "bg-slate-50 border-slate-200", icon: Pause, tip: "Criativo pausado." },
+  new:        { label: "Novo", color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: Sparkles, tip: "Sem dados suficientes ainda. Aguarde 2-3 dias para avaliar." },
+};
+
 // ─── AdSet Row ───
 
-function AdSetRow({ adSet }: { adSet: MetaAdSet }) {
+function AdSetRow({ adSet, campaignCpc, campaignCpm }: { adSet: MetaAdSet; campaignCpc: number; campaignCpm: number }) {
   const [expanded, setExpanded] = useState(false);
   const [ads, setAds] = useState<MetaAd[]>([]);
   const [loadingAds, setLoadingAds] = useState(false);
@@ -104,6 +130,10 @@ function AdSetRow({ adSet }: { adSet: MetaAdSet }) {
   const [editBidCap, setEditBidCap] = useState(false);
   const [bidValue, setBidValue] = useState(adSet.bidAmount?.toString() ?? "");
   const isActive = adSet.status === "ACTIVE";
+
+  // Bid cap guidance based on campaign CPC
+  const suggestedBidMin = campaignCpc > 0 ? Math.max(0.01, campaignCpc * 0.8) : null;
+  const suggestedBidMax = campaignCpc > 0 ? campaignCpc * 1.5 : null;
 
   async function handleExpand() {
     if (expanded) { setExpanded(false); return; }
@@ -126,6 +156,10 @@ function AdSetRow({ adSet }: { adSet: MetaAdSet }) {
     });
   }
 
+  const activeAds = ads.filter((a) => a.status === "ACTIVE");
+  const performingCount = ads.filter((a) => getCreativeHealth(a) === "performing").length;
+  const warningCount = ads.filter((a) => ["saturating", "declining"].includes(getCreativeHealth(a))).length;
+
   return (
     <div className={`bg-white border rounded-xl overflow-hidden ${isActive ? "border-blue-100" : "border-slate-100"}`}>
       <div className="p-4">
@@ -143,10 +177,16 @@ function AdSetRow({ adSet }: { adSet: MetaAdSet }) {
                 {adSet.optimization_goal && (
                   <span className="text-[10px] text-slate-400">Otimização: {adSet.optimization_goal.replace(/_/g, " ")}</span>
                 )}
+                {ads.length > 0 && (
+                  <span className="text-[10px] text-slate-400">
+                    {activeAds.length} ativo{activeAds.length !== 1 ? "s" : ""}
+                    {warningCount > 0 && <span className="text-amber-500 ml-1">({warningCount} atenção)</span>}
+                  </span>
+                )}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-3 flex-shrink-0">
             <div className="text-right">
               <p className="text-[10px] text-slate-400">Bid Cap</p>
               <p className="text-xs font-bold text-slate-900">{adSet.bidAmount != null ? fmtBrl(adSet.bidAmount) : "—"}</p>
@@ -162,18 +202,55 @@ function AdSetRow({ adSet }: { adSet: MetaAdSet }) {
             )}
           </div>
         </div>
+
+        {/* Bid cap suggestion inline */}
+        {editBidCap && suggestedBidMin != null && suggestedBidMax != null && (
+          <div className="mt-2 ml-6 flex items-start gap-1.5 text-[10px] text-blue-600 bg-blue-50 rounded-lg px-2.5 py-1.5">
+            <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+            <span>
+              Com base no CPC médio ({fmtBrl(campaignCpc)}), sugerimos um bid entre{" "}
+              <span className="font-bold">{fmtBrl(suggestedBidMin)}</span> e{" "}
+              <span className="font-bold">{fmtBrl(suggestedBidMax)}</span>.
+              Valores abaixo podem limitar entrega; acima aumentam custo sem ganho proporcional.
+            </span>
+          </div>
+        )}
       </div>
+
       {expanded && (
-        <div className="border-t border-slate-50 bg-slate-50/30 px-4 py-3 space-y-2">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <ImageIcon className="h-3 w-3" /> Criativos / Anúncios
-          </p>
+        <div className="border-t border-slate-50 bg-slate-50/30 px-4 py-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <ImageIcon className="h-3 w-3" /> Criativos / Anúncios
+            </p>
+            <a
+              href={`https://www.facebook.com/adsmanager/manage/ads?act=${adSet.campaignId}&selected_adset_ids=${adSet.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[10px] text-indigo-600 hover:text-indigo-800 font-medium"
+            >
+              <Plus className="h-3 w-3" /> Adicionar criativo
+              <ExternalLink className="h-2.5 w-2.5" />
+            </a>
+          </div>
+
           {loadingAds ? (
             <p className="text-[10px] text-slate-400">Carregando...</p>
           ) : ads.length === 0 ? (
             <p className="text-[10px] text-slate-400">Nenhum anúncio encontrado</p>
           ) : (
-            ads.map((ad) => <AdRow key={ad.id} ad={ad} />)
+            <div className="space-y-2">
+              {ads.map((ad) => <AdRow key={ad.id} ad={ad} />)}
+
+              {/* Summary bar */}
+              {ads.length > 1 && (
+                <div className="flex items-center gap-3 mt-2 pt-2 border-t border-slate-100">
+                  <span className="text-[10px] text-slate-400">{ads.length} criativos</span>
+                  {performingCount > 0 && <span className="text-[10px] text-emerald-600">{performingCount} performando</span>}
+                  {warningCount > 0 && <span className="text-[10px] text-amber-600">{warningCount} precisam de atenção</span>}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -187,6 +264,9 @@ function AdRow({ ad }: { ad: MetaAd }) {
   const [status, setStatus] = useState(ad.status);
   const [isPending, startTransition] = useTransition();
   const isActive = status === "ACTIVE";
+  const health = getCreativeHealth({ ...ad, status });
+  const hCfg = healthConfig[health];
+  const HealthIcon = hCfg.icon;
 
   async function handleToggle() {
     const newStatus = isActive ? "PAUSED" : "ACTIVE";
@@ -198,27 +278,268 @@ function AdRow({ ad }: { ad: MetaAd }) {
   }
 
   return (
-    <div className="flex items-center justify-between bg-white rounded-lg border border-slate-100 p-3">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        {ad.thumbnailUrl ? (
-          <img src={ad.thumbnailUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
-        ) : (
-          <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-            <ImageIcon className="h-4 w-4 text-slate-400" />
+    <div className={`rounded-xl border p-3 space-y-2 ${hCfg.bg}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {ad.thumbnailUrl ? (
+            <img src={ad.thumbnailUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-white/60 flex items-center justify-center">
+              <ImageIcon className="h-4 w-4 text-slate-400" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-slate-800 truncate">{ad.name}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${hCfg.color}`}>
+                <HealthIcon className="h-3 w-3" />
+                {hCfg.label}
+              </span>
+              {ad.impressions > 0 && (
+                <span className="text-[10px] text-slate-400">Freq: {fmt(ad.frequency, 1)}x</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={handleToggle} disabled={isPending} className="h-7 text-[10px] rounded-lg gap-1 bg-white/80">
+          {isActive ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+          {isActive ? "Pausar" : "Ativar"}
+        </Button>
+      </div>
+
+      {/* Mini KPIs for ad */}
+      {ad.impressions > 0 && (
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { label: "Gasto", value: fmtBrl(ad.spend) },
+            { label: "CTR", value: `${fmt(ad.ctr)}%` },
+            { label: "CPC", value: fmtBrl(ad.cpc) },
+            { label: "CPM", value: fmtBrl(ad.cpm) },
+          ].map((k) => (
+            <div key={k.label} className="bg-white/60 rounded-lg px-2 py-1">
+              <p className="text-[9px] text-slate-400">{k.label}</p>
+              <p className="text-[11px] font-bold text-slate-800">{k.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Health tip */}
+      {health !== "paused" && health !== "performing" && (
+        <p className="text-[10px] text-slate-500 flex items-start gap-1">
+          <TriangleAlert className="h-3 w-3 flex-shrink-0 mt-0.5 text-amber-500" />
+          {hCfg.tip}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Creative Strategy Block ───
+
+function CreativeStrategyBlock({ campaign, insights }: { campaign: MetaCampaignFull; insights: MetaCampaignInsights | null }) {
+  const tips: Array<{ icon: typeof Lightbulb; title: string; description: string; priority: "high" | "medium" | "low" }> = [];
+
+  // Analyze metrics and generate tips
+  if (campaign.ctr < 0.5) {
+    tips.push({
+      icon: TrendingDown,
+      title: "CTR abaixo de 0.5%",
+      description: "O público não está engajando com os criativos. Teste novos formatos (carrossel, vídeo curto), copy mais direta e CTAs claros. Mude a primeira imagem ou os 3 primeiros segundos do vídeo.",
+      priority: "high",
+    });
+  } else if (campaign.ctr < 1.0) {
+    tips.push({
+      icon: Activity,
+      title: "CTR pode melhorar",
+      description: "Teste variações de copy e headline. Crie versões com prova social (depoimentos, antes/depois). Considere vídeos com ganchos nos primeiros 3 segundos.",
+      priority: "medium",
+    });
+  }
+
+  if (campaign.cpm > 50) {
+    tips.push({
+      icon: DollarSign,
+      title: "CPM muito alto",
+      description: "O custo para alcançar 1.000 pessoas está elevado. Pode indicar público saturado ou concorrência alta. Teste expandir o público ou segmentos diferentes.",
+      priority: "high",
+    });
+  }
+
+  if (campaign.cpc > 5) {
+    tips.push({
+      icon: MousePointerClick,
+      title: "CPC elevado",
+      description: "Cada clique está caro. Melhore a relevância dos criativos para o público, teste CTAs diferentes e considere ajustar o bid cap do conjunto.",
+      priority: "medium",
+    });
+  }
+
+  const frequency = campaign.impressions > 0 && campaign.reach > 0
+    ? campaign.impressions / campaign.reach
+    : 0;
+
+  if (frequency > 3) {
+    tips.push({
+      icon: TriangleAlert,
+      title: `Frequência alta (${fmt(frequency, 1)}x)`,
+      description: "O público já viu os anúncios muitas vezes. Adicione novos criativos para manter o interesse ou expanda o público-alvo.",
+      priority: "high",
+    });
+  }
+
+  // Actions-based tips
+  if (insights) {
+    const leads = insights.actions["lead"] ?? insights.actions["onsite_conversion.lead_grouped"] ?? 0;
+    const costPerLead = insights.costPerAction["lead"] ?? insights.costPerAction["onsite_conversion.lead_grouped"] ?? 0;
+
+    if (leads > 0 && costPerLead > 0) {
+      tips.push({
+        icon: Target,
+        title: `Custo por Lead: ${fmtBrl(costPerLead)}`,
+        description: leads > 10
+          ? "Volume bom de leads. Foque em criativos que convertem melhor e pause os com custo por lead acima da média."
+          : "Poucos leads ainda. Teste landing pages diferentes e criativos com mais urgência ou escassez.",
+        priority: leads > 10 ? "low" : "medium",
+      });
+    }
+  }
+
+  if (tips.length === 0) {
+    tips.push({
+      icon: TrendingUp,
+      title: "Campanha com boa performance",
+      description: "Métricas saudáveis. Continue testando variações de criativos para manter a performance e evitar saturação do público.",
+      priority: "low",
+    });
+  }
+
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  tips.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+  const priorityColors = {
+    high: "border-l-red-400",
+    medium: "border-l-amber-400",
+    low: "border-l-emerald-400",
+  };
+
+  return (
+    <Card className="border-slate-100 rounded-2xl shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+          <Lightbulb className="h-4 w-4 text-amber-500" />
+          Estratégia de Criativos
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-slate-400">
+          Recomendações baseadas nos insights dos últimos 30 dias para orientar a criação e gestão de novos criativos.
+        </p>
+        {tips.map((tip, i) => (
+          <div key={i} className={`bg-slate-50 rounded-xl p-3 border-l-4 ${priorityColors[tip.priority]}`}>
+            <div className="flex items-center gap-1.5 mb-1">
+              <tip.icon className="h-3.5 w-3.5 text-slate-600" />
+              <p className="text-xs font-semibold text-slate-800">{tip.title}</p>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">{tip.description}</p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Bid Cap Education Block ───
+
+function BidCapEducation({ campaign }: { campaign: MetaCampaignFull }) {
+  const cpc = campaign.cpc;
+  const cpm = campaign.cpm;
+  const frequency = campaign.impressions > 0 && campaign.reach > 0
+    ? campaign.impressions / campaign.reach
+    : 0;
+
+  const suggestedMin = cpc > 0 ? Math.max(0.01, cpc * 0.8) : null;
+  const suggestedMax = cpc > 0 ? cpc * 1.5 : null;
+  const suggestedIdeal = cpc > 0 ? cpc * 1.1 : null;
+
+  return (
+    <Card className="border-blue-100 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 rounded-2xl shadow-sm">
+      <CardContent className="py-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <Target className="h-5 w-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-blue-900">Guia de Bid Cap</p>
+            <p className="text-xs text-blue-700/70 mt-1 leading-relaxed">
+              O <span className="font-semibold">Bid Cap</span> define o valor máximo que você aceita pagar por resultado.
+              O Meta otimiza para o menor custo dentro desse limite. Valores muito baixos reduzem a entrega; muito altos aumentam o custo sem retorno proporcional.
+            </p>
+          </div>
+        </div>
+
+        {/* Data-driven guidance */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-white rounded-xl p-3 border border-blue-100">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">CPC Médio (30d)</p>
+            <p className="text-lg font-bold text-blue-700">{cpc > 0 ? fmtBrl(cpc) : "—"}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Referência principal para o bid</p>
+          </div>
+          <div className="bg-white rounded-xl p-3 border border-blue-100">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">CPM Médio (30d)</p>
+            <p className="text-lg font-bold text-slate-900">{cpm > 0 ? fmtBrl(cpm) : "—"}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Custo por 1.000 impressões</p>
+          </div>
+          <div className="bg-white rounded-xl p-3 border border-blue-100">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Frequência (30d)</p>
+            <p className="text-lg font-bold text-slate-900">{frequency > 0 ? `${fmt(frequency, 1)}x` : "—"}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Média de vezes que viram o ad</p>
+          </div>
+        </div>
+
+        {/* Suggestion */}
+        {suggestedMin != null && suggestedMax != null && suggestedIdeal != null && (
+          <div className="bg-white rounded-xl p-4 border border-blue-200 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Info className="h-3.5 w-3.5 text-blue-600" />
+              <p className="text-xs font-semibold text-blue-900">Recomendação de Bid Cap</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                  <span>Mínimo</span>
+                  <span>Ideal</span>
+                  <span>Máximo</span>
+                </div>
+                <div className="h-2.5 rounded-full bg-gradient-to-r from-red-200 via-emerald-300 to-amber-200 relative">
+                  {/* Ideal marker */}
+                  <div
+                    className="absolute top-[-2px] w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm"
+                    style={{ left: `calc(50% - 7px)` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-bold mt-1">
+                  <span className="text-red-600">{fmtBrl(suggestedMin)}</span>
+                  <span className="text-emerald-600">{fmtBrl(suggestedIdeal)}</span>
+                  <span className="text-amber-600">{fmtBrl(suggestedMax)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-[10px] text-slate-500 space-y-1 mt-2">
+              <p><span className="font-semibold text-red-600">Abaixo de {fmtBrl(suggestedMin)}:</span> Meta pode não entregar impressões suficientes.</p>
+              <p><span className="font-semibold text-emerald-600">Em torno de {fmtBrl(suggestedIdeal)}:</span> Ponto ideal — 10% acima do CPC médio garante entrega sem custo excessivo.</p>
+              <p><span className="font-semibold text-amber-600">Acima de {fmtBrl(suggestedMax)}:</span> Risco de pagar mais sem aumento proporcional de resultados.</p>
+            </div>
           </div>
         )}
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-800 truncate">{ad.name}</p>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
-            {isActive ? "Ativo" : "Pausado"}
-          </span>
-        </div>
-      </div>
-      <Button size="sm" variant="outline" onClick={handleToggle} disabled={isPending} className="h-7 text-[10px] rounded-lg gap-1">
-        {isActive ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-        {isActive ? "Pausar" : "Ativar"}
-      </Button>
-    </div>
+
+        {cpc === 0 && (
+          <div className="bg-white rounded-xl p-3 border border-slate-200 text-center">
+            <p className="text-xs text-slate-400">Sem dados de CPC ainda. Os insights aparecerão após a campanha acumular cliques.</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -421,22 +742,8 @@ export function MetaPageClient({
         </Card>
       </div>
 
-      {/* Bid Cap Strategy */}
-      <Card className="border-blue-100 bg-blue-50/30 rounded-2xl shadow-sm">
-        <CardContent className="py-5">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <Target className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-blue-900">Estratégia Bid Cap</p>
-              <p className="text-xs text-blue-700/70 mt-1 leading-relaxed">
-                Defina o Bid Cap em cada Conjunto de Anúncios abaixo. A estratégia será aplicada como <span className="font-medium">LOWEST_COST_WITH_BID_CAP</span>.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Bid Cap Education */}
+      <BidCapEducation campaign={selectedCampaign} />
 
       {/* Ad Sets & Creatives */}
       <div className="space-y-4">
@@ -453,10 +760,20 @@ export function MetaPageClient({
           </Card>
         ) : (
           <div className="space-y-3">
-            {selectedAdSets.map((adSet) => <AdSetRow key={adSet.id} adSet={adSet} />)}
+            {selectedAdSets.map((adSet) => (
+              <AdSetRow
+                key={adSet.id}
+                adSet={adSet}
+                campaignCpc={selectedCampaign.cpc}
+                campaignCpm={selectedCampaign.cpm}
+              />
+            ))}
           </div>
         )}
       </div>
+
+      {/* Creative Strategy */}
+      <CreativeStrategyBlock campaign={selectedCampaign} insights={selectedInsights} />
 
       {/* Pixel Events */}
       <Card className="border-slate-100 rounded-2xl shadow-sm">

@@ -44,6 +44,15 @@ export type MetaAd = {
   creativeId: string | null;
   thumbnailUrl: string | null;
   previewUrl: string | null;
+  // Ad-level insights (last 30d)
+  spend: number;
+  impressions: number;
+  clicks: number;
+  reach: number;
+  ctr: number;
+  cpm: number;
+  cpc: number;
+  frequency: number;
 };
 
 export type MetaConfig = {
@@ -181,22 +190,37 @@ export async function getMetaAds(adSetId: string): Promise<MetaAd[]> {
 
   try {
     const json = await graphGet(`${adSetId}/ads`, config.metaAdsToken, {
-      fields: "id,name,status,adset_id,creative{id,thumbnail_url,effective_object_story_id}",
+      fields: [
+        "id", "name", "status", "adset_id",
+        "creative{id,thumbnail_url,effective_object_story_id}",
+        "insights.date_preset(last_30d){spend,impressions,clicks,reach,ctr,cpm,cpc,frequency}",
+      ].join(","),
       limit: "50",
     });
 
     if (json.error) return [];
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (json.data ?? []).map((a: any) => ({
-      id: a.id,
-      name: a.name,
-      status: a.status,
-      adsetId: a.adset_id,
-      creativeId: a.creative?.id ?? null,
-      thumbnailUrl: a.creative?.thumbnail_url ?? null,
-      previewUrl: null,
-    }));
+    return (json.data ?? []).map((a: any) => {
+      const ins = a.insights?.data?.[0];
+      return {
+        id: a.id,
+        name: a.name,
+        status: a.status,
+        adsetId: a.adset_id,
+        creativeId: a.creative?.id ?? null,
+        thumbnailUrl: a.creative?.thumbnail_url ?? null,
+        previewUrl: null,
+        spend: ins ? parseFloat(ins.spend) || 0 : 0,
+        impressions: ins ? parseInt(ins.impressions) || 0 : 0,
+        clicks: ins ? parseInt(ins.clicks) || 0 : 0,
+        reach: ins ? parseInt(ins.reach) || 0 : 0,
+        ctr: ins ? parseFloat(ins.ctr) || 0 : 0,
+        cpm: ins ? parseFloat(ins.cpm) || 0 : 0,
+        cpc: ins ? parseFloat(ins.cpc) || 0 : 0,
+        frequency: ins ? parseFloat(ins.frequency) || 0 : 0,
+      };
+    });
   } catch {
     return [];
   }
