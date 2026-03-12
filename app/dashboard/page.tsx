@@ -32,7 +32,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <DashboardClient leads={leads} columns={columns} stats={stats} />
+      <DashboardClient leads={leads} columns={columns} stats={stats} stages={stages} tags={tags} />
     </div>
   );
 }
