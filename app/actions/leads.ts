@@ -159,6 +159,89 @@ export async function getLeadSourceStats(): Promise<LeadSourceStats> {
   return stats;
 }
 
+export type DailyOriginStats = {
+  date: string; // YYYY-MM-DD
+  meta: number;
+  google: number;
+  other: number;
+  unknown: number;
+};
+
+export type DashboardStats = {
+  total: number;
+  tracked: number;
+  untracked: number;
+  trackedPercent: number;
+  untrackedPercent: number;
+  bySource: LeadSourceStats;
+  daily: DailyOriginStats[];
+};
+
+export async function getDashboardStats(
+  startDate?: string,
+  endDate?: string
+): Promise<DashboardStats> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      total: 0, tracked: 0, untracked: 0,
+      trackedPercent: 0, untrackedPercent: 0,
+      bySource: { total: 0, meta: 0, google: 0, whatsapp: 0, manual: 0, unknown: 0 },
+      daily: [],
+    };
+  }
+
+  const where: Record<string, unknown> = { userId: user.id };
+  if (startDate || endDate) {
+    where.createdAt = {};
+    if (startDate) (where.createdAt as Record<string, unknown>).gte = new Date(startDate + "T00:00:00Z");
+    if (endDate) (where.createdAt as Record<string, unknown>).lte = new Date(endDate + "T23:59:59Z");
+  }
+
+  const leads = await prisma.lead.findMany({
+    where,
+    select: { source: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const total = leads.length;
+  const tracked = leads.filter((l) => l.source && ["meta", "google", "whatsapp", "manual"].includes(l.source)).length;
+  const untracked = total - tracked;
+
+  const bySource: LeadSourceStats = { total, meta: 0, google: 0, whatsapp: 0, manual: 0, unknown: 0 };
+  for (const lead of leads) {
+    if (lead.source === "meta") bySource.meta++;
+    else if (lead.source === "google") bySource.google++;
+    else if (lead.source === "whatsapp") bySource.whatsapp++;
+    else if (lead.source === "manual") bySource.manual++;
+    else bySource.unknown++;
+  }
+
+  // Group by day
+  const dailyMap = new Map<string, DailyOriginStats>();
+  for (const lead of leads) {
+    const day = new Date(lead.createdAt).toISOString().slice(0, 10);
+    if (!dailyMap.has(day)) {
+      dailyMap.set(day, { date: day, meta: 0, google: 0, other: 0, unknown: 0 });
+    }
+    const d = dailyMap.get(day)!;
+    if (lead.source === "meta") d.meta++;
+    else if (lead.source === "google") d.google++;
+    else if (lead.source && ["whatsapp", "manual"].includes(lead.source)) d.other++;
+    else d.unknown++;
+  }
+
+  return {
+    total,
+    tracked,
+    untracked,
+    trackedPercent: total > 0 ? Math.round((tracked / total) * 10000) / 100 : 0,
+    untrackedPercent: total > 0 ? Math.round((untracked / total) * 10000) / 100 : 0,
+    bySource,
+    daily: Array.from(dailyMap.values()),
+  };
+}
+
 export async function deleteLead(leadId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Não autenticado" };

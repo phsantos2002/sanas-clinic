@@ -1,0 +1,77 @@
+"use client";
+
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import type { DailyOriginStats } from "@/app/actions/leads";
+
+type Props = {
+  data: DailyOriginStats[];
+};
+
+function formatDateLabel(dateStr: string) {
+  const d = new Date(dateStr + "T12:00:00");
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+}
+
+export function OriginBarChart({ data }: Props) {
+  if (data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[300px] text-sm text-zinc-400">
+        Nenhum dado no período selecionado
+      </div>
+    );
+  }
+
+  const chartData = data.map((d) => ({
+    date: formatDateLabel(d.date),
+    "Meta Ads": d.meta,
+    "Google Ads": d.google,
+    "Outras Origens": d.other,
+    "Não rastreada": d.unknown,
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={chartData} barCategoryGap="20%">
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
+        <XAxis
+          dataKey="date"
+          tick={{ fontSize: 11, fill: "#71717a" }}
+          tickLine={false}
+          axisLine={false}
+        />
+        <YAxis
+          tick={{ fontSize: 11, fill: "#71717a" }}
+          tickLine={false}
+          axisLine={false}
+          allowDecimals={false}
+        />
+        <Tooltip
+          contentStyle={{
+            fontSize: 12,
+            borderRadius: 8,
+            border: "1px solid #e4e4e7",
+            boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+          }}
+        />
+        <Legend
+          iconType="circle"
+          iconSize={8}
+          wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+        />
+        <Bar dataKey="Meta Ads" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+        <Bar dataKey="Google Ads" stackId="a" fill="#eab308" />
+        <Bar dataKey="Outras Origens" stackId="a" fill="#a1a1aa" />
+        <Bar dataKey="Não rastreada" stackId="a" fill="#fb923c" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}

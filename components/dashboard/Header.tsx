@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { BarChart2, Kanban, Settings, MessageCircle } from "lucide-react";
+import { BarChart2, Kanban, Settings, MessageCircle, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/actions/auth";
 import { WhatsAppStatus } from "@/components/dashboard/WhatsAppStatus";
@@ -15,6 +15,12 @@ export function Header() {
         </div>
 
         <nav className="flex items-center gap-1">
+          <Link href="/dashboard/overview">
+            <Button variant="ghost" size="sm">
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </Button>
+          </Link>
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">
               <Kanban className="h-4 w-4" />
