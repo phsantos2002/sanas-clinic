@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pencil, Trash2, Plus, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { createStage, updateStage, deleteStage } from "@/app/actions/stages";
 import { toast } from "sonner";
 import type { Stage } from "@/types";
@@ -106,15 +107,12 @@ export function ManageStagesSection({ stages }: Props) {
                     className="h-8 text-sm"
                     placeholder="Nome da coluna"
                   />
-                  <select
+                  <CustomSelect
+                    options={FACEBOOK_EVENTS.map((ev) => ({ value: ev.value, label: ev.label }))}
                     value={editing.eventName}
-                    onChange={(e) => setEditing({ ...editing, eventName: e.target.value })}
-                    className="flex h-8 w-full sm:w-64 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black"
-                  >
-                    {FACEBOOK_EVENTS.map((ev) => (
-                      <option key={ev.value} value={ev.value}>{ev.label}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setEditing({ ...editing, eventName: v })}
+                    className="w-full sm:w-64"
+                  />
                 </div>
                 <div className="flex gap-1">
                   <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={handleSaveEdit} disabled={loading}>
@@ -155,15 +153,12 @@ export function ManageStagesSection({ stages }: Props) {
               placeholder="Nome da coluna"
               className="h-8 text-sm"
             />
-            <select
+            <CustomSelect
+              options={FACEBOOK_EVENTS.map((ev) => ({ value: ev.value, label: ev.label }))}
               value={newEvent}
-              onChange={(e) => setNewEvent(e.target.value)}
-              className="flex h-8 w-full sm:w-64 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black"
-            >
-              {FACEBOOK_EVENTS.map((ev) => (
-                <option key={ev.value} value={ev.value}>{ev.label}</option>
-              ))}
-            </select>
+              onChange={setNewEvent}
+              className="w-full sm:w-64"
+            />
           </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={handleCreate} disabled={loading || !newName.trim()}>

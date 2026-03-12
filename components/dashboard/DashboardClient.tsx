@@ -3,12 +3,12 @@
 import { useState, useMemo, useCallback } from "react";
 import { Search, Kanban, List, X, Download, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { LeadsTable } from "@/components/dashboard/LeadsTable";
 import { LeadDetailModal } from "@/components/modals/LeadDetailModal";
 import { SourceCards } from "@/components/dashboard/SourceCards";
-import { SourceIcon } from "@/components/icons/SourceIcons";
 import type { Lead, KanbanColumn, LeadSourceStats, Stage } from "@/types";
 
 type SavedFilter = {
@@ -163,35 +163,30 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
         </div>
 
         {/* Origin dropdown */}
-        <div className="relative">
-          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
-            <SourceIcon source={sourceFilter} size={16} />
-          </div>
-          <select
-            value={sourceFilter ?? ""}
-            onChange={(e) => setSourceFilter(e.target.value || null)}
-            className="h-9 text-sm border border-slate-200 rounded-xl pl-9 pr-8 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 appearance-none cursor-pointer"
-          >
-            <option value="">Todas as Origens</option>
-            <option value="meta">Meta Ads</option>
-            <option value="google">Google Ads</option>
-            <option value="whatsapp">WhatsApp</option>
-            <option value="manual">Manual</option>
-            <option value="unknown">Não Rastreada</option>
-          </select>
-        </div>
+        <CustomSelect
+          options={[
+            { value: "", label: "Todas as Origens" },
+            { value: "meta", label: "Meta Ads" },
+            { value: "google", label: "Google Ads" },
+            { value: "whatsapp", label: "WhatsApp" },
+            { value: "manual", label: "Manual" },
+            { value: "unknown", label: "Não Rastreada" },
+          ]}
+          value={sourceFilter ?? ""}
+          onChange={(v) => setSourceFilter(v || null)}
+          className="w-[180px]"
+        />
 
         {/* Stage dropdown */}
-        <select
+        <CustomSelect
+          options={[
+            { value: "", label: "Todas as Etapas" },
+            ...stages.map((s) => ({ value: s.id, label: s.name })),
+          ]}
           value={stageFilter ?? ""}
-          onChange={(e) => setStageFilter(e.target.value || null)}
-          className="h-9 text-sm border border-slate-200 rounded-xl px-3 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 cursor-pointer"
-        >
-          <option value="">Todas as Etapas</option>
-          {stages.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+          onChange={(v) => setStageFilter(v || null)}
+          className="w-[180px]"
+        />
 
         {/* Clear filters */}
         {hasActiveFilters && (

@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CustomSelect } from "@/components/ui/custom-select";
 import {
   Dialog,
   DialogContent,
@@ -81,19 +82,12 @@ export function CreateLeadModal({ stages }: Props) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="stage">Estágio inicial</Label>
-            <select
-              id="stage"
+            <Label>Estágio inicial</Label>
+            <CustomSelect
+              options={stages.map((stage) => ({ value: stage.id, label: stage.name }))}
               value={stageId}
-              onChange={(e) => setStageId(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black"
-            >
-              {stages.map((stage) => (
-                <option key={stage.id} value={stage.id}>
-                  {stage.name}
-                </option>
-              ))}
-            </select>
+              onChange={setStageId}
+            />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={loading} className="w-full">

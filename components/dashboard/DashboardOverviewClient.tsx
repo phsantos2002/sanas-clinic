@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CustomSelect } from "@/components/ui/custom-select";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { getDashboardStats, type DashboardStats } from "@/app/actions/leads";
 import { OriginBarChart } from "@/components/dashboard/OriginBarChart";
 import { DonutChart } from "@/components/dashboard/DonutChart";
@@ -15,6 +17,14 @@ type Props = {
 function formatDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
+
+const SOURCE_OPTIONS = [
+  { value: "all", label: "Todas as Origens" },
+  { value: "meta", label: "Meta Ads" },
+  { value: "google", label: "Google Ads" },
+  { value: "other", label: "Outras Origens" },
+  { value: "unknown", label: "Não Rastreada" },
+];
 
 export function DashboardOverviewClient({ initialStats }: Props) {
   const today = new Date();
@@ -47,7 +57,6 @@ export function DashboardOverviewClient({ initialStats }: Props) {
       (d.meta + d.google + d.other + d.unknown).toString(),
     ]);
 
-    // Summary row
     rows.push([
       "TOTAL",
       stats.bySource.meta.toString(),
@@ -67,7 +76,6 @@ export function DashboardOverviewClient({ initialStats }: Props) {
     URL.revokeObjectURL(url);
   }
 
-  // Filter daily data by source for chart
   const filteredDaily = stats.daily.map((d) => {
     if (sourceFilter === "all") return d;
     return {
@@ -80,10 +88,10 @@ export function DashboardOverviewClient({ initialStats }: Props) {
   });
 
   const sourceCards = [
-    { key: "meta", label: "Meta Ads", count: stats.bySource.meta, color: "bg-blue-500", icon: "∞" },
-    { key: "google", label: "Google Ads", count: stats.bySource.google, color: "bg-yellow-500", icon: "▲" },
-    { key: "other", label: "Outras Origens", count: stats.bySource.whatsapp + stats.bySource.manual, color: "bg-slate-400", icon: "⊕" },
-    { key: "unknown", label: "Não Rastreada", count: stats.bySource.unknown, color: "bg-orange-400", icon: "∅" },
+    { key: "meta", label: "Meta Ads", count: stats.bySource.meta, color: "bg-blue-500" },
+    { key: "google", label: "Google Ads", count: stats.bySource.google, color: "bg-yellow-500" },
+    { key: "other", label: "Outras Origens", count: stats.bySource.whatsapp + stats.bySource.manual, color: "bg-slate-400" },
+    { key: "unknown", label: "Não Rastreada", count: stats.bySource.unknown, color: "bg-orange-400" },
   ];
 
   return (
@@ -91,44 +99,26 @@ export function DashboardOverviewClient({ initialStats }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-slate-500">Início → Dashboard</p>
+          <h1 className="text-xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-sm text-slate-400 mt-1">Início → Dashboard</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Date range */}
-          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-1">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => applyDateFilter(e.target.value, endDate)}
-              className="text-xs border-none outline-none bg-transparent"
-            />
-            <span className="text-xs text-slate-400">-</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => applyDateFilter(startDate, e.target.value)}
-              className="text-xs border-none outline-none bg-transparent"
-            />
-          </div>
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onChange={applyDateFilter}
+          />
 
-          {/* Source filter */}
-          <select
+          <CustomSelect
+            options={SOURCE_OPTIONS}
             value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            className="h-8 text-xs border border-slate-200 rounded-md px-2 bg-white text-slate-700 outline-none"
-          >
-            <option value="all">Todas as Origens</option>
-            <option value="meta">Meta Ads</option>
-            <option value="google">Google Ads</option>
-            <option value="other">Outras Origens</option>
-            <option value="unknown">Não Rastreada</option>
-          </select>
+            onChange={setSourceFilter}
+            className="w-[180px]"
+          />
 
-          {/* Export */}
           <Button
             onClick={handleExportReport}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white h-8 text-xs gap-1.5"
+            className="bg-emerald-500 hover:bg-emerald-600 text-white h-9 text-sm gap-1.5 rounded-xl"
           >
             <Download className="h-3.5 w-3.5" />
             Baixar Relatório
@@ -143,23 +133,21 @@ export function DashboardOverviewClient({ initialStats }: Props) {
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Visão Geral das Conversas */}
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 border-slate-100 rounded-2xl shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base">Visão Geral das Conversas</CardTitle>
+            <CardTitle className="text-base font-bold text-slate-900">Visão Geral das Conversas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Total */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                <FileText className="h-5 w-5 text-slate-500" />
+              <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+                <FileText className="h-5 w-5 text-indigo-500" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Total de Conversas Novas Ativas</p>
-                <p className="text-3xl font-bold">{stats.total}</p>
+                <p className="text-xs text-slate-400">Total de Conversas Novas Ativas</p>
+                <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
               </div>
             </div>
 
-            {/* Tracked / Untracked */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-slate-50 rounded-xl p-3">
                 <div className="flex items-center gap-1.5 mb-1">
@@ -168,7 +156,7 @@ export function DashboardOverviewClient({ initialStats }: Props) {
                   </div>
                   <span className="text-xs text-slate-500">Conversas Rastreadas</span>
                 </div>
-                <p className="text-lg font-bold">{stats.tracked}</p>
+                <p className="text-lg font-bold text-slate-900">{stats.tracked}</p>
                 <p className="text-xs text-slate-400">{stats.trackedPercent}%</p>
               </div>
               <div className="bg-slate-50 rounded-xl p-3">
@@ -178,12 +166,11 @@ export function DashboardOverviewClient({ initialStats }: Props) {
                   </div>
                   <span className="text-xs text-slate-500">Conversas não rastreadas</span>
                 </div>
-                <p className="text-lg font-bold">{stats.untracked}</p>
+                <p className="text-lg font-bold text-slate-900">{stats.untracked}</p>
                 <p className="text-xs text-slate-400">{stats.untrackedPercent}%</p>
               </div>
             </div>
 
-            {/* Donut chart */}
             <DonutChart
               tracked={stats.tracked}
               untracked={stats.untracked}
@@ -195,33 +182,31 @@ export function DashboardOverviewClient({ initialStats }: Props) {
         </Card>
 
         {/* Origem das Conversas */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 border-slate-100 rounded-2xl shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base">Origem das Conversas</CardTitle>
+            <CardTitle className="text-base font-bold text-slate-900">Origem das Conversas</CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Source summary cards */}
             <div className="grid grid-cols-4 gap-3 mb-4">
               {sourceCards.map((s) => (
                 <button
                   key={s.key}
                   onClick={() => setSourceFilter(sourceFilter === s.key ? "all" : s.key)}
-                  className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all ${
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all ${
                     sourceFilter === s.key
-                      ? "border-slate-800 bg-slate-50"
-                      : "border-slate-200 bg-white hover:border-slate-300"
+                      ? "border-indigo-300 bg-indigo-50/50 shadow-sm"
+                      : "border-slate-100 bg-white hover:border-slate-200"
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${s.color}`} />
+                  <span className={`w-2.5 h-2.5 rounded-full ${s.color}`} />
                   <div className="text-left">
-                    <p className="text-lg font-bold leading-tight">{s.count}</p>
-                    <p className="text-[10px] text-slate-500">{s.label}</p>
+                    <p className="text-lg font-bold leading-tight text-slate-900">{s.count}</p>
+                    <p className="text-[10px] text-slate-400">{s.label}</p>
                   </div>
                 </button>
               ))}
             </div>
 
-            {/* Bar chart */}
             <OriginBarChart data={filteredDaily} startDate={startDate} endDate={endDate} />
           </CardContent>
         </Card>

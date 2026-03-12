@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { updateLead } from "@/app/actions/leads";
 import { toast } from "sonner";
 import { User, Phone, Mail, FileText, MapPin, StickyNote } from "lucide-react";
+import { CustomSelect } from "@/components/ui/custom-select";
 import type { LeadDetail } from "@/types";
 import type { Stage } from "@/types";
 
@@ -138,18 +139,15 @@ export function EditLeadModal({ lead, stages, open, onClose }: Props) {
 
           {/* Stage */}
           <div className="space-y-1.5">
-            <Label htmlFor="edit-stage" className="text-xs">Etapa do Pipeline</Label>
-            <select
-              id="edit-stage"
+            <Label className="text-xs">Etapa do Pipeline</Label>
+            <CustomSelect
+              options={[
+                { value: "", label: "Sem etapa" },
+                ...stages.map((s) => ({ value: s.id, label: s.name })),
+              ]}
               value={stageId}
-              onChange={(e) => setStageId(e.target.value)}
-              className="flex h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20"
-            >
-              <option value="">Sem etapa</option>
-              {stages.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+              onChange={setStageId}
+            />
           </div>
 
           {/* Notes */}

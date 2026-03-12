@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { saveAIConfig, type AIConfigData } from "@/app/actions/aiConfig";
 import { toast } from "sonner";
 import { Copy, Check } from "lucide-react";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 type Props = {
   config: AIConfigData;
@@ -134,17 +135,14 @@ export function AIConfigForm({ config }: Props) {
       {/* Model selection */}
       <div className="space-y-1.5">
         <Label>Modelo</Label>
-        <select
+        <CustomSelect
+          options={availableModels.map((m) => ({
+            value: m.id,
+            label: `${m.label} — ${m.capabilities === "multimodal" ? "Texto + Áudio + Imagem" : "Somente Texto"}`,
+          }))}
           value={model}
-          onChange={(e) => handleModelChange(e.target.value)}
-          className="flex h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20"
-        >
-          {availableModels.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label} — {m.capabilities === "multimodal" ? "Texto + Áudio + Imagem" : "Somente Texto"}
-            </option>
-          ))}
-        </select>
+          onChange={handleModelChange}
+        />
         <p className="text-xs text-slate-400">
           {capabilities === "multimodal"
             ? "Este modelo aceita texto, áudio e imagens."

@@ -4,6 +4,7 @@ import { BarChart2, Kanban, Settings, MessageCircle, LayoutDashboard, LogOut } f
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/actions/auth";
 import { WhatsAppStatus } from "@/components/dashboard/WhatsAppStatus";
+import { MetaIcon, GoogleAdsIcon } from "@/components/icons/SourceIcons";
 
 export function Header() {
   return (
@@ -23,6 +24,8 @@ export function Header() {
             { href: "/dashboard", icon: Kanban, label: "Pipeline" },
             { href: "/dashboard/chat", icon: MessageCircle, label: "Chat" },
             { href: "/dashboard/analytics", icon: BarChart2, label: "Analytics" },
+            { href: "/dashboard/meta", label: "Meta", customIcon: <MetaIcon size={16} /> },
+            { href: "/dashboard/google", label: "Google", customIcon: <GoogleAdsIcon size={16} /> },
             { href: "/dashboard/settings", icon: Settings, label: "Config" },
           ].map((item) => (
             <Link key={item.href} href={item.href}>
@@ -31,7 +34,7 @@ export function Header() {
                 size="sm"
                 className="text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm gap-2 rounded-lg transition-all"
               >
-                <item.icon className="h-4 w-4" />
+                {item.customIcon ?? (item.icon && <item.icon className="h-4 w-4" />)}
                 <span className="hidden sm:inline text-sm">{item.label}</span>
               </Button>
             </Link>
