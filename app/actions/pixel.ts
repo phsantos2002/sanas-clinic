@@ -47,6 +47,26 @@ export async function savePixel(
   }
 }
 
+export async function saveSelectedCampaign(
+  campaignId: string | null
+): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Não autenticado" };
+
+  try {
+    await prisma.pixel.update({
+      where: { userId: user.id },
+      data: { selectedCampaignId: campaignId || null },
+    });
+    revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard/meta");
+    revalidatePath("/dashboard/analytics");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao salvar campanha" };
+  }
+}
+
 export async function testPixelConnection(): Promise<ActionResult> {
   try {
     const user = await getCurrentUser();

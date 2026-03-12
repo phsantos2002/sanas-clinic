@@ -52,9 +52,21 @@ export type MetaConfig = {
   pixelId: string;
 };
 
+export type MetaCampaignInsights = {
+  spend: number;
+  impressions: number;
+  reach: number;
+  clicks: number;
+  ctr: number;
+  cpm: number;
+  cpc: number;
+  actions: Record<string, number>;
+  costPerAction: Record<string, number>;
+};
+
 // ─── Helpers ───
 
-async function getMetaConfig(): Promise<MetaConfig | null> {
+async function getMetaConfig(): Promise<(MetaConfig & { selectedCampaignId: string | null }) | null> {
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -66,6 +78,7 @@ async function getMetaConfig(): Promise<MetaConfig | null> {
     adAccountId: pixel.adAccountId.startsWith("act_") ? pixel.adAccountId : `act_${pixel.adAccountId}`,
     metaAdsToken: pixel.metaAdsToken,
     pixelId: pixel.pixelId,
+    selectedCampaignId: pixel.selectedCampaignId ?? null,
   };
 }
 
@@ -322,4 +335,115 @@ export async function getPixelEvents(): Promise<{
   }
 
   return { events, pixelId: config.pixelId };
+}
+
+// ─── Selected Campaign ───
+
+export async function getSelectedCampaignData(): Promise<{
+  selectedCampaignId: string | null;
+  campaign: MetaCampaignFull | null;
+  adSets: MetaAdSet[];
+  insights: MetaCampaignInsights | null;
+  config: MetaConfig | null;
+}> {
+  const config = await getMetaConfig();
+  if (!config) return { selectedCampaignId: null, campaign: null, adSets: [], insights: null, config: null };
+
+  const selectedId = config.selectedCampaignId;
+  if (!selectedId) return { selectedCampaignId: null, campaign: null, adSets: [], insights: null, config };
+
+  try {
+    // Fetch campaign details + insights in parallel
+    const [campaignJson, insightsJson, adSetsData] = await Promise.all([
+      graphGet(selectedId, config.metaAdsToken, {
+        fields: [
+          "id", "name", "status", "objective",
+          "daily_budget", "lifetime_budget", "bid_strategy", "bid_amount",
+          "insights.date_preset(last_30d){spend,impressions,reach,clicks,ctr,cpm,cpc}",
+        ].join(","),
+      }),
+      graphGet(`${selectedId}/insights`, config.metaAdsToken, {
+        fields: "spend,impressions,reach,clicks,ctr,cpm,cpc,actions,cost_per_action_type",
+        date_preset: "last_30d",
+      }),
+      getMetaAdSets(selectedId),
+    ]);
+
+    if (campaignJson.error) {
+      console.error("[Meta] selected campaign error:", campaignJson.error.message);
+      return { selectedCampaignId: selectedId, campaign: null, adSets: [], insights: null, config };
+    }
+
+    const c = campaignJson;
+    const ins = c.insights?.data?.[0];
+    const campaign: MetaCampaignFull = {
+      id: c.id,
+      name: c.name,
+      status: c.status,
+      objective: c.objective ?? "UNKNOWN",
+      dailyBudget: c.daily_budget ? parseFloat(c.daily_budget) / 100 : null,
+      lifetimeBudget: c.lifetime_budget ? parseFloat(c.lifetime_budget) / 100 : null,
+      bidStrategy: c.bid_strategy ?? null,
+      bidAmount: c.bid_amount ? parseFloat(c.bid_amount) / 100 : null,
+      spend: ins ? parseFloat(ins.spend) || 0 : 0,
+      impressions: ins ? parseInt(ins.impressions) || 0 : 0,
+      clicks: ins ? parseInt(ins.clicks) || 0 : 0,
+      reach: ins ? parseInt(ins.reach) || 0 : 0,
+      ctr: ins ? parseFloat(ins.ctr) || 0 : 0,
+      cpm: ins ? parseFloat(ins.cpm) || 0 : 0,
+      cpc: ins ? parseFloat(ins.cpc) || 0 : 0,
+    };
+
+    // Parse full insights with actions
+    let insights: MetaCampaignInsights | null = null;
+    const insData = insightsJson?.data?.[0];
+    if (insData) {
+      const actions: Record<string, number> = {};
+      const costPerAction: Record<string, number> = {};
+      for (const a of insData.actions ?? []) actions[a.action_type] = parseFloat(a.value) || 0;
+      for (const a of insData.cost_per_action_type ?? []) costPerAction[a.action_type] = parseFloat(a.value) || 0;
+
+      insights = {
+        spend: parseFloat(insData.spend) || 0,
+        impressions: parseInt(insData.impressions) || 0,
+        reach: parseInt(insData.reach) || 0,
+        clicks: parseInt(insData.clicks) || 0,
+        ctr: parseFloat(insData.ctr) || 0,
+        cpm: parseFloat(insData.cpm) || 0,
+        cpc: parseFloat(insData.cpc) || 0,
+        actions,
+        costPerAction,
+      };
+    }
+
+    return { selectedCampaignId: selectedId, campaign, adSets: adSetsData, insights, config };
+  } catch (e) {
+    console.error("[Meta] selected campaign fetch error:", e);
+    return { selectedCampaignId: selectedId, campaign: null, adSets: [], insights: null, config };
+  }
+}
+
+// ─── List campaigns for selector ───
+
+export async function listCampaignsForSelector(): Promise<Array<{ id: string; name: string; status: string }>> {
+  const config = await getMetaConfig();
+  if (!config) return [];
+
+  try {
+    const json = await graphGet(`${config.adAccountId}/campaigns`, config.metaAdsToken, {
+      fields: "id,name,status",
+      effective_status: '["ACTIVE","PAUSED"]',
+      limit: "50",
+    });
+    if (json.error) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (json.data ?? []).map((c: any) => ({ id: c.id, name: c.name, status: c.status }));
+  } catch {
+    return [];
+  }
+}
+
+export async function getSelectedCampaignId(): Promise<string | null> {
+  const config = await getMetaConfig();
+  return config?.selectedCampaignId ?? null;
 }

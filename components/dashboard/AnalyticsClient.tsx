@@ -91,7 +91,7 @@ const STAGE_COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981"];
 const SOURCE_COLORS = ["#3b82f6", "#eab308", "#22c55e", "#8b5cf6", "#a1a1aa"];
 
 export function AnalyticsClient({ data, sourceStats }: Props) {
-  const { pipeline, metaAds, campaigns, hasMetaConfig, metaError } = data;
+  const { pipeline, metaAds, campaigns, hasMetaConfig, metaError, selectedCampaignId, selectedCampaignName } = data;
   const costPerLead = metaAds && pipeline.totalLeads > 0 ? metaAds.spend / pipeline.totalLeads : null;
   const costPerConversation = metaAds && pipeline.leadsWithConversation > 0 ? metaAds.spend / pipeline.leadsWithConversation : null;
   const scheduledCount = pipeline.funnelSteps[3]?.count ?? 0;
@@ -262,18 +262,27 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
 
       {/* ============== META ADS ============== */}
       <div className="space-y-4">
-        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
-            <MetaIcon size={16} />
-          </div>
-          Meta Ads
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+              <MetaIcon size={16} />
+            </div>
+            Meta Ads
+          </h2>
+          {selectedCampaignName && (
+            <span className="text-xs text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full font-medium">
+              Campanha: {selectedCampaignName}
+            </span>
+          )}
+        </div>
 
         {metaAds ? (
           <div className="space-y-4">
             {/* KPIs */}
             <div className="bg-white border border-slate-100 rounded-2xl p-5">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Últimos 30 dias</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
+                {selectedCampaignId ? `Campanha selecionada — Últimos 30 dias` : `Conta completa — Últimos 30 dias`}
+              </p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
                 {[
                   { label: "Gasto", value: fmtBrl(metaAds.spend), icon: DollarSign },
@@ -336,7 +345,7 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
             </div>
 
             {/* Campaigns */}
-            {campaigns.length > 0 && (
+            {!selectedCampaignId && campaigns.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-slate-900">Campanhas</h3>

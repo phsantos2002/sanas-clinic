@@ -2,7 +2,13 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
-import { fetchMetaAdsInsightsDetailed, fetchMetaCampaigns, type MetaAdsInsights, type MetaCampaign } from "@/services/metaAds";
+import {
+  fetchMetaAdsInsightsDetailed,
+  fetchCampaignInsightsDetailed,
+  fetchMetaCampaigns,
+  type MetaAdsInsights,
+  type MetaCampaign,
+} from "@/services/metaAds";
 
 export type PipelineAnalytics = {
   totalLeads: number;
@@ -27,8 +33,10 @@ export type FullAnalytics = {
   metaAds: MetaAdsInsights | null;
   campaigns: MetaCampaign[];
   hasMetaConfig: boolean;
-  metaError: boolean;   // true = API failure (bad token/permission)
-  metaNoData: boolean;  // true = token ok but no spend data in period
+  metaError: boolean;
+  metaNoData: boolean;
+  selectedCampaignId: string | null;
+  selectedCampaignName: string | null;
 };
 
 export async function getAnalytics(): Promise<FullAnalytics | null> {
@@ -90,17 +98,30 @@ export async function getAnalytics(): Promise<FullAnalytics | null> {
   ];
 
   const hasMetaConfig = !!(pixel?.adAccountId && pixel?.metaAdsToken);
+  const selectedCampaignId: string | null = pixel?.selectedCampaignId ?? null;
   let metaAds: MetaAdsInsights | null = null;
   let campaigns: MetaCampaign[] = [];
   let metaError = false;
   let metaNoData = false;
+  let selectedCampaignName: string | null = null;
 
   if (hasMetaConfig) {
+    // If a campaign is selected, fetch insights for that campaign only
+    const insightsPromise = selectedCampaignId
+      ? fetchCampaignInsightsDetailed(selectedCampaignId, pixel.metaAdsToken)
+      : fetchMetaAdsInsightsDetailed(pixel.adAccountId, pixel.metaAdsToken);
+
     const [insightsResult, fetchedCampaigns] = await Promise.all([
-      fetchMetaAdsInsightsDetailed(pixel.adAccountId, pixel.metaAdsToken),
+      insightsPromise,
       fetchMetaCampaigns(pixel.adAccountId, pixel.metaAdsToken),
     ]);
     campaigns = fetchedCampaigns;
+
+    if (selectedCampaignId) {
+      const found = campaigns.find((c) => c.id === selectedCampaignId);
+      selectedCampaignName = found?.name ?? null;
+    }
+
     if (insightsResult.ok) {
       metaAds = insightsResult.data;
     } else if (insightsResult.noData) {
@@ -117,5 +138,7 @@ export async function getAnalytics(): Promise<FullAnalytics | null> {
     hasMetaConfig,
     metaError,
     metaNoData,
+    selectedCampaignId,
+    selectedCampaignName,
   };
 }

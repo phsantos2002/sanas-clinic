@@ -112,6 +112,50 @@ export async function fetchMetaAdsInsightsDetailed(
   }
 }
 
+export async function fetchCampaignInsightsDetailed(
+  campaignId: string,
+  accessToken: string,
+  datePreset = "last_30d"
+): Promise<InsightsResult> {
+  const fields = [
+    "spend", "impressions", "reach", "clicks", "ctr", "cpm", "cpc",
+    "actions", "cost_per_action_type",
+  ].join(",");
+
+  const url = `${GRAPH_URL}/${campaignId}/insights?fields=${fields}&date_preset=${datePreset}&access_token=${accessToken}`;
+
+  try {
+    const res = await fetch(url, { next: { revalidate: 300 } });
+    const json = await res.json();
+
+    if (!res.ok || json.error) {
+      const msg = json.error?.message ?? "unknown error";
+      console.error("[MetaAds] campaign insights error:", msg);
+      return { ok: false, noData: false, error: msg };
+    }
+
+    const data = json.data?.[0];
+    if (!data) return { ok: false, noData: true };
+
+    const actions: ActionValue[] = data.actions ?? [];
+    const costPerAction: ActionValue[] = data.cost_per_action_type ?? [];
+
+    const results: Record<string, number> = {};
+    for (const a of actions) results[a.action_type] = parseFloat(a.value) || 0;
+
+    const costPerResult: Record<string, number> = {};
+    for (const a of costPerAction) costPerResult[a.action_type] = parseFloat(a.value) || 0;
+
+    return {
+      ok: true,
+      data: { ...parseInsightFields(data), results, costPerResult },
+    };
+  } catch (e) {
+    console.error("[MetaAds] campaign insights fetch error:", e);
+    return { ok: false, noData: false, error: String(e) };
+  }
+}
+
 export async function fetchMetaCampaigns(
   adAccountId: string,
   accessToken: string,

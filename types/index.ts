@@ -49,6 +49,7 @@ export type Pixel = {
   accessToken: string;
   adAccountId: string | null;
   metaAdsToken: string | null;
+  selectedCampaignId: string | null;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
