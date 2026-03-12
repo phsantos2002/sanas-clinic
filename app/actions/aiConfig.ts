@@ -9,6 +9,11 @@ export type AIConfigData = {
   clinicName: string;
   systemPrompt: string;
   sendAudio: boolean;
+  provider: string;
+  model: string;
+  capabilities: string;
+  apiKey: string;
+  voiceClonePrompt: string;
   openaiKey: string;
 };
 
@@ -24,6 +29,11 @@ export async function getAIConfig(): Promise<AIConfigData | null> {
     clinicName: config?.clinicName ?? "Sanas Clinic",
     systemPrompt: config?.systemPrompt ?? "",
     sendAudio: config?.sendAudio ?? false,
+    provider: config?.provider ?? "openai",
+    model: config?.model ?? "gpt-4o-mini",
+    capabilities: config?.capabilities ?? "text",
+    apiKey: config?.apiKey ?? "",
+    voiceClonePrompt: config?.voiceClonePrompt ?? "",
     openaiKey: config?.openaiKey ?? "",
   };
 }
@@ -39,6 +49,11 @@ export async function saveAIConfig(data: AIConfigData): Promise<ActionResult> {
         clinicName: data.clinicName,
         systemPrompt: data.systemPrompt || null,
         sendAudio: data.sendAudio,
+        provider: data.provider,
+        model: data.model,
+        capabilities: data.capabilities,
+        apiKey: data.apiKey || null,
+        voiceClonePrompt: data.voiceClonePrompt || null,
         openaiKey: data.openaiKey || null,
       },
       create: {
@@ -46,6 +61,11 @@ export async function saveAIConfig(data: AIConfigData): Promise<ActionResult> {
         clinicName: data.clinicName,
         systemPrompt: data.systemPrompt || null,
         sendAudio: data.sendAudio,
+        provider: data.provider,
+        model: data.model,
+        capabilities: data.capabilities,
+        apiKey: data.apiKey || null,
+        voiceClonePrompt: data.voiceClonePrompt || null,
         openaiKey: data.openaiKey || null,
       },
     });

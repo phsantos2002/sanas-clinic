@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Phone, MoreHorizontal, MessageCircle, Eye, Pencil, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,11 +21,13 @@ import type { Lead } from "@/types";
 type Props = {
   lead: Lead;
   onClickLead?: (leadId: string) => void;
+  onEditLead?: (leadId: string) => void;
 };
 
-export function LeadCard({ lead, onClickLead }: Props) {
+export function LeadCard({ lead, onClickLead, onEditLead }: Props) {
   const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const {
     attributes,
     listeners,
@@ -49,7 +50,9 @@ export function LeadCard({ lead, onClickLead }: Props) {
       setConfirmDelete(true);
       return;
     }
+    setDeleting(true);
     const result = await deleteLead(lead.id);
+    setDeleting(false);
     if (!result.success) {
       toast.error(result.error);
     } else {
@@ -81,14 +84,8 @@ export function LeadCard({ lead, onClickLead }: Props) {
             <span className="text-xs">{lead.phone}</span>
           </div>
 
-          {lead.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {lead.tags.map(({ tag }) => (
-                <Badge key={tag.id} variant="secondary" className="text-[10px] py-0 h-5 rounded-md">
-                  {tag.name}
-                </Badge>
-              ))}
-            </div>
+          {lead.email && (
+            <p className="text-[10px] text-slate-400 mt-0.5 truncate">{lead.email}</p>
           )}
 
           {config && (
@@ -136,7 +133,7 @@ export function LeadCard({ lead, onClickLead }: Props) {
             <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
-                toast.info("Edição em breve");
+                onEditLead?.(lead.id);
               }}
             >
               <Pencil className="h-3.5 w-3.5 mr-2" />
@@ -149,9 +146,10 @@ export function LeadCard({ lead, onClickLead }: Props) {
                 handleDelete();
               }}
               className="text-red-600 focus:text-red-600 focus:bg-red-50"
+              disabled={deleting}
             >
               <Trash2 className="h-3.5 w-3.5 mr-2" />
-              {confirmDelete ? "Confirmar Exclusão" : "Excluir"}
+              {deleting ? "Excluindo..." : confirmDelete ? "Confirmar Exclusão" : "Excluir"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

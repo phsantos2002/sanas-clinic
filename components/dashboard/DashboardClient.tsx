@@ -9,13 +9,12 @@ import { LeadsTable } from "@/components/dashboard/LeadsTable";
 import { LeadDetailModal } from "@/components/modals/LeadDetailModal";
 import { SourceCards } from "@/components/dashboard/SourceCards";
 import { SourceIcon } from "@/components/icons/SourceIcons";
-import type { Lead, KanbanColumn, LeadSourceStats, Stage, Tag } from "@/types";
+import type { Lead, KanbanColumn, LeadSourceStats, Stage } from "@/types";
 
 type SavedFilter = {
   name: string;
   source: string | null;
   stage: string | null;
-  tag: string | null;
 };
 
 type Props = {
@@ -23,7 +22,6 @@ type Props = {
   columns: KanbanColumn[];
   stats: LeadSourceStats;
   stages: Stage[];
-  tags: Tag[];
 };
 
 const SAVED_FILTERS_KEY = "lux-saved-filters";
@@ -41,23 +39,21 @@ function persistSavedFilters(filters: SavedFilter[]) {
   localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(filters));
 }
 
-export function DashboardClient({ leads, columns, stats, stages, tags }: Props) {
+export function DashboardClient({ leads, columns, stats, stages }: Props) {
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   const [stageFilter, setStageFilter] = useState<string | null>(null);
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>(loadSavedFilters);
   const [showSavedDropdown, setShowSavedDropdown] = useState(false);
 
-  const hasActiveFilters = !!(search.trim() || sourceFilter || stageFilter || tagFilter);
+  const hasActiveFilters = !!(search.trim() || sourceFilter || stageFilter);
 
   const clearFilters = useCallback(() => {
     setSearch("");
     setSourceFilter(null);
     setStageFilter(null);
-    setTagFilter(null);
   }, []);
 
   const saveCurrentFilter = useCallback(() => {
@@ -67,17 +63,15 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
       name: name.trim(),
       source: sourceFilter,
       stage: stageFilter,
-      tag: tagFilter,
     };
     const updated = [...savedFilters, newFilter];
     setSavedFilters(updated);
     persistSavedFilters(updated);
-  }, [sourceFilter, stageFilter, tagFilter, savedFilters]);
+  }, [sourceFilter, stageFilter, savedFilters]);
 
   const applySavedFilter = useCallback((filter: SavedFilter) => {
     setSourceFilter(filter.source);
     setStageFilter(filter.stage);
-    setTagFilter(filter.tag);
     setShowSavedDropdown(false);
   }, []);
 
@@ -87,27 +81,6 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
     persistSavedFilters(updated);
   }, [savedFilters]);
 
-  const exportCSV = useCallback(() => {
-    const headers = ["Nome", "Telefone", "Origem", "Etapa", "Campanha", "Criado em"];
-    const rows = filteredLeads.map((l) => [
-      l.name,
-      l.phone,
-      l.source ?? "Não rastreada",
-      l.stage?.name ?? "—",
-      l.campaign ?? "—",
-      new Date(l.createdAt).toLocaleDateString("pt-BR"),
-    ]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leads, search, sourceFilter, stageFilter, tagFilter]);
-
   const filteredLeads = useMemo(() => {
     let result = leads;
 
@@ -116,7 +89,8 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
       result = result.filter(
         (l) =>
           l.name.toLowerCase().includes(q) ||
-          l.phone.includes(q)
+          l.phone.includes(q) ||
+          (l.email && l.email.toLowerCase().includes(q))
       );
     }
 
@@ -134,12 +108,29 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
       result = result.filter((l) => l.stageId === stageFilter);
     }
 
-    if (tagFilter) {
-      result = result.filter((l) => l.tags.some((t) => t.tagId === tagFilter));
-    }
-
     return result;
-  }, [leads, search, sourceFilter, stageFilter, tagFilter]);
+  }, [leads, search, sourceFilter, stageFilter]);
+
+  const exportCSV = useCallback(() => {
+    const headers = ["Nome", "Telefone", "Email", "Origem", "Etapa", "Campanha", "Criado em"];
+    const rows = filteredLeads.map((l) => [
+      l.name,
+      l.phone,
+      l.email ?? "",
+      l.source ?? "Não rastreada",
+      l.stage?.name ?? "—",
+      l.campaign ?? "—",
+      new Date(l.createdAt).toLocaleDateString("pt-BR"),
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [filteredLeads]);
 
   const filteredColumns = useMemo(() => {
     return columns.map((col) => ({
@@ -147,6 +138,11 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
       leads: col.leads.filter((l) => filteredLeads.some((fl) => fl.id === l.id)),
     }));
   }, [columns, filteredLeads]);
+
+  // When clicking edit from table/kanban, open detail modal first (user can click edit there)
+  const handleEditLead = useCallback((leadId: string) => {
+    setSelectedLeadId(leadId);
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -159,7 +155,7 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
         <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
           <Input
-            placeholder="Buscar Nome ou parte do telefone..."
+            placeholder="Buscar nome, telefone ou email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-9 text-sm border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white"
@@ -196,20 +192,6 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
-
-        {/* Tag dropdown */}
-        {tags.length > 0 && (
-          <select
-            value={tagFilter ?? ""}
-            onChange={(e) => setTagFilter(e.target.value || null)}
-            className="h-9 text-sm border border-slate-200 rounded-xl px-3 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 cursor-pointer"
-          >
-            <option value="">Todas as Tags</option>
-            {tags.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        )}
 
         {/* Clear filters */}
         {hasActiveFilters && (
@@ -319,16 +301,16 @@ export function DashboardClient({ leads, columns, stats, stages, tags }: Props) 
 
       {/* Content */}
       {view === "kanban" ? (
-        <KanbanBoard columns={filteredColumns} />
+        <KanbanBoard columns={filteredColumns} onClickLead={setSelectedLeadId} onEditLead={handleEditLead} />
       ) : (
-        <>
-          <LeadsTable leads={filteredLeads} onClickLead={setSelectedLeadId} />
-          <LeadDetailModal
-            leadId={selectedLeadId}
-            onClose={() => setSelectedLeadId(null)}
-          />
-        </>
+        <LeadsTable leads={filteredLeads} onClickLead={setSelectedLeadId} onEditLead={handleEditLead} />
       )}
+
+      <LeadDetailModal
+        leadId={selectedLeadId}
+        stages={stages}
+        onClose={() => setSelectedLeadId(null)}
+      />
     </div>
   );
 }

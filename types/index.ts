@@ -17,29 +17,19 @@ export type Stage = {
   updatedAt: Date;
 };
 
-export type Tag = {
-  id: string;
-  name: string;
-  userId: string;
-  createdAt: Date;
-};
-
-export type LeadTag = {
-  id: string;
-  leadId: string;
-  tagId: string;
-  tag: Tag;
-  createdAt: Date;
-};
-
 export type Lead = {
   id: string;
   name: string;
   phone: string;
+  email: string | null;
+  cpf: string | null;
+  address: string | null;
+  city: string | null;
+  notes: string | null;
+  photoUrl: string | null;
   userId: string;
   stageId: string | null;
   stage: Stage | null;
-  tags: LeadTag[];
   source: string | null;
   medium: string | null;
   campaign: string | null;
@@ -48,6 +38,7 @@ export type Lead = {
   adAccountName: string | null;
   platform: string | null;
   referrer: string | null;
+  aiEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -93,7 +84,6 @@ export type LeadDetail = Lead & {
   messages: Message[];
   stageHistory: LeadStageHistory[];
   pixelEvents: PixelEvent[];
-  aiEnabled: boolean;
 };
 
 export type LeadSourceStats = {

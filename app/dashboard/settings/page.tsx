@@ -1,5 +1,4 @@
 import { getPixel } from "@/app/actions/pixel";
-import { getTags } from "@/app/actions/tags";
 import { getStages } from "@/app/actions/stages";
 import { getAIConfig } from "@/app/actions/aiConfig";
 import { getWhatsAppConfig } from "@/app/actions/whatsapp";
@@ -7,14 +6,12 @@ import { getGAConfig } from "@/app/actions/ga";
 import { FacebookPixelForm } from "@/components/forms/FacebookPixelForm";
 import { WhatsAppConfigForm } from "@/components/forms/WhatsAppConfigForm";
 import { GAConfigForm } from "@/components/forms/GAConfigForm";
-import { ManageTagsModal } from "@/components/modals/ManageTagsModal";
 import { ManageStagesSection } from "@/components/settings/ManageStagesSection";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
 
 export default async function SettingsPage() {
-  const [pixel, tags, stages, aiConfig, whatsappConfig, gaConfig] = await Promise.all([
+  const [pixel, stages, aiConfig, whatsappConfig, gaConfig] = await Promise.all([
     getPixel(),
-    getTags(),
     getStages(),
     getAIConfig(),
     getWhatsAppConfig(),
@@ -26,7 +23,7 @@ export default async function SettingsPage() {
       <div>
         <h1 className="text-xl font-bold text-slate-900">Configurações</h1>
         <p className="text-sm text-slate-400 mt-1">
-          Gerencie seu Pixel do Facebook, IA, pipeline e tags
+          Gerencie integrações, IA e pipeline
         </p>
       </div>
 
@@ -69,10 +66,20 @@ export default async function SettingsPage() {
           <div>
             <h2 className="text-base font-semibold text-slate-900">Inteligência Artificial</h2>
             <p className="text-sm text-slate-400 mt-0.5">
-              Configure como a IA responde no WhatsApp. Personalize o prompt, o nome da clínica e ative respostas em áudio.
+              Configure o provedor de IA, modelo e comportamento. Você fornece sua própria chave de API.
             </p>
           </div>
-          <AIConfigForm config={aiConfig ?? { clinicName: "Sanas Clinic", systemPrompt: "", sendAudio: false, openaiKey: "" }} />
+          <AIConfigForm config={aiConfig ?? {
+            clinicName: "Sanas Clinic",
+            systemPrompt: "",
+            sendAudio: false,
+            provider: "openai",
+            model: "gpt-4o-mini",
+            capabilities: "text",
+            apiKey: "",
+            voiceClonePrompt: "",
+            openaiKey: "",
+          }} />
         </div>
 
         {/* Pipeline */}
@@ -84,17 +91,6 @@ export default async function SettingsPage() {
             </p>
           </div>
           <ManageStagesSection stages={stages} />
-        </div>
-
-        {/* Tags */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">Etiquetas (Tags)</h2>
-            <p className="text-sm text-slate-400 mt-0.5">
-              Crie e gerencie as tags para classificar seus leads.
-            </p>
-          </div>
-          <ManageTagsModal tags={tags} />
         </div>
       </div>
     </div>

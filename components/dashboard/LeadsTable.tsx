@@ -1,11 +1,25 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { MoreHorizontal, Eye, MessageCircle, Pencil, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SourceIcon, sourceConfig, getStageColor } from "@/components/icons/SourceIcons";
+import { deleteLead } from "@/app/actions/leads";
+import { toast } from "sonner";
 import type { Lead } from "@/types";
 
 type Props = {
   leads: Lead[];
   onClickLead: (leadId: string) => void;
+  onEditLead?: (leadId: string) => void;
 };
 
 function formatDateTime(date: Date) {
@@ -16,7 +30,64 @@ function formatDateTime(date: Date) {
   };
 }
 
-export function LeadsTable({ leads, onClickLead }: Props) {
+function ActionCell({ lead, onClickLead, onEditLead }: { lead: Lead; onClickLead: (id: string) => void; onEditLead?: (id: string) => void }) {
+  const router = useRouter();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setDeleting(true);
+    const result = await deleteLead(lead.id);
+    setDeleting(false);
+    if (result.success) {
+      toast.success("Lead excluído");
+    } else {
+      toast.error(result.error);
+    }
+    setConfirmDelete(false);
+  }
+
+  return (
+    <DropdownMenu onOpenChange={() => setConfirmDelete(false)}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-slate-400 hover:text-slate-900"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44 rounded-xl">
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onClickLead(lead.id); }}>
+          <Eye className="h-3.5 w-3.5 mr-2" /> Ver Detalhes
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/chat?leadId=${lead.id}`); }}>
+          <MessageCircle className="h-3.5 w-3.5 mr-2" /> Abrir Chat
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEditLead?.(lead.id); }}>
+          <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+          className="text-red-600 focus:text-red-600 focus:bg-red-50"
+          disabled={deleting}
+        >
+          <Trash2 className="h-3.5 w-3.5 mr-2" />
+          {deleting ? "Excluindo..." : confirmDelete ? "Confirmar Exclusão" : "Excluir"}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function LeadsTable({ leads, onClickLead, onEditLead }: Props) {
   if (leads.length === 0) {
     return (
       <div className="text-center py-16 text-sm text-slate-400 bg-white rounded-2xl border border-slate-100">
@@ -36,6 +107,7 @@ export function LeadsTable({ leads, onClickLead }: Props) {
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Etapa da Jornada</th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Primeira Mensagem</th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Ultima Mensagem</th>
+              <th className="w-12"></th>
             </tr>
           </thead>
           <tbody>
@@ -55,6 +127,7 @@ export function LeadsTable({ leads, onClickLead }: Props) {
                     <div>
                       <p className="font-semibold text-slate-900 text-sm group-hover:text-indigo-600 transition-colors">{lead.name}</p>
                       <p className="text-xs text-slate-400 mt-0.5">{lead.phone}</p>
+                      {lead.email && <p className="text-[11px] text-slate-300 mt-0.5">{lead.email}</p>}
                     </div>
                   </td>
 
@@ -98,6 +171,10 @@ export function LeadsTable({ leads, onClickLead }: Props) {
                       <p className="text-sm text-slate-700">{updated.date}</p>
                       <p className="text-[11px] text-slate-400">{updated.time}</p>
                     </div>
+                  </td>
+
+                  <td className="px-2 py-3.5">
+                    <ActionCell lead={lead} onClickLead={onClickLead} onEditLead={onEditLead} />
                   </td>
                 </tr>
               );

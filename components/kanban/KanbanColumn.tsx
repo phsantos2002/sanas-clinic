@@ -9,9 +9,10 @@ import type { KanbanColumn as KanbanColumnType } from "@/types";
 type Props = {
   column: KanbanColumnType;
   onClickLead?: (leadId: string) => void;
+  onEditLead?: (leadId: string) => void;
 };
 
-export function KanbanColumn({ column, onClickLead }: Props) {
+export function KanbanColumn({ column, onClickLead, onEditLead }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const color = getStageColor(column.name);
 
@@ -40,7 +41,7 @@ export function KanbanColumn({ column, onClickLead }: Props) {
           strategy={verticalListSortingStrategy}
         >
           {column.leads.map((lead) => (
-            <LeadCard key={lead.id} lead={lead} onClickLead={onClickLead} />
+            <LeadCard key={lead.id} lead={lead} onClickLead={onClickLead} onEditLead={onEditLead} />
           ))}
         </SortableContext>
 

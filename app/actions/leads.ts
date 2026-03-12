@@ -14,25 +14,22 @@ export async function getLeads(): Promise<Lead[]> {
     where: { userId: user.id },
     include: {
       stage: true,
-      tags: { include: { tag: true } },
     },
     orderBy: { createdAt: "desc" },
-  });
+  }) as Promise<Lead[]>;
 }
 
 export async function createLead(
-  data: Pick<Lead, "name" | "phone"> & { stageId?: string }
+  data: Pick<Lead, "name" | "phone"> & { stageId?: string; email?: string }
 ): Promise<ActionResult<Lead>> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Não autenticado" };
 
-  // Phone validation
   const cleanPhone = data.phone.replace(/\D/g, "");
   if (cleanPhone.length < 10 || cleanPhone.length > 15) {
     return { success: false, error: "Telefone inválido. Use DDD + número (ex: 11999999999)" };
   }
 
-  // Deduplication by phone
   const phoneSuffix = cleanPhone.slice(-9);
   const existing = await prisma.lead.findFirst({
     where: {
@@ -49,14 +46,12 @@ export async function createLead(
       data: {
         name: data.name,
         phone: cleanPhone,
+        email: data.email || null,
         userId: user.id,
         stageId: data.stageId ?? null,
         source: "manual",
       },
-      include: {
-        stage: true,
-        tags: { include: { tag: true } },
-      },
+      include: { stage: true },
     });
 
     if (lead.stage) {
@@ -74,9 +69,76 @@ export async function createLead(
     }
 
     revalidatePath("/dashboard");
-    return { success: true, data: lead };
+    return { success: true, data: lead as Lead };
   } catch {
     return { success: false, error: "Erro ao criar lead" };
+  }
+}
+
+export type UpdateLeadData = {
+  name?: string;
+  phone?: string;
+  email?: string | null;
+  cpf?: string | null;
+  address?: string | null;
+  city?: string | null;
+  notes?: string | null;
+  photoUrl?: string | null;
+  stageId?: string | null;
+  aiEnabled?: boolean;
+};
+
+export async function updateLead(
+  leadId: string,
+  data: UpdateLeadData
+): Promise<ActionResult<Lead>> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Não autenticado" };
+
+  try {
+    const existing = await prisma.lead.findFirst({
+      where: { id: leadId, userId: user.id },
+    });
+    if (!existing) return { success: false, error: "Lead não encontrado" };
+
+    const lead = await prisma.lead.update({
+      where: { id: leadId },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.phone !== undefined && { phone: data.phone.replace(/\D/g, "") }),
+        ...(data.email !== undefined && { email: data.email || null }),
+        ...(data.cpf !== undefined && { cpf: data.cpf || null }),
+        ...(data.address !== undefined && { address: data.address || null }),
+        ...(data.city !== undefined && { city: data.city || null }),
+        ...(data.notes !== undefined && { notes: data.notes || null }),
+        ...(data.photoUrl !== undefined && { photoUrl: data.photoUrl || null }),
+        ...(data.stageId !== undefined && { stageId: data.stageId }),
+        ...(data.aiEnabled !== undefined && { aiEnabled: data.aiEnabled }),
+      },
+      include: { stage: true },
+    });
+
+    if (data.stageId && data.stageId !== existing.stageId) {
+      await prisma.leadStageHistory.create({
+        data: { leadId: lead.id, stageId: data.stageId },
+      });
+
+      const stage = await prisma.stage.findUnique({ where: { id: data.stageId } });
+      if (stage) {
+        await sendFacebookEvent({
+          userId: user.id,
+          phone: lead.phone,
+          eventName: stage.eventName,
+          leadId: lead.id,
+          stageName: stage.name,
+        });
+      }
+    }
+
+    revalidatePath("/dashboard");
+    return { success: true, data: lead as Lead };
+  } catch {
+    return { success: false, error: "Erro ao atualizar lead" };
   }
 }
 
@@ -91,7 +153,6 @@ export async function moveLead(
     const stage = await prisma.stage.findFirst({
       where: { id: newStageId, userId: user.id },
     });
-
     if (!stage) return { success: false, error: "Estágio não encontrado" };
 
     const lead = await prisma.lead.update({
@@ -126,7 +187,6 @@ export async function getLeadDetail(leadId: string): Promise<LeadDetail | null> 
     where: { id: leadId, userId: user.id },
     include: {
       stage: true,
-      tags: { include: { tag: true } },
       messages: { orderBy: { createdAt: "desc" }, take: 50 },
       stageHistory: {
         include: { stage: true },
@@ -160,7 +220,7 @@ export async function getLeadSourceStats(): Promise<LeadSourceStats> {
 }
 
 export type DailyOriginStats = {
-  date: string; // YYYY-MM-DD
+  date: string;
   meta: number;
   google: number;
   other: number;
@@ -217,7 +277,6 @@ export async function getDashboardStats(
     else bySource.unknown++;
   }
 
-  // Group by day
   const dailyMap = new Map<string, DailyOriginStats>();
   for (const lead of leads) {
     const day = new Date(lead.createdAt).toISOString().slice(0, 10);
@@ -247,42 +306,20 @@ export async function deleteLead(leadId: string): Promise<ActionResult> {
   if (!user) return { success: false, error: "Não autenticado" };
 
   try {
-    await prisma.lead.delete({ where: { id: leadId, userId: user.id } });
+    const lead = await prisma.lead.findFirst({
+      where: { id: leadId, userId: user.id },
+    });
+    if (!lead) return { success: false, error: "Lead não encontrado" };
+
+    // Delete related records first to avoid FK constraint errors
+    await prisma.leadStageHistory.deleteMany({ where: { leadId } });
+    await prisma.pixelEvent.deleteMany({ where: { leadId } });
+    await prisma.message.deleteMany({ where: { leadId } });
+    await prisma.lead.delete({ where: { id: leadId } });
+
     revalidatePath("/dashboard");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao deletar lead" };
-  }
-}
-
-export async function addTagToLead(
-  leadId: string,
-  tagId: string
-): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, error: "Não autenticado" };
-
-  try {
-    await prisma.leadTag.create({ data: { leadId, tagId } });
-    revalidatePath("/dashboard");
-    return { success: true };
-  } catch {
-    return { success: false, error: "Erro ao adicionar tag" };
-  }
-}
-
-export async function removeTagFromLead(
-  leadId: string,
-  tagId: string
-): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, error: "Não autenticado" };
-
-  try {
-    await prisma.leadTag.deleteMany({ where: { leadId, tagId } });
-    revalidatePath("/dashboard");
-    return { success: true };
-  } catch {
-    return { success: false, error: "Erro ao remover tag" };
   }
 }

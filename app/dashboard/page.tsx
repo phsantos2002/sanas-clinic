@@ -1,16 +1,13 @@
 import { getLeads, getLeadSourceStats } from "@/app/actions/leads";
 import { getStages } from "@/app/actions/stages";
-import { getTags } from "@/app/actions/tags";
 import { CreateLeadModal } from "@/components/modals/CreateLeadModal";
-import { ManageTagsModal } from "@/components/modals/ManageTagsModal";
 import { DashboardClient } from "@/components/dashboard/DashboardClient";
 import type { KanbanColumn } from "@/types";
 
 export default async function DashboardPage() {
-  const [leads, stages, tags, stats] = await Promise.all([
+  const [leads, stages, stats] = await Promise.all([
     getLeads(),
     getStages(),
-    getTags(),
     getLeadSourceStats(),
   ]);
 
@@ -27,12 +24,11 @@ export default async function DashboardPage() {
           <p className="text-sm text-slate-400 mt-1">{leads.length} leads no total</p>
         </div>
         <div className="flex items-center gap-2">
-          <ManageTagsModal tags={tags} />
           <CreateLeadModal stages={stages} />
         </div>
       </div>
 
-      <DashboardClient leads={leads} columns={columns} stats={stats} stages={stages} tags={tags} />
+      <DashboardClient leads={leads} columns={columns} stats={stats} stages={stages} />
     </div>
   );
 }
