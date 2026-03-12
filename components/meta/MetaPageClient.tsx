@@ -35,6 +35,7 @@ type Props = {
   selectedAdSets: MetaAdSet[];
   selectedInsights: MetaCampaignInsights | null;
   selectedCampaignId: string | null;
+  apiError?: string;
 };
 
 function fmt(n: number, dec = 2) {
@@ -225,7 +226,7 @@ function AdRow({ ad }: { ad: MetaAd }) {
 
 export function MetaPageClient({
   campaigns, hasConfig, pixelId, events, stages,
-  selectedCampaign, selectedAdSets, selectedInsights, selectedCampaignId,
+  selectedCampaign, selectedAdSets, selectedInsights, selectedCampaignId, apiError,
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [editBudget, setEditBudget] = useState(false);
@@ -297,8 +298,12 @@ export function MetaPageClient({
             <p className="text-sm font-semibold text-red-900">Erro ao carregar campanha</p>
             <p className="text-xs text-red-700/70 max-w-md mx-auto">
               A campanha selecionada (ID: <span className="font-mono">{selectedCampaignId}</span>) não pôde ser carregada.
-              Verifique se o <span className="font-medium">Token de Acesso — Marketing API</span> tem permissão <span className="font-mono">ads_read</span> e se a campanha ainda existe.
             </p>
+            {apiError && (
+              <p className="text-xs font-mono text-red-600 bg-red-100 rounded-lg px-3 py-2 max-w-lg mx-auto break-all">
+                {apiError}
+              </p>
+            )}
             <p className="text-xs text-slate-400 mt-2">
               Vá em <span className="font-medium">Configurações → Pixel do Facebook</span> para verificar o token,
               ou selecione outra campanha em <span className="font-medium">Configurações → Campanha Principal</span>.

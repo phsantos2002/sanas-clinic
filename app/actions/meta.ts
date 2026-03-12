@@ -345,6 +345,7 @@ export async function getSelectedCampaignData(): Promise<{
   adSets: MetaAdSet[];
   insights: MetaCampaignInsights | null;
   config: MetaConfig | null;
+  error?: string;
 }> {
   const config = await getMetaConfig();
   if (!config) return { selectedCampaignId: null, campaign: null, adSets: [], insights: null, config: null };
@@ -370,8 +371,9 @@ export async function getSelectedCampaignData(): Promise<{
     ]);
 
     if (campaignJson.error) {
-      console.error("[Meta] selected campaign error:", JSON.stringify(campaignJson.error));
-      return { selectedCampaignId: selectedId, campaign: null, adSets: [], insights: null, config };
+      const errMsg = campaignJson.error.message || JSON.stringify(campaignJson.error);
+      console.error("[Meta] selected campaign error:", errMsg);
+      return { selectedCampaignId: selectedId, campaign: null, adSets: [], insights: null, config, error: errMsg };
     }
 
     const c = campaignJson;
@@ -419,7 +421,7 @@ export async function getSelectedCampaignData(): Promise<{
     return { selectedCampaignId: selectedId, campaign, adSets: adSetsData, insights, config };
   } catch (e) {
     console.error("[Meta] selected campaign fetch error:", e);
-    return { selectedCampaignId: selectedId, campaign: null, adSets: [], insights: null, config };
+    return { selectedCampaignId: selectedId, campaign: null, adSets: [], insights: null, config, error: String(e) };
   }
 }
 

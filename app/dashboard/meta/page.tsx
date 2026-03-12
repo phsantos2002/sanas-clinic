@@ -26,6 +26,7 @@ export default async function MetaPage() {
       selectedAdSets={selectedData.adSets}
       selectedInsights={selectedData.insights}
       selectedCampaignId={selectedData.selectedCampaignId}
+      apiError={selectedData.error}
     />
   );
 }
