@@ -34,7 +34,7 @@ export default async function LoginPage({
             <Image src="/logo.png" alt="Lux CRM" width={64} height={64} className="mx-auto rounded-2xl" />
             <h1 className="text-xl font-bold text-slate-900">Bem-vindo</h1>
             <p className="text-slate-400 text-sm">
-              CRM para clínicas de estética
+              CRM de conversão automática
             </p>
           </div>
 

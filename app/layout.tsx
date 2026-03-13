@@ -10,7 +10,7 @@ const geist = Geist({
 
 export const metadata: Metadata = {
   title: "Sanas Clinic",
-  description: "CRM para clínicas de estética integrado ao WhatsApp e Facebook Ads",
+  description: "CRM de conversão automática integrado ao WhatsApp e Facebook Ads",
 };
 
 export default function RootLayout({
