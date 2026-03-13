@@ -122,7 +122,7 @@ export function DateRangePicker({ startDate, endDate, onChange }: Props) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 h-9 px-3 text-sm bg-white border border-slate-200 rounded-xl text-slate-700 hover:border-slate-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500/20"
+        className="flex items-center gap-2 h-9 px-3 text-sm bg-white border border-slate-200 rounded-xl text-slate-700 hover:border-slate-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500/20 w-full sm:w-auto justify-center sm:justify-start"
       >
         <CalendarDays className="h-3.5 w-3.5 text-indigo-500" />
         <span>{formatDisplay(startDate)}</span>
@@ -131,7 +131,7 @@ export function DateRangePicker({ startDate, endDate, onChange }: Props) {
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-1.5 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/50 p-4 w-[320px] animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="absolute top-full left-0 sm:left-auto sm:right-0 mt-1.5 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/50 p-4 w-[calc(100vw-2rem)] sm:w-[320px] max-w-[320px] animate-in fade-in slide-in-from-top-1 duration-150">
           {/* Quick presets */}
           <div className="flex gap-1.5 mb-3">
             {[

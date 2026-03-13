@@ -26,6 +26,30 @@ type Props = {
   };
 };
 
+function resizeImage(file: File, maxSize: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let w = img.width;
+      let h = img.height;
+      if (w > h) {
+        if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; }
+      } else {
+        if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.8));
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export function AccountPageClient({ account }: Props) {
   return (
     <div className="space-y-6 max-w-2xl">
@@ -57,26 +81,27 @@ function ProfileHeader({ name, email, photoUrl, provider, createdAt }: {
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("A foto deve ter no máximo 2MB");
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A foto deve ter no máximo 5MB");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result as string;
+    setUploading(true);
+    try {
+      const dataUrl = await resizeImage(file, 256);
       setPhoto(dataUrl);
-      setUploading(true);
       const result = await updateAccountPhoto(dataUrl);
-      setUploading(false);
       if (result.success) {
         toast.success("Foto atualizada");
       } else {
         toast.error(result.error);
         setPhoto(photoUrl);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      toast.error("Erro ao processar a imagem");
+      setPhoto(photoUrl);
+    }
+    setUploading(false);
   }
 
   async function handleRemovePhoto() {

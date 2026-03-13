@@ -97,33 +97,35 @@ export function DashboardOverviewClient({ initialStats }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="space-y-3">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-slate-900">Dashboard</h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">Início → Dashboard</p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
             onChange={applyDateFilter}
           />
 
-          <CustomSelect
-            options={SOURCE_OPTIONS}
-            value={sourceFilter}
-            onChange={setSourceFilter}
-            className="w-[160px] sm:w-[180px]"
-          />
+          <div className="flex items-center gap-2">
+            <CustomSelect
+              options={SOURCE_OPTIONS}
+              value={sourceFilter}
+              onChange={setSourceFilter}
+              className="flex-1 sm:flex-none sm:w-[180px]"
+            />
 
-          <Button
-            onClick={handleExportReport}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white h-9 text-xs sm:text-sm gap-1.5 rounded-xl"
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Baixar Relatório</span>
-            <span className="sm:hidden">Baixar</span>
-          </Button>
+            <Button
+              onClick={handleExportReport}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white h-9 text-xs sm:text-sm gap-1.5 rounded-xl flex-shrink-0"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Baixar Relatório</span>
+              <span className="sm:hidden">Baixar</span>
+            </Button>
+          </div>
         </div>
       </div>
 
