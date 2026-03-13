@@ -67,10 +67,13 @@ export function OriginBarChart({ data, startDate, endDate }: Props) {
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
         <XAxis
           dataKey="date"
-          tick={{ fontSize: 11, fill: "#71717a" }}
+          tick={{ fontSize: 10, fill: "#71717a" }}
           tickLine={false}
           axisLine={false}
-          interval={Math.max(0, Math.floor(chartData.length / 15))}
+          angle={-45}
+          textAnchor="end"
+          height={60}
+          interval={Math.max(0, Math.floor(chartData.length / 10))}
         />
         <YAxis
           tick={{ fontSize: 11, fill: "#71717a" }}

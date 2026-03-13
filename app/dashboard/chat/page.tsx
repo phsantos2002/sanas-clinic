@@ -9,7 +9,7 @@ export default async function ChatPage({
   const params = await searchParams;
   const leads = await getLeadsWithMessages();
 
-  const selectedLeadId = params.leadId ?? leads[0]?.id ?? null;
+  const selectedLeadId = params.leadId ?? null;
 
   return <ChatPageClient leads={leads} initialSelectedId={selectedLeadId} />;
 }

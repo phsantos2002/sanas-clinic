@@ -12,7 +12,7 @@ export async function SystemStatus() {
 
   return (
     <div className={`flex items-center gap-1.5 text-xs ${isOnline ? "text-emerald-600" : "text-slate-400"}`}>
-      <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
+      <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500" : "bg-slate-300"}`} />
       {isOnline ? "Online" : "Offline"}
     </div>
   );
