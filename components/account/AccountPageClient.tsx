@@ -1,19 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { updateAccountName, updateAccountPassword, deleteAccount } from "@/app/actions/account";
+import {
+  updateAccountName,
+  updateAccountEmail,
+  updateAccountPhoto,
+  updateAccountPassword,
+  deleteAccount,
+} from "@/app/actions/account";
 import { toast } from "sonner";
-import { User, Lock, Trash2, Mail, Calendar, Shield, AlertTriangle } from "lucide-react";
+import { User, Lock, Trash2, Mail, Calendar, Shield, AlertTriangle, Camera, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 type Props = {
   account: {
     email: string;
     name: string;
+    photoUrl: string | null;
     createdAt: Date;
     provider: string;
   };
@@ -29,45 +36,117 @@ export function AccountPageClient({ account }: Props) {
         </p>
       </div>
 
-      {/* Account info */}
-      <Card className="border-slate-100 rounded-2xl shadow-sm">
-        <CardContent className="p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
-              <User className="h-6 w-6 text-indigo-600" />
-            </div>
-            <div>
-              <p className="text-base font-semibold text-slate-900">{account.name || "Sem nome"}</p>
-              <p className="text-xs text-slate-400">{account.email}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Mail className="h-3.5 w-3.5 text-slate-400" />
-              <span>{account.email}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Shield className="h-3.5 w-3.5 text-slate-400" />
-              <span className="capitalize">{account.provider === "email" ? "Email e senha" : account.provider}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Calendar className="h-3.5 w-3.5 text-slate-400" />
-              <span>Membro desde {new Date(account.createdAt).toLocaleDateString("pt-BR")}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Name */}
+      <ProfileHeader name={account.name} email={account.email} photoUrl={account.photoUrl} provider={account.provider} createdAt={account.createdAt} />
       <NameSection name={account.name} />
-
-      {/* Password */}
+      <EmailSection email={account.email} />
       <PasswordSection />
-
-      {/* Danger zone */}
       <DangerZone />
     </div>
+  );
+}
+
+// ─── Profile Header ───
+
+function ProfileHeader({ name, email, photoUrl, provider, createdAt }: {
+  name: string; email: string; photoUrl: string | null; provider: string; createdAt: Date;
+}) {
+  const [photo, setPhoto] = useState<string | null>(photoUrl);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("A foto deve ter no máximo 2MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      setPhoto(dataUrl);
+      setUploading(true);
+      const result = await updateAccountPhoto(dataUrl);
+      setUploading(false);
+      if (result.success) {
+        toast.success("Foto atualizada");
+      } else {
+        toast.error(result.error);
+        setPhoto(photoUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleRemovePhoto() {
+    setUploading(true);
+    const result = await updateAccountPhoto(null);
+    setUploading(false);
+    if (result.success) {
+      setPhoto(null);
+      toast.success("Foto removida");
+    } else {
+      toast.error(result.error);
+    }
+  }
+
+  return (
+    <Card className="border-slate-100 rounded-2xl shadow-sm">
+      <CardContent className="p-6">
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-indigo-50 flex items-center justify-center flex-shrink-0">
+              {photo ? (
+                <img src={photo} alt="Foto" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl font-bold text-indigo-600">
+                  {name ? name.charAt(0).toUpperCase() : "U"}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+            >
+              <Camera className="h-5 w-5 text-white" />
+            </button>
+            {photo && (
+              <button
+                onClick={handleRemovePhoto}
+                disabled={uploading}
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePhotoChange}
+              className="hidden"
+            />
+          </div>
+
+          <div className="flex-1">
+            <p className="text-base font-semibold text-slate-900">{name || "Sem nome"}</p>
+            <p className="text-xs text-slate-400">{email}</p>
+            <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <Shield className="h-3 w-3 text-slate-400" />
+                <span className="capitalize">{provider === "email" ? "Email e senha" : provider}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <Calendar className="h-3 w-3 text-slate-400" />
+                <span>Desde {new Date(createdAt).toLocaleDateString("pt-BR")}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -96,21 +175,58 @@ function NameSection({ name }: { name: string }) {
           <User className="h-4 w-4 text-slate-400" />
           Nome
         </h2>
-        <p className="text-sm text-slate-400 mt-0.5">
-          Como você aparece no sistema.
-        </p>
+        <p className="text-sm text-slate-400 mt-0.5">Como você aparece no sistema.</p>
       </div>
       <div className="flex items-end gap-3 max-w-md">
         <div className="flex-1 space-y-1.5">
           <Label htmlFor="name">Nome completo</Label>
-          <Input
-            id="name"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="Seu nome"
-          />
+          <Input id="name" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Seu nome" />
         </div>
-        <Button onClick={handleSave} disabled={loading} className="rounded-xl">
+        <Button onClick={handleSave} disabled={loading || value.trim() === name} className="rounded-xl">
+          {loading ? "Salvando..." : "Salvar"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Email Section ───
+
+function EmailSection({ email }: { email: string }) {
+  const [value, setValue] = useState(email);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSave() {
+    if (!value.trim() || value.trim() === email) return;
+    if (!value.includes("@")) {
+      toast.error("Email inválido");
+      return;
+    }
+    setLoading(true);
+    const result = await updateAccountEmail(value.trim());
+    setLoading(false);
+    if (result.success) {
+      toast.success("Email atualizado. Verifique sua caixa de entrada para confirmar.");
+    } else {
+      toast.error(result.error);
+    }
+  }
+
+  return (
+    <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
+      <div>
+        <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+          <Mail className="h-4 w-4 text-slate-400" />
+          Email
+        </h2>
+        <p className="text-sm text-slate-400 mt-0.5">Seu email de acesso ao sistema.</p>
+      </div>
+      <div className="flex items-end gap-3 max-w-md">
+        <div className="flex-1 space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" type="email" value={value} onChange={(e) => setValue(e.target.value)} placeholder="seu@email.com" />
+        </div>
+        <Button onClick={handleSave} disabled={loading || value.trim() === email} className="rounded-xl">
           {loading ? "Salvando..." : "Salvar"}
         </Button>
       </div>
@@ -153,30 +269,16 @@ function PasswordSection() {
           <Lock className="h-4 w-4 text-slate-400" />
           Senha
         </h2>
-        <p className="text-sm text-slate-400 mt-0.5">
-          Altere sua senha de acesso ao sistema.
-        </p>
+        <p className="text-sm text-slate-400 mt-0.5">Altere sua senha de acesso ao sistema.</p>
       </div>
       <div className="space-y-3 max-w-md">
         <div className="space-y-1.5">
           <Label htmlFor="newPassword">Nova senha</Label>
-          <Input
-            id="newPassword"
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Mínimo 6 caracteres"
-          />
+          <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="confirmPassword">Confirmar nova senha</Label>
-          <Input
-            id="confirmPassword"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Repita a nova senha"
-          />
+          <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repita a nova senha" />
         </div>
         <Button onClick={handleChangePassword} disabled={loading} className="rounded-xl">
           {loading ? "Atualizando..." : "Alterar senha"}
@@ -213,9 +315,7 @@ function DangerZone() {
           <AlertTriangle className="h-4 w-4" />
           Zona de perigo
         </h2>
-        <p className="text-sm text-slate-400 mt-0.5">
-          Ações irreversíveis. Tenha cuidado.
-        </p>
+        <p className="text-sm text-slate-400 mt-0.5">Ações irreversíveis. Tenha cuidado.</p>
       </div>
 
       {!showConfirm ? (

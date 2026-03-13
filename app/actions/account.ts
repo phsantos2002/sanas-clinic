@@ -15,6 +15,7 @@ export async function getAccountData() {
   return {
     email: authUser.email ?? "",
     name: dbUser?.name ?? "",
+    photoUrl: dbUser?.photoUrl ?? null,
     createdAt: dbUser?.createdAt ?? new Date(),
     provider: authUser.app_metadata?.provider ?? "email",
   };
@@ -33,6 +34,44 @@ export async function updateAccountName(name: string): Promise<ActionResult> {
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao atualizar nome" };
+  }
+}
+
+export async function updateAccountEmail(newEmail: string): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+
+    if (error) return { success: false, error: error.message };
+
+    // Also update in our database
+    const user = await getCurrentUser();
+    if (user) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { email: newEmail },
+      });
+    }
+
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao atualizar email" };
+  }
+}
+
+export async function updateAccountPhoto(photoUrl: string | null): Promise<ActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Não autenticado" };
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { photoUrl },
+    });
+
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao atualizar foto" };
   }
 }
 

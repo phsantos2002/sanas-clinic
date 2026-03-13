@@ -401,6 +401,35 @@ function AdSetRow({ adSet, campaignCpc, campaignCpm }: { adSet: MetaAdSet; campa
             </span>
           </div>
         )}
+
+        {/* Bid cap vs CPC real alert */}
+        {!editBidCap && adSet.bidAmount != null && campaignCpc > 0 && (() => {
+          const ratio = adSet.bidAmount! / campaignCpc;
+          if (ratio < 0.7) return (
+            <div className="mt-2 ml-6 flex items-start gap-1.5 text-[10px] text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5">
+              <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>
+                Bid Cap ({fmtBrl(adSet.bidAmount!)}) está <span className="font-bold">{Math.round((1 - ratio) * 100)}% abaixo</span> do CPC real ({fmtBrl(campaignCpc)}).
+                A entrega pode estar sendo limitada. Considere aumentar para pelo menos {fmtBrl(campaignCpc * 0.8)}.
+              </span>
+            </div>
+          );
+          if (ratio > 2) return (
+            <div className="mt-2 ml-6 flex items-start gap-1.5 text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
+              <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>
+                Bid Cap ({fmtBrl(adSet.bidAmount!)}) está <span className="font-bold">{Math.round((ratio - 1) * 100)}% acima</span> do CPC real ({fmtBrl(campaignCpc)}).
+                Você pode estar pagando mais do que necessário. Considere reduzir para {fmtBrl(campaignCpc * 1.3)}.
+              </span>
+            </div>
+          );
+          return (
+            <div className="mt-2 ml-6 flex items-start gap-1.5 text-[10px] text-emerald-600 bg-emerald-50 rounded-lg px-2.5 py-1.5">
+              <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>Bid Cap alinhado com o CPC real. Boa configuração.</span>
+            </div>
+          );
+        })()}
       </div>
 
       {expanded && (
@@ -742,6 +771,227 @@ function BidCapEducation({ campaign }: { campaign: MetaCampaignFull }) {
   );
 }
 
+// ─── Bid Cap Simulator ───
+
+function BidCapSimulator({ campaign }: { campaign: MetaCampaignFull }) {
+  const [simValue, setSimValue] = useState("");
+  const cpc = campaign.cpc;
+  const cpm = campaign.cpm;
+  const dailyBudget = campaign.dailyBudget ?? 0;
+
+  const simBid = parseFloat(simValue) || 0;
+  const hasSimulation = simBid > 0 && cpc > 0;
+
+  // Estimate delivery based on bid vs CPC ratio
+  const deliveryRatio = hasSimulation ? Math.min(simBid / cpc, 1.5) : 0;
+  const estimatedClicks = hasSimulation && dailyBudget > 0
+    ? Math.round((dailyBudget / Math.max(simBid, cpc * 0.5)) * deliveryRatio)
+    : 0;
+  const estimatedCost = hasSimulation ? Math.min(simBid, cpc * deliveryRatio) : 0;
+  const estimatedImpressions = hasSimulation && cpm > 0
+    ? Math.round(estimatedClicks / (Math.max(estimatedCost, 0.01) / (cpm / 1000)))
+    : 0;
+
+  const deliveryLabel = deliveryRatio >= 1.2 ? "Alta" : deliveryRatio >= 0.8 ? "Normal" : deliveryRatio >= 0.5 ? "Limitada" : "Muito baixa";
+  const deliveryColor = deliveryRatio >= 1.2 ? "text-emerald-600" : deliveryRatio >= 0.8 ? "text-blue-600" : deliveryRatio >= 0.5 ? "text-amber-600" : "text-red-600";
+
+  return (
+    <Card className="border-slate-100 rounded-2xl shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+          <Target className="h-4 w-4 text-indigo-500" />
+          Simulador de Bid Cap
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-slate-400">
+          Simule um valor de bid cap e veja o impacto estimado na entrega da campanha.
+        </p>
+
+        <div className="flex items-end gap-3">
+          <div className="flex-1 space-y-1">
+            <Label className="text-xs text-slate-600">Valor do Bid Cap (R$)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={simValue}
+              onChange={(e) => setSimValue(e.target.value)}
+              placeholder={cpc > 0 ? `CPC atual: ${fmt(cpc)}` : "Ex: 2.50"}
+              className="text-sm rounded-xl"
+            />
+          </div>
+        </div>
+
+        {hasSimulation && (
+          <div className="space-y-3 pt-2 border-t border-slate-100">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 rounded-xl p-3">
+                <p className="text-[10px] text-slate-400">Entrega estimada</p>
+                <p className={`text-sm font-bold ${deliveryColor}`}>{deliveryLabel}</p>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-3">
+                <p className="text-[10px] text-slate-400">CPC estimado</p>
+                <p className="text-sm font-bold text-slate-900">{fmtBrl(estimatedCost)}</p>
+              </div>
+              {dailyBudget > 0 && (
+                <>
+                  <div className="bg-slate-50 rounded-xl p-3">
+                    <p className="text-[10px] text-slate-400">Cliques/dia estimados</p>
+                    <p className="text-sm font-bold text-slate-900">~{estimatedClicks}</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-3">
+                    <p className="text-[10px] text-slate-400">Impressões/dia estimadas</p>
+                    <p className="text-sm font-bold text-slate-900">~{estimatedImpressions.toLocaleString("pt-BR")}</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Visual comparison */}
+            <div className="bg-slate-50 rounded-xl p-3 space-y-2">
+              <p className="text-[10px] text-slate-500 font-medium">Comparação com CPC real</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 rounded-full bg-slate-200 relative overflow-hidden">
+                  <div className="absolute h-full bg-blue-400 rounded-full" style={{ width: `${Math.min((cpc / Math.max(simBid, cpc) * 100), 100)}%` }} />
+                </div>
+                <span className="text-[10px] text-blue-600 font-medium w-16 text-right">CPC: {fmtBrl(cpc)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 rounded-full bg-slate-200 relative overflow-hidden">
+                  <div className={`absolute h-full rounded-full ${simBid > cpc * 1.5 ? "bg-amber-400" : simBid < cpc * 0.7 ? "bg-red-400" : "bg-emerald-400"}`} style={{ width: `${Math.min((simBid / Math.max(simBid, cpc) * 100), 100)}%` }} />
+                </div>
+                <span className="text-[10px] text-slate-600 font-medium w-16 text-right">Bid: {fmtBrl(simBid)}</span>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-slate-400">
+              {simBid < cpc * 0.7
+                ? "Bid muito abaixo do CPC — entrega será significativamente reduzida."
+                : simBid > cpc * 1.5
+                ? "Bid muito acima do CPC — risco de pagar mais sem proporcionalidade."
+                : "Bid dentro da faixa ideal — boa relação custo x entrega."
+              }
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Performance Trend ───
+
+function PerformanceTrend({ campaign }: { campaign: MetaCampaignFull }) {
+  const cpc = campaign.cpc;
+  const cpm = campaign.cpm;
+  const ctr = campaign.ctr;
+  const frequency = campaign.impressions > 0 && campaign.reach > 0
+    ? campaign.impressions / campaign.reach
+    : 0;
+
+  // Generate health indicators
+  const indicators: Array<{ label: string; status: "healthy" | "warning" | "critical"; detail: string }> = [];
+
+  // CTR trend
+  if (ctr >= 1.5) {
+    indicators.push({ label: "Engajamento", status: "healthy", detail: `CTR de ${fmt(ctr)}% — audiência engajada` });
+  } else if (ctr >= 0.5) {
+    indicators.push({ label: "Engajamento", status: "warning", detail: `CTR de ${fmt(ctr)}% — há espaço para otimizar criativos` });
+  } else {
+    indicators.push({ label: "Engajamento", status: "critical", detail: `CTR de ${fmt(ctr)}% — criativos precisam de revisão urgente` });
+  }
+
+  // Frequency
+  if (frequency > 0) {
+    if (frequency <= 2) {
+      indicators.push({ label: "Saturação", status: "healthy", detail: `Freq. ${fmt(frequency, 1)}x — público recebendo na medida` });
+    } else if (frequency <= 3.5) {
+      indicators.push({ label: "Saturação", status: "warning", detail: `Freq. ${fmt(frequency, 1)}x — audiência vendo os anúncios com repetição` });
+    } else {
+      indicators.push({ label: "Saturação", status: "critical", detail: `Freq. ${fmt(frequency, 1)}x — público saturado, renove criativos` });
+    }
+  }
+
+  // CPC health
+  if (cpc > 0) {
+    if (cpc <= 2) {
+      indicators.push({ label: "Custo por Clique", status: "healthy", detail: `CPC de ${fmtBrl(cpc)} — eficiente` });
+    } else if (cpc <= 5) {
+      indicators.push({ label: "Custo por Clique", status: "warning", detail: `CPC de ${fmtBrl(cpc)} — moderado, busque otimizar` });
+    } else {
+      indicators.push({ label: "Custo por Clique", status: "critical", detail: `CPC de ${fmtBrl(cpc)} — alto, revise segmentação e criativos` });
+    }
+  }
+
+  // CPM
+  if (cpm > 0) {
+    if (cpm <= 20) {
+      indicators.push({ label: "Custo de Alcance", status: "healthy", detail: `CPM de ${fmtBrl(cpm)} — boa visibilidade por custo baixo` });
+    } else if (cpm <= 50) {
+      indicators.push({ label: "Custo de Alcance", status: "warning", detail: `CPM de ${fmtBrl(cpm)} — concorrência moderada no leilão` });
+    } else {
+      indicators.push({ label: "Custo de Alcance", status: "critical", detail: `CPM de ${fmtBrl(cpm)} — custo alto, teste públicos diferentes` });
+    }
+  }
+
+  const healthyCount = indicators.filter((i) => i.status === "healthy").length;
+  const criticalCount = indicators.filter((i) => i.status === "critical").length;
+  const overallHealth = criticalCount >= 2 ? "critical" : criticalCount >= 1 ? "warning" : healthyCount >= 3 ? "healthy" : "warning";
+
+  const statusConfig = {
+    healthy: { label: "Saudável", color: "text-emerald-700", bg: "bg-emerald-50", icon: TrendingUp },
+    warning: { label: "Atenção", color: "text-amber-700", bg: "bg-amber-50", icon: Activity },
+    critical: { label: "Crítico", color: "text-red-700", bg: "bg-red-50", icon: TrendingDown },
+  };
+
+  const overall = statusConfig[overallHealth];
+  const OverallIcon = overall.icon;
+
+  return (
+    <Card className="border-slate-100 rounded-2xl shadow-sm">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <Activity className="h-4 w-4 text-violet-500" />
+            Saúde da Campanha
+          </CardTitle>
+          <span className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${overall.bg} ${overall.color}`}>
+            <OverallIcon className="h-3 w-3" />
+            {overall.label}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {indicators.map((ind) => {
+          const cfg = statusConfig[ind.status];
+          const IndIcon = cfg.icon;
+          return (
+            <div key={ind.label} className={`flex items-start gap-2.5 p-2.5 rounded-xl ${cfg.bg}`}>
+              <IndIcon className={`h-3.5 w-3.5 mt-0.5 flex-shrink-0 ${cfg.color}`} />
+              <div>
+                <p className={`text-xs font-semibold ${cfg.color}`}>{ind.label}</p>
+                <p className="text-[10px] text-slate-600 mt-0.5">{ind.detail}</p>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Overall recommendation */}
+        <div className="pt-3 border-t border-slate-100">
+          <p className="text-[10px] text-slate-500 leading-relaxed">
+            {overallHealth === "healthy"
+              ? "A campanha está com bons indicadores. Mantenha os criativos atualizados e monitore a frequência para evitar saturação."
+              : overallHealth === "warning"
+              ? "Alguns indicadores precisam de atenção. Foque em otimizar os criativos e considere ajustar o público-alvo ou o bid cap."
+              : "A campanha precisa de ajustes urgentes. Revise criativos, segmentação e estratégia de lance antes de continuar investindo."
+            }
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Component ───
 
 export function MetaPageClient({
@@ -943,6 +1193,12 @@ export function MetaPageClient({
 
       {/* Bid Cap Education */}
       <BidCapEducation campaign={selectedCampaign} />
+
+      {/* Bid Cap Simulator + Performance Trend */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <BidCapSimulator campaign={selectedCampaign} />
+        <PerformanceTrend campaign={selectedCampaign} />
+      </div>
 
       {/* Ad Sets & Creatives */}
       <div className="space-y-4">
