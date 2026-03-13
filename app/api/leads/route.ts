@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 // Public API to create leads from landing pages with UTM tracking
 // POST /api/leads
+// Requires x-api-key header matching the user's Pixel accessToken (proves ownership)
 // Body: { userId, name, phone, source?, medium?, campaign?, adName?, platform?, referrer? }
 export async function POST(req: NextRequest) {
   try {
@@ -16,6 +17,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Auth: verify x-api-key matches the user's pixel accessToken
+    const apiKey = req.headers.get("x-api-key");
+    if (!apiKey) {
+      return NextResponse.json({ error: "Missing x-api-key header" }, { status: 401 });
+    }
+
+    const pixel = await prisma.pixel.findUnique({ where: { userId } });
+    if (!pixel || pixel.accessToken !== apiKey) {
+      return NextResponse.json({ error: "Invalid API key" }, { status: 403 });
+    }
+
     // Validate phone (only digits, 10-15 chars)
     const cleanPhone = phone.replace(/\D/g, "");
     if (cleanPhone.length < 10 || cleanPhone.length > 15) {
@@ -25,7 +37,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check user exists
+    // User already verified via pixel ownership
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

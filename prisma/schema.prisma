@@ -82,6 +82,11 @@ model Lead {
   pixelEvents    PixelEvent[]
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([userId, phone])
+  @@index([stageId])
+  @@index([userId, createdAt])
 }
 
 model Message {

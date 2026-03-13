@@ -5,12 +5,23 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
 import type { ActionResult, Pixel } from "@/types";
 
+function maskToken(token: string): string {
+  if (token.length <= 8) return "•".repeat(token.length);
+  return token.slice(0, 4) + "•".repeat(Math.max(0, token.length - 8)) + token.slice(-4);
+}
+
 export async function getPixel(): Promise<Pixel | null> {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return prisma.pixel.findUnique({ where: { userId: user.id } }) as any;
+  const pixel = await prisma.pixel.findUnique({ where: { userId: user.id } });
+  if (!pixel) return null;
+
+  return {
+    ...pixel,
+    accessToken: maskToken(pixel.accessToken),
+    metaAdsToken: pixel.metaAdsToken ? maskToken(pixel.metaAdsToken) : null,
+  } as Pixel;
 }
 
 export async function savePixel(
@@ -22,26 +33,32 @@ export async function savePixel(
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Não autenticado" };
 
+  const isMasked = (v: string) => v.includes("•");
+
   try {
+    const existing = await prisma.pixel.findUnique({ where: { userId: user.id } });
+
+    const finalAccessToken = isMasked(accessToken) ? existing?.accessToken ?? "" : accessToken.trim();
+    const finalMetaAdsToken = metaAdsToken && !isMasked(metaAdsToken) ? metaAdsToken.trim() : (existing?.metaAdsToken ?? null);
+
     const pixel = await prisma.pixel.upsert({
       where: { userId: user.id },
       update: {
         pixelId: pixelId.trim(),
-        accessToken: accessToken.trim(),
+        accessToken: finalAccessToken,
         adAccountId: adAccountId?.trim() || null,
-        metaAdsToken: metaAdsToken?.trim() || null,
+        metaAdsToken: finalMetaAdsToken,
       },
       create: {
         pixelId: pixelId.trim(),
-        accessToken: accessToken.trim(),
+        accessToken: finalAccessToken,
         adAccountId: adAccountId?.trim() || null,
-        metaAdsToken: metaAdsToken?.trim() || null,
+        metaAdsToken: finalMetaAdsToken,
         userId: user.id,
       },
     });
     revalidatePath("/dashboard/settings");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return { success: true, data: pixel as any };
+    return { success: true, data: { ...pixel, accessToken: maskToken(pixel.accessToken), metaAdsToken: pixel.metaAdsToken ? maskToken(pixel.metaAdsToken) : null } as Pixel };
   } catch {
     return { success: false, error: "Erro ao salvar pixel" };
   }

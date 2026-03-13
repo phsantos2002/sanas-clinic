@@ -38,7 +38,6 @@ export async function GET(req: NextRequest) {
   const challenge = searchParams.get("hub.challenge");
 
   if (mode === "subscribe") {
-    // Find any user whose verifyToken matches
     const config = await prisma.whatsAppConfig.findFirst({
       where: { verifyToken: token ?? "" },
     });
@@ -52,6 +51,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Always return 200 to Meta — returning 500 causes infinite retry storm
   try {
     const body = (await req.json()) as MetaPayload;
 
@@ -82,118 +82,11 @@ export async function POST(req: NextRequest) {
           const phone = msg.from;
           const pushName = value.contacts?.[0]?.profile?.name ?? "";
 
-          // Find lead by phone or auto-create
-          const phoneSuffix = phone.slice(-9);
-          let lead = await prisma.lead.findFirst({
-            where: {
-              userId: whatsappConfig.userId,
-              phone: { endsWith: phoneSuffix },
-            },
-            include: {
-              messages: { orderBy: { createdAt: "asc" } },
-              stage: true,
-              user: true,
-            },
-          });
-
-          if (!lead) {
-            // Auto-create lead from incoming WhatsApp message
-            const firstStage = await prisma.stage.findFirst({
-              where: { userId: whatsappConfig.userId },
-              orderBy: { order: "asc" },
-            });
-
-            const created = await prisma.lead.create({
-              data: {
-                name: pushName || phone,
-                phone,
-                userId: whatsappConfig.userId,
-                stageId: firstStage?.id ?? null,
-                source: "whatsapp",
-                platform: "whatsapp",
-                medium: "organic",
-              },
-              include: {
-                messages: { orderBy: { createdAt: "asc" } },
-                stage: true,
-                user: true,
-              },
-            });
-
-            if (firstStage) {
-              await prisma.leadStageHistory.create({
-                data: { leadId: created.id, stageId: firstStage.id },
-              });
-            }
-
-            lead = created;
-          }
-
-          // Save incoming message
-          await prisma.message.create({
-            data: { leadId: lead.id, role: "user", content: text },
-          });
-
-          if (!lead.aiEnabled) continue;
-
-          // Load AI config
-          const aiConfig = await getAIConfigByUserId(lead.userId);
-          if (!aiConfig?.apiKey) continue; // No API key configured, skip AI
-
-          // Build conversation history
-          const history = [
-            ...lead.messages.map((m) => ({
-              role: m.role as "user" | "assistant",
-              content: m.content,
-            })),
-            { role: "user" as const, content: text },
-          ];
-
-          const { reply, newStageEventName } = await generateAIReply(
-            history,
-            lead.name || pushName,
-            {
-              provider: aiConfig.provider,
-              model: aiConfig.model,
-              apiKey: aiConfig.apiKey,
-              clinicName: aiConfig.clinicName,
-              systemPrompt: aiConfig.systemPrompt,
-            }
-          );
-
-          // Save AI reply
-          await prisma.message.create({
-            data: { leadId: lead.id, role: "assistant", content: reply },
-          });
-
-          // Send reply via WhatsApp Cloud API
-          await sendWhatsAppMessage(
-            whatsappConfig.phoneNumberId,
-            whatsappConfig.accessToken,
-            phone,
-            reply
-          );
-
-          // Update stage if AI determined a new one
-          if (newStageEventName && newStageEventName !== lead.stage?.eventName) {
-            const newStage = await prisma.stage.findFirst({
-              where: { userId: lead.userId, eventName: newStageEventName },
-            });
-
-            if (newStage) {
-              await prisma.lead.update({
-                where: { id: lead.id },
-                data: { stageId: newStage.id },
-              });
-              await prisma.leadStageHistory.create({
-                data: { leadId: lead.id, stageId: newStage.id },
-              });
-              await sendFacebookEvent({
-                userId: lead.userId,
-                phone: lead.phone,
-                eventName: newStage.eventName,
-              });
-            }
+          try {
+            await processMessage(whatsappConfig, msg.id, phone, text, pushName);
+          } catch (err) {
+            console.error(`[webhook] Erro processando msg ${msg.id}:`, err);
+            // Continue processing other messages even if one fails
           }
         }
       }
@@ -201,7 +94,162 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("[whatsapp webhook]", err);
-    return NextResponse.json({ ok: false }, { status: 500 });
+    console.error("[whatsapp webhook] Erro no parse:", err);
+    // Return 200 even on error to prevent Meta retry storm
+    return NextResponse.json({ ok: true });
+  }
+}
+
+async function processMessage(
+  whatsappConfig: { userId: string; phoneNumberId: string; accessToken: string },
+  metaMsgId: string,
+  phone: string,
+  text: string,
+  pushName: string,
+) {
+  // Deduplication: check if we already processed this Meta message ID
+  const phoneSuffix = phone.slice(-9);
+  const existingMsg = await prisma.message.findFirst({
+    where: {
+      content: text,
+      role: "user",
+      lead: {
+        userId: whatsappConfig.userId,
+        phone: { endsWith: phoneSuffix },
+      },
+      createdAt: { gte: new Date(Date.now() - 60_000) }, // within last 60s
+    },
+  });
+  if (existingMsg) return; // Already processed, skip duplicate
+
+  // Find or create lead (upsert-like to avoid race conditions)
+  let lead = await prisma.lead.findFirst({
+    where: {
+      userId: whatsappConfig.userId,
+      phone: { endsWith: phoneSuffix },
+    },
+    include: {
+      messages: { orderBy: { createdAt: "asc" } },
+      stage: true,
+    },
+  });
+
+  if (!lead) {
+    const firstStage = await prisma.stage.findFirst({
+      where: { userId: whatsappConfig.userId },
+      orderBy: { order: "asc" },
+    });
+
+    try {
+      const created = await prisma.lead.create({
+        data: {
+          name: pushName || phone,
+          phone,
+          userId: whatsappConfig.userId,
+          stageId: firstStage?.id ?? null,
+          source: "whatsapp",
+          platform: "whatsapp",
+          medium: "organic",
+        },
+        include: {
+          messages: { orderBy: { createdAt: "asc" } },
+          stage: true,
+        },
+      });
+
+      if (firstStage) {
+        await prisma.leadStageHistory.create({
+          data: { leadId: created.id, stageId: firstStage.id },
+        });
+      }
+
+      lead = created;
+    } catch {
+      // Race condition: another webhook already created this lead
+      lead = await prisma.lead.findFirst({
+        where: {
+          userId: whatsappConfig.userId,
+          phone: { endsWith: phoneSuffix },
+        },
+        include: {
+          messages: { orderBy: { createdAt: "asc" } },
+          stage: true,
+        },
+      });
+      if (!lead) throw new Error("Failed to find or create lead");
+    }
+  }
+
+  // Save incoming message
+  await prisma.message.create({
+    data: { leadId: lead.id, role: "user", content: text },
+  });
+
+  if (!lead.aiEnabled) return;
+
+  // Load AI config
+  const aiConfig = await getAIConfigByUserId(lead.userId);
+  if (!aiConfig?.apiKey) return;
+
+  // Build conversation history
+  const history = [
+    ...lead.messages.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })),
+    { role: "user" as const, content: text },
+  ];
+
+  const { reply, newStageEventName } = await generateAIReply(
+    history,
+    lead.name || pushName,
+    {
+      provider: aiConfig.provider,
+      model: aiConfig.model,
+      apiKey: aiConfig.apiKey,
+      clinicName: aiConfig.clinicName,
+      systemPrompt: aiConfig.systemPrompt,
+    }
+  );
+
+  // Save AI reply
+  await prisma.message.create({
+    data: { leadId: lead.id, role: "assistant", content: reply },
+  });
+
+  // Send reply via WhatsApp Cloud API
+  const sendResult = await sendWhatsAppMessage(
+    whatsappConfig.phoneNumberId,
+    whatsappConfig.accessToken,
+    phone,
+    reply
+  );
+
+  if (!sendResult.success) {
+    console.error(`[webhook] Falha ao enviar msg para ${phone}:`, sendResult.error);
+  }
+
+  // Update stage if AI determined a new one
+  if (newStageEventName && newStageEventName !== lead.stage?.eventName) {
+    const newStage = await prisma.stage.findFirst({
+      where: { userId: lead.userId, eventName: newStageEventName },
+    });
+
+    if (newStage) {
+      await prisma.lead.update({
+        where: { id: lead.id },
+        data: { stageId: newStage.id },
+      });
+      await prisma.leadStageHistory.create({
+        data: { leadId: lead.id, stageId: newStage.id },
+      });
+      await sendFacebookEvent({
+        userId: lead.userId,
+        phone: lead.phone,
+        eventName: newStage.eventName,
+        leadId: lead.id,
+        stageName: newStage.name,
+      });
+    }
   }
 }

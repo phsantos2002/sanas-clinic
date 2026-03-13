@@ -155,6 +155,12 @@ export async function moveLead(
     });
     if (!stage) return { success: false, error: "Estágio não encontrado" };
 
+    // Verify lead belongs to this user
+    const existing = await prisma.lead.findFirst({
+      where: { id: leadId, userId: user.id },
+    });
+    if (!existing) return { success: false, error: "Lead não encontrado" };
+
     const lead = await prisma.lead.update({
       where: { id: leadId },
       data: { stageId: newStageId },
