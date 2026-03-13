@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveAIConfig, type AIConfigData } from "@/app/actions/aiConfig";
 import { toast } from "sonner";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Upload, X, Mic } from "lucide-react";
 import { CustomSelect } from "@/components/ui/custom-select";
+import Image from "next/image";
 
 type Props = {
   config: AIConfigData;
@@ -51,6 +52,8 @@ export function AIConfigForm({ config }: Props) {
   const [openaiKey, setOpenaiKey] = useState(config.openaiKey);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   const availableModels = provider === "openai" ? OPENAI_MODELS : GEMINI_MODELS;
 
@@ -114,7 +117,7 @@ export function AIConfigForm({ config }: Props) {
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
             }`}
           >
-            <span className="text-lg">🤖</span>
+            <Image src="/icons/openai.svg" alt="OpenAI" width={20} height={20} />
             ChatGPT (OpenAI)
           </button>
           <button
@@ -126,7 +129,7 @@ export function AIConfigForm({ config }: Props) {
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
             }`}
           >
-            <span className="text-lg">✨</span>
+            <Image src="/icons/gemini.svg" alt="Gemini" width={20} height={20} />
             Gemini (Google)
           </button>
         </div>
@@ -264,10 +267,69 @@ export function AIConfigForm({ config }: Props) {
                 <ol className="text-xs text-indigo-600 space-y-1 list-decimal list-inside">
                   <li>Copie o texto acima e personalize com seus dados</li>
                   <li>Grave um áudio lendo o texto em voz natural e clara</li>
-                  <li>O áudio será usado como referência para clonar sua voz na IA</li>
+                  <li>Envie o áudio abaixo para usar como referência de voz</li>
                   <li>Fale devagar, com boa dicção e em um ambiente silencioso</li>
                 </ol>
               </div>
+            </div>
+
+            {/* Audio upload */}
+            <div className="space-y-1.5 pt-2 border-t border-slate-100">
+              <Label>Áudio de Referência</Label>
+              {audioFile || audioUrl ? (
+                <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <Mic className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-slate-700 truncate">
+                      {audioFile?.name || "Áudio carregado"}
+                    </p>
+                    {audioFile && (
+                      <p className="text-[10px] text-slate-400">
+                        {(audioFile.size / 1024 / 1024).toFixed(1)} MB
+                      </p>
+                    )}
+                    {audioUrl && (
+                      <audio controls className="mt-1.5 w-full h-8" src={audioUrl}>
+                        <track kind="captions" />
+                      </audio>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setAudioFile(null); setAudioUrl(null); }}
+                    className="p-1 rounded-lg hover:bg-slate-200 transition-colors"
+                  >
+                    <X className="h-4 w-4 text-slate-400" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 py-6 px-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all">
+                  <Upload className="h-6 w-6 text-slate-400" />
+                  <span className="text-xs text-slate-500 text-center">
+                    Arraste ou clique para enviar o áudio
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    MP3, WAV, OGG, M4A ou WEBM (máx. 25MB)
+                  </span>
+                  <input
+                    type="file"
+                    accept="audio/mp3,audio/mpeg,audio/wav,audio/ogg,audio/m4a,audio/webm,audio/x-m4a,.mp3,.wav,.ogg,.m4a,.webm"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setAudioFile(file);
+                        setAudioUrl(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                </label>
+              )}
+              <p className="text-xs text-slate-400">
+                O áudio será usado como referência para clonar sua voz nas respostas da IA.
+              </p>
             </div>
           </>
         )}
