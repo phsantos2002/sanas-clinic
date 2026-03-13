@@ -20,7 +20,7 @@ model User {
   stages          Stage[]
   aiConfig        AIConfig?
   whatsappConfig  WhatsAppConfig?
-  gaConfig        GAConfig?
+  googleBusiness  GoogleBusinessConfig?
 }
 
 model AIConfig {
@@ -138,11 +138,13 @@ model PixelEvent {
   createdAt DateTime @default(now())
 }
 
-model GAConfig {
+model GoogleBusinessConfig {
   id            String   @id @default(cuid())
   userId        String   @unique
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  measurementId String   // G-XXXXXXXXXX
+  apiKey        String   // Google Cloud API Key (Places API)
+  placeId       String   // Google Place ID do negócio
+  whatsappMsg   String?  // Mensagem personalizada do botão WhatsApp
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
