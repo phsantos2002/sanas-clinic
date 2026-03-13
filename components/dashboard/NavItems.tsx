@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Kanban, BarChart3, MessageCircle, Settings } from "lucide-react";
-import { MetaIcon, GoogleAdsIcon } from "@/components/icons/SourceIcons";
+import { LayoutDashboard, Kanban, BarChart3, MessageCircle, Settings, Store } from "lucide-react";
+import { MetaIcon } from "@/components/icons/SourceIcons";
 
 const navItems = [
   { href: "/dashboard/overview", label: "Dashboard", icon: LayoutDashboard },
@@ -11,7 +11,7 @@ const navItems = [
   { href: "/dashboard", label: "Pipeline", icon: Kanban, exact: true },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/meta", label: "Meta", iconCustom: <MetaIcon size={16} /> },
-  { href: "/dashboard/google", label: "Google", iconCustom: <GoogleAdsIcon size={16} /> },
+  { href: "/dashboard/google", label: "Google", icon: Store },
   { href: "/dashboard/settings", label: "Configurações", icon: Settings },
 ];
 

@@ -2,22 +2,19 @@ import { getPixel } from "@/app/actions/pixel";
 import { getStages } from "@/app/actions/stages";
 import { getAIConfig } from "@/app/actions/aiConfig";
 import { getWhatsAppConfig } from "@/app/actions/whatsapp";
-import { getGAConfig } from "@/app/actions/ga";
 import { listCampaignsForSelector, getSelectedCampaignId } from "@/app/actions/meta";
 import { FacebookPixelForm } from "@/components/forms/FacebookPixelForm";
 import { CampaignSelector } from "@/components/forms/CampaignSelector";
 import { WhatsAppConfigForm } from "@/components/forms/WhatsAppConfigForm";
-import { GAConfigForm } from "@/components/forms/GAConfigForm";
 import { ManageStagesSection } from "@/components/settings/ManageStagesSection";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
 
 export default async function SettingsPage() {
-  const [pixel, stages, aiConfig, whatsappConfig, gaConfig, campaigns, selectedCampaignId] = await Promise.all([
+  const [pixel, stages, aiConfig, whatsappConfig, campaigns, selectedCampaignId] = await Promise.all([
     getPixel(),
     getStages(),
     getAIConfig(),
     getWhatsAppConfig(),
-    getGAConfig(),
     listCampaignsForSelector(),
     getSelectedCampaignId(),
   ]);
@@ -55,17 +52,6 @@ export default async function SettingsPage() {
             campaigns={campaigns}
             selectedCampaignId={selectedCampaignId}
           />
-        </div>
-
-        {/* Google Analytics */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">Google Analytics</h2>
-            <p className="text-sm text-slate-400 mt-0.5">
-              Configure o Measurement ID para rastrear eventos e origem dos leads via Google Analytics.
-            </p>
-          </div>
-          <GAConfigForm config={gaConfig} />
         </div>
 
         {/* WhatsApp Business */}
