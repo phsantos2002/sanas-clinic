@@ -1,12 +1,19 @@
-import Anthropic from "@anthropic-ai/sdk";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" });
+import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export type AIResponse = {
   reply: string;
   newStageEventName: string | null;
+};
+
+export type AIProviderConfig = {
+  provider: string;   // "openai" | "gemini"
+  model: string;
+  apiKey: string;
+  clinicName?: string;
+  systemPrompt?: string | null;
 };
 
 const BASE_INSTRUCTIONS = `
@@ -40,34 +47,79 @@ Seus objetivos em ordem:
 
 const MAX_HISTORY_MESSAGES = 20;
 
+function parseResponse(fullText: string): AIResponse {
+  const stageMatch = fullText.match(/STAGE:\s*(\w+)/);
+  const newStageEventName = stageMatch ? stageMatch[1] : null;
+  const reply = fullText.replace(/\n?STAGE:\s*\w+\n?/g, "").trim();
+  return { reply, newStageEventName };
+}
+
+async function generateWithOpenAI(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  messages: ChatMessage[],
+): Promise<string> {
+  const openai = new OpenAI({ apiKey });
+
+  const response = await openai.chat.completions.create({
+    model,
+    max_tokens: 500,
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    ],
+  });
+
+  return response.choices[0]?.message?.content ?? "";
+}
+
+async function generateWithGemini(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  messages: ChatMessage[],
+): Promise<string> {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const genModel = genAI.getGenerativeModel({
+    model,
+    systemInstruction: systemPrompt,
+  });
+
+  const history = messages.slice(0, -1).map((m) => ({
+    role: m.role === "assistant" ? "model" as const : "user" as const,
+    parts: [{ text: m.content }],
+  }));
+
+  const lastMessage = messages[messages.length - 1];
+
+  const chat = genModel.startChat({ history });
+  const result = await chat.sendMessage(lastMessage.content);
+
+  return result.response.text();
+}
+
 export async function generateAIReply(
   messages: ChatMessage[],
   leadName: string,
-  config?: { clinicName?: string; systemPrompt?: string | null }
+  config: AIProviderConfig,
 ): Promise<AIResponse> {
-  const clinicName = config?.clinicName ?? "Sanas Clinic";
-  const systemPrompt = buildSystemPrompt(clinicName, config?.systemPrompt);
+  const clinicName = config.clinicName ?? "Sanas Clinic";
+  const systemPrompt = buildSystemPrompt(clinicName, config.systemPrompt);
   const systemWithName = `${systemPrompt}\n\nNome do lead atual: ${leadName}`;
 
-  // Limit history to last N messages to control token usage
   const recentMessages = messages.slice(-MAX_HISTORY_MESSAGES);
 
   try {
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 500,
-      system: systemWithName,
-      messages: recentMessages.map((m) => ({ role: m.role, content: m.content })),
-    });
+    let fullText: string;
 
-    const fullText =
-      response.content[0].type === "text" ? response.content[0].text : "";
+    if (config.provider === "gemini") {
+      fullText = await generateWithGemini(config.apiKey, config.model, systemWithName, recentMessages);
+    } else {
+      fullText = await generateWithOpenAI(config.apiKey, config.model, systemWithName, recentMessages);
+    }
 
-    const stageMatch = fullText.match(/STAGE:\s*(\w+)/);
-    const newStageEventName = stageMatch ? stageMatch[1] : null;
-    const reply = fullText.replace(/\n?STAGE:\s*\w+\n?/g, "").trim();
-
-    return { reply, newStageEventName };
+    return parseResponse(fullText);
   } catch (err) {
     console.error("[AI] Erro ao gerar resposta:", err);
     return {

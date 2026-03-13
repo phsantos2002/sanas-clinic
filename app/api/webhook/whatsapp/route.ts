@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
 
           // Load AI config
           const aiConfig = await getAIConfigByUserId(lead.userId);
+          if (!aiConfig?.apiKey) continue; // No API key configured, skip AI
 
           // Build conversation history
           const history = [
@@ -152,8 +153,11 @@ export async function POST(req: NextRequest) {
             history,
             lead.name || pushName,
             {
-              clinicName: aiConfig?.clinicName ?? undefined,
-              systemPrompt: aiConfig?.systemPrompt ?? undefined,
+              provider: aiConfig.provider,
+              model: aiConfig.model,
+              apiKey: aiConfig.apiKey,
+              clinicName: aiConfig.clinicName,
+              systemPrompt: aiConfig.systemPrompt,
             }
           );
 
