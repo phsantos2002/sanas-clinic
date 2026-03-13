@@ -46,10 +46,6 @@ export function LeadCard({ lead, onClickLead, onEditLead }: Props) {
   const config = lead.source ? sourceConfig[lead.source] : null;
 
   async function handleDelete() {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
     setDeleting(true);
     const result = await deleteLead(lead.id);
     setDeleting(false);
@@ -100,7 +96,7 @@ export function LeadCard({ lead, onClickLead, onEditLead }: Props) {
           )}
         </div>
 
-        <DropdownMenu onOpenChange={() => setConfirmDelete(false)}>
+        <DropdownMenu onOpenChange={(open) => { if (!open) setConfirmDelete(false); }}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
@@ -141,10 +137,15 @@ export function LeadCard({ lead, onClickLead, onEditLead }: Props) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
+              onSelect={(e) => {
+                if (!confirmDelete) {
+                  e.preventDefault();
+                  setConfirmDelete(true);
+                  return;
+                }
                 handleDelete();
               }}
+              onClick={(e) => e.stopPropagation()}
               className="text-red-600 focus:text-red-600 focus:bg-red-50"
               disabled={deleting}
             >

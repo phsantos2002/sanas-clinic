@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Eye, Search, MessageCircle } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Eye, Search, MessageCircle, Filter, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { LeadDetailModal } from "@/components/modals/LeadDetailModal";
-import { getStageColor } from "@/components/icons/SourceIcons";
+import { getStageColor, sourceConfig } from "@/components/icons/SourceIcons";
 
 type Message = {
   id: string;
@@ -19,6 +20,7 @@ type Lead = {
   name: string;
   phone: string;
   aiEnabled: boolean;
+  source: string | null;
   stage: { name: string } | null;
   messages: Message[];
 };
@@ -32,26 +34,66 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
   const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [stageFilter, setStageFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
 
   const selectedLead = leads.find((l) => l.id === selectedId) ?? null;
 
-  const filteredLeads = search.trim()
-    ? leads.filter(
-        (l) =>
-          l.name.toLowerCase().includes(search.toLowerCase()) ||
-          l.phone.includes(search)
-      )
-    : leads;
+  const stages = useMemo(() => {
+    const set = new Set<string>();
+    leads.forEach((l) => { if (l.stage) set.add(l.stage.name); });
+    return Array.from(set);
+  }, [leads]);
+
+  const sources = useMemo(() => {
+    const set = new Set<string>();
+    leads.forEach((l) => { if (l.source) set.add(l.source); });
+    return Array.from(set);
+  }, [leads]);
+
+  const activeFilterCount = (stageFilter !== "all" ? 1 : 0) + (sourceFilter !== "all" ? 1 : 0);
+
+  const filteredLeads = leads.filter((l) => {
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (!l.name.toLowerCase().includes(q) && !l.phone.includes(search)) return false;
+    }
+    if (stageFilter !== "all" && l.stage?.name !== stageFilter) return false;
+    if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
+    return true;
+  });
+
+  function clearFilters() {
+    setStageFilter("all");
+    setSourceFilter("all");
+  }
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] -mx-4 -my-6">
       {/* Sidebar: lead list */}
       <div className="w-80 flex-shrink-0 border-r border-slate-100 bg-white overflow-y-auto">
         <div className="px-4 py-4 border-b border-slate-100 space-y-3">
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <MessageCircle className="h-4 w-4 text-indigo-500" />
-            Conversas
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 text-indigo-500" />
+              Conversas
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-7 px-2 text-xs rounded-lg relative ${showFilters ? "text-indigo-600 bg-indigo-50" : "text-slate-400"}`}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-3.5 w-3.5 mr-1" />
+              Filtros
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
             <Input
@@ -61,12 +103,51 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
               className="pl-9 h-8 text-xs border-slate-200 rounded-xl bg-slate-50/50"
             />
           </div>
+          {showFilters && (
+            <div className="space-y-2 pt-1">
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Estágio</label>
+                <select
+                  value={stageFilter}
+                  onChange={(e) => setStageFilter(e.target.value)}
+                  className="w-full mt-1 h-7 text-xs border border-slate-200 rounded-lg bg-white px-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                >
+                  <option value="all">Todos os estágios</option>
+                  {stages.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Origem</label>
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value)}
+                  className="w-full mt-1 h-7 text-xs border border-slate-200 rounded-lg bg-white px-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                >
+                  <option value="all">Todas as origens</option>
+                  {sources.map((s) => (
+                    <option key={s} value={s}>{sourceConfig[s]?.label ?? s}</option>
+                  ))}
+                </select>
+              </div>
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={clearFilters}
+                  className="flex items-center gap-1 text-[10px] text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                  <X className="h-3 w-3" />
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+          )}
         </div>
         {filteredLeads.length === 0 && (
           <div className="px-4 py-8 text-center">
             <p className="text-sm text-slate-400">Nenhuma conversa encontrada</p>
             <p className="text-xs text-slate-300 mt-1">
-              As mensagens do WhatsApp aparecerão aqui
+              {activeFilterCount > 0 ? "Tente ajustar os filtros" : "As mensagens do WhatsApp aparecerão aqui"}
             </p>
           </div>
         )}
