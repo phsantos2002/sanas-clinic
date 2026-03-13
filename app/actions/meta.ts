@@ -315,6 +315,98 @@ export async function updateAdStatus(
   }
 }
 
+// ─── Create Ad ───
+
+export async function createAd(data: {
+  adSetId: string;
+  name: string;
+  primaryText: string;
+  headline: string;
+  linkUrl: string;
+  callToAction: string;
+  imageBase64: string; // base64 encoded image (no prefix)
+}): Promise<{ success: boolean; error?: string; adId?: string }> {
+  const config = await getMetaConfig();
+  if (!config) return { success: false, error: "Meta não configurado" };
+
+  try {
+    // Step 1: Upload image
+    const imgForm = new FormData();
+    // Convert base64 to Blob
+    const byteChars = atob(data.imageBase64);
+    const byteArray = new Uint8Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([byteArray], { type: "image/jpeg" });
+    imgForm.append("filename", blob, "creative.jpg");
+    imgForm.append("access_token", config.metaAdsToken);
+
+    const imgRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/adimages`, {
+      method: "POST",
+      body: imgForm,
+    });
+    const imgJson = await imgRes.json();
+    if (imgJson.error) return { success: false, error: `Upload: ${imgJson.error.message}` };
+
+    // Get image hash from response
+    const images = imgJson.images;
+    const imageHash = images ? Object.values(images)[0] as { hash: string } : null;
+    if (!imageHash?.hash) return { success: false, error: "Falha ao obter hash da imagem" };
+
+    // Step 2: Get page ID from ad account
+    const pageJson = await graphGet(`${config.adAccountId}/promote_pages`, config.metaAdsToken, {
+      fields: "id,name",
+      limit: "1",
+    });
+    const pageId = pageJson?.data?.[0]?.id;
+    if (!pageId) return { success: false, error: "Nenhuma página do Facebook vinculada à conta de anúncios. Vincule uma página primeiro." };
+
+    // Step 3: Create ad creative
+    const creativeRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/adcreatives?access_token=${config.metaAdsToken}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: data.name,
+        object_story_spec: {
+          page_id: pageId,
+          link_data: {
+            image_hash: imageHash.hash,
+            link: data.linkUrl,
+            message: data.primaryText,
+            name: data.headline,
+            call_to_action: {
+              type: data.callToAction,
+              value: { link: data.linkUrl },
+            },
+          },
+        },
+      }),
+    });
+    const creativeJson = await creativeRes.json();
+    if (creativeJson.error) return { success: false, error: `Creative: ${creativeJson.error.message}` };
+
+    const creativeId = creativeJson.id;
+    if (!creativeId) return { success: false, error: "Falha ao criar creative" };
+
+    // Step 4: Create ad
+    const adRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/ads?access_token=${config.metaAdsToken}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: data.name,
+        adset_id: data.adSetId,
+        creative: { creative_id: creativeId },
+        status: "PAUSED",
+      }),
+    });
+    const adJson = await adRes.json();
+    if (adJson.error) return { success: false, error: `Ad: ${adJson.error.message}` };
+
+    return { success: true, adId: adJson.id };
+  } catch (e) {
+    return { success: false, error: String(e) };
+  }
+}
+
 // ─── Pixel Events ───
 
 export async function getPixelEvents(): Promise<{
