@@ -2,22 +2,19 @@ import { getPixel } from "@/app/actions/pixel";
 import { getStages } from "@/app/actions/stages";
 import { getAIConfig } from "@/app/actions/aiConfig";
 import { getWhatsAppConfig } from "@/app/actions/whatsapp";
-import { getGoogleBusinessConfig } from "@/app/actions/googleBusiness";
 import { listCampaignsForSelector, getSelectedCampaignId } from "@/app/actions/meta";
 import { FacebookPixelForm } from "@/components/forms/FacebookPixelForm";
 import { CampaignSelector } from "@/components/forms/CampaignSelector";
 import { WhatsAppConfigForm } from "@/components/forms/WhatsAppConfigForm";
-import { GoogleBusinessForm } from "@/components/forms/GoogleBusinessForm";
 import { ManageStagesSection } from "@/components/settings/ManageStagesSection";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
 
 export default async function SettingsPage() {
-  const [pixel, stages, aiConfig, whatsappConfig, gbConfig, campaigns, selectedCampaignId] = await Promise.all([
+  const [pixel, stages, aiConfig, whatsappConfig, campaigns, selectedCampaignId] = await Promise.all([
     getPixel(),
     getStages(),
     getAIConfig(),
     getWhatsAppConfig(),
-    getGoogleBusinessConfig(),
     listCampaignsForSelector(),
     getSelectedCampaignId(),
   ]);
@@ -55,17 +52,6 @@ export default async function SettingsPage() {
             campaigns={campaigns}
             selectedCampaignId={selectedCampaignId}
           />
-        </div>
-
-        {/* Google Meu Negócio */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">Google Meu Negócio</h2>
-            <p className="text-sm text-slate-400 mt-0.5">
-              Conecte seu perfil do Google para exibir avaliações, fotos e informações do negócio.
-            </p>
-          </div>
-          <GoogleBusinessForm config={gbConfig} />
         </div>
 
         {/* WhatsApp Business */}
