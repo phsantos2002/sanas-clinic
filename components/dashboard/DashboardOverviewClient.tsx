@@ -97,12 +97,12 @@ export function DashboardOverviewClient({ initialStats }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-400 mt-1">Início → Dashboard</p>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">Início → Dashboard</p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
@@ -113,15 +113,16 @@ export function DashboardOverviewClient({ initialStats }: Props) {
             options={SOURCE_OPTIONS}
             value={sourceFilter}
             onChange={setSourceFilter}
-            className="w-[180px]"
+            className="w-[160px] sm:w-[180px]"
           />
 
           <Button
             onClick={handleExportReport}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white h-9 text-sm gap-1.5 rounded-xl"
+            className="bg-emerald-500 hover:bg-emerald-600 text-white h-9 text-xs sm:text-sm gap-1.5 rounded-xl"
           >
             <Download className="h-3.5 w-3.5" />
-            Baixar Relatório
+            <span className="hidden sm:inline">Baixar Relatório</span>
+            <span className="sm:hidden">Baixar</span>
           </Button>
         </div>
       </div>
@@ -187,7 +188,7 @@ export function DashboardOverviewClient({ initialStats }: Props) {
             <CardTitle className="text-base font-bold text-slate-900">Origem das Conversas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
               {sourceCards.map((s) => (
                 <button
                   key={s.key}

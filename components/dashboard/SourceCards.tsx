@@ -36,7 +36,7 @@ export function SourceCards({ stats, activeFilter, onFilter }: Props) {
             key={card.key ?? "total"}
             onClick={() => onFilter(isActive ? null : card.key)}
             className={`
-              relative flex items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200
+              relative flex items-center gap-2 sm:gap-3 p-2.5 sm:p-4 rounded-2xl border-2 transition-all duration-200
               ${isActive
                 ? `${config?.bg ?? "bg-indigo-50"} ${config?.border ?? "border-indigo-200"} shadow-md scale-[1.02]`
                 : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm"
@@ -55,7 +55,7 @@ export function SourceCards({ stats, activeFilter, onFilter }: Props) {
             </div>
 
             <div className="text-left min-w-0">
-              <p className="text-2xl font-bold text-slate-900 leading-none">{count}</p>
+              <p className="text-lg sm:text-2xl font-bold text-slate-900 leading-none">{count}</p>
               <p className="text-[11px] text-slate-500 mt-0.5 truncate">
                 {config?.label ?? "Total"}
               </p>

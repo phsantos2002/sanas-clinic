@@ -57,6 +57,15 @@ button, a, input, select, textarea {
   background: #94a3b8;
 }
 
+/* Hide scrollbar for mobile nav */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Selection */
 ::selection {
   background: #c7d2fe;

@@ -22,8 +22,8 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Configurações</h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <h1 className="text-lg sm:text-xl font-bold text-slate-900">Configurações</h1>
+        <p className="text-xs sm:text-sm text-slate-400 mt-1">
           Gerencie integrações, IA e pipeline
         </p>
       </div>

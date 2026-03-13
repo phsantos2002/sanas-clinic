@@ -163,8 +163,8 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Analytics</h1>
-        <p className="text-sm text-slate-400 mt-1">Funil completo: Anúncios → WhatsApp → Clientes</p>
+        <h1 className="text-lg sm:text-xl font-bold text-slate-900">Analytics</h1>
+        <p className="text-xs sm:text-sm text-slate-400 mt-1">Funil completo: Anúncios → WhatsApp → Clientes</p>
       </div>
 
       {/* KPI Cards */}

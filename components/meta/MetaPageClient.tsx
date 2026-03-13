@@ -537,7 +537,7 @@ function AdRow({ ad }: { ad: MetaAd }) {
 
       {/* Mini KPIs for ad */}
       {ad.impressions > 0 && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
             { label: "Gasto", value: fmtBrl(ad.spend) },
             { label: "CTR", value: `${fmt(ad.ctr)}%` },
@@ -1008,7 +1008,7 @@ export function MetaPageClient({
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2"><MetaIcon size={24} /> Meta Ads</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2"><MetaIcon size={20} /> Meta Ads</h1>
           <p className="text-sm text-slate-400 mt-1">Gerencie campanhas, bid cap, criativos e eventos</p>
         </div>
         <Card className="border-slate-100 rounded-2xl">
@@ -1029,7 +1029,7 @@ export function MetaPageClient({
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2"><MetaIcon size={24} /> Meta Ads</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2"><MetaIcon size={20} /> Meta Ads</h1>
           <p className="text-sm text-slate-400 mt-1">Gerencie campanhas, bid cap, criativos e eventos</p>
         </div>
         <Card className="border-amber-100 bg-amber-50/30 rounded-2xl">
@@ -1057,7 +1057,7 @@ export function MetaPageClient({
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2"><MetaIcon size={24} /> Meta Ads</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2"><MetaIcon size={20} /> Meta Ads</h1>
           <p className="text-sm text-slate-400 mt-1">Gerencie campanhas, bid cap, criativos e eventos</p>
         </div>
         <Card className="border-red-100 bg-red-50/30 rounded-2xl">
@@ -1108,7 +1108,7 @@ export function MetaPageClient({
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2"><MetaIcon size={24} /> Meta Ads</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2"><MetaIcon size={20} /> Meta Ads</h1>
           <p className="text-sm text-slate-400 mt-1">Campanha: <span className="font-medium text-slate-700">{selectedCampaign.name}</span></p>
         </div>
         <div className="flex items-center gap-2">

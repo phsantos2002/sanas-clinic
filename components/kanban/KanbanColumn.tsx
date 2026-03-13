@@ -17,7 +17,7 @@ export function KanbanColumn({ column, onClickLead, onEditLead }: Props) {
   const color = getStageColor(column.name);
 
   return (
-    <div className="flex flex-col w-72 flex-shrink-0">
+    <div className="flex flex-col w-64 sm:w-72 flex-shrink-0">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className={`w-2.5 h-2.5 rounded-full ${color.bg}`} />

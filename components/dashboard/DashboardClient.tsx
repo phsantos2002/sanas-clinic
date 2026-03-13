@@ -150,9 +150,9 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
       <SourceCards stats={stats} activeFilter={sourceFilter} onFilter={setSourceFilter} />
 
       {/* Filter bar */}
-      <div className="flex items-center gap-3 flex-wrap bg-white border border-slate-100 rounded-2xl px-5 py-3 shadow-sm">
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap bg-white border border-slate-100 rounded-2xl px-3 py-2.5 sm:px-5 sm:py-3 shadow-sm">
         {/* Search */}
-        <div className="relative flex-1 min-w-[220px] max-w-md">
+        <div className="relative w-full sm:flex-1 sm:min-w-[220px] sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
           <Input
             placeholder="Buscar nome, telefone ou email..."
@@ -174,7 +174,7 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
           ]}
           value={sourceFilter ?? ""}
           onChange={(v) => setSourceFilter(v || null)}
-          className="w-[180px]"
+          className="w-full sm:w-[180px]"
         />
 
         {/* Stage dropdown */}
@@ -185,7 +185,7 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
           ]}
           value={stageFilter ?? ""}
           onChange={(v) => setStageFilter(v || null)}
-          className="w-[180px]"
+          className="w-full sm:w-[180px]"
         />
 
         {/* Clear filters */}
@@ -200,7 +200,7 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
         )}
 
         {/* Separator */}
-        <div className="h-6 w-px bg-slate-200 mx-1" />
+        <div className="hidden sm:block h-6 w-px bg-slate-200 mx-1" />
 
         {/* Saved filters */}
         <div className="relative">

@@ -11,11 +11,38 @@ const navItems = [
   { href: "/dashboard", label: "Pipeline", icon: Kanban, exact: true },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/meta", label: "Meta", iconCustom: <MetaIcon size={16} /> },
-  { href: "/dashboard/settings", label: "Configurações", icon: Settings },
+  { href: "/dashboard/settings", label: "Config", icon: Settings },
 ];
 
-export function NavItems() {
+export function NavItems({ mobile }: { mobile?: boolean }) {
   const pathname = usePathname();
+
+  if (mobile) {
+    return (
+      <nav className="flex items-center gap-0.5 px-3 py-1.5 w-max min-w-full">
+        {navItems.map((item) => {
+          const isActive = item.exact
+            ? pathname === item.href
+            : pathname.startsWith(item.href);
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                isActive
+                  ? "bg-indigo-50 text-indigo-700"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              {item.iconCustom ?? (item.icon && <item.icon className="h-3.5 w-3.5" />)}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  }
 
   return (
     <nav className="flex items-center gap-1 bg-slate-50 rounded-xl p-1">

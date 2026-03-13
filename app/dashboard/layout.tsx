@@ -8,7 +8,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       <Header />
-      <main className="max-w-screen-2xl mx-auto px-6 py-8">{children}</main>
+      <main className="max-w-screen-2xl mx-auto px-4 py-4 md:px-6 md:py-8">{children}</main>
     </div>
   );
 }
