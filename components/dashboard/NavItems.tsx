@@ -21,9 +21,7 @@ export function NavItems({ mobile }: { mobile?: boolean }) {
     return (
       <nav className="flex items-center gap-0.5 px-3 py-1.5 w-max min-w-full">
         {navItems.map((item) => {
-          const isActive = item.exact
-            ? pathname === item.href
-            : pathname.startsWith(item.href);
+          const isActive = pathname.startsWith(item.href);
 
           return (
             <Link
@@ -47,9 +45,7 @@ export function NavItems({ mobile }: { mobile?: boolean }) {
   return (
     <nav className="flex items-center gap-1 bg-slate-50 rounded-xl p-1">
       {navItems.map((item) => {
-        const isActive = item.exact
-          ? pathname === item.href
-          : pathname.startsWith(item.href);
+        const isActive = pathname.startsWith(item.href);
 
         return (
           <Link
