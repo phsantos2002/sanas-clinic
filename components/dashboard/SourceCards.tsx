@@ -12,7 +12,6 @@ type Props = {
 const cards = [
   { key: null, label: "Total" },
   { key: "meta" },
-  { key: "google" },
   { key: "whatsapp" },
   { key: "manual" },
   { key: "unknown" },
@@ -25,7 +24,7 @@ function getCount(stats: LeadSourceStats, key: string | null): number {
 
 export function SourceCards({ stats, activeFilter, onFilter }: Props) {
   return (
-    <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+    <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
       {cards.map((card) => {
         const count = getCount(stats, card.key);
         const isActive = activeFilter === card.key;

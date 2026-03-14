@@ -21,7 +21,6 @@ function formatDate(date: Date) {
 const SOURCE_OPTIONS = [
   { value: "all", label: "Todas as Origens" },
   { value: "meta", label: "Meta Ads" },
-  { value: "google", label: "Google Ads" },
   { value: "other", label: "Outras Origens" },
   { value: "unknown", label: "Não Rastreada" },
 ];
@@ -47,12 +46,11 @@ export function DashboardOverviewClient({ initialStats }: Props) {
   }
 
   function handleExportReport() {
-    const headers = ["Data", "Meta Ads", "Google Ads", "Outras Origens", "Não Rastreada", "Total"];
+    const headers = ["Data", "Meta Ads", "Outras Origens", "Não Rastreada", "Total"];
     const rows = stats.daily.map((d) => [
       d.date,
       d.meta.toString(),
-      d.google.toString(),
-      d.other.toString(),
+      (d.google + d.other).toString(),
       d.unknown.toString(),
       (d.meta + d.google + d.other + d.unknown).toString(),
     ]);
@@ -60,8 +58,7 @@ export function DashboardOverviewClient({ initialStats }: Props) {
     rows.push([
       "TOTAL",
       stats.bySource.meta.toString(),
-      stats.bySource.google.toString(),
-      (stats.bySource.whatsapp + stats.bySource.manual).toString(),
+      (stats.bySource.google + stats.bySource.whatsapp + stats.bySource.manual).toString(),
       stats.bySource.unknown.toString(),
       stats.total.toString(),
     ]);
@@ -81,7 +78,7 @@ export function DashboardOverviewClient({ initialStats }: Props) {
     return {
       ...d,
       meta: sourceFilter === "meta" ? d.meta : 0,
-      google: sourceFilter === "google" ? d.google : 0,
+      google: sourceFilter === "other" ? d.google : 0,
       other: sourceFilter === "other" ? d.other : 0,
       unknown: sourceFilter === "unknown" ? d.unknown : 0,
     };
@@ -89,8 +86,7 @@ export function DashboardOverviewClient({ initialStats }: Props) {
 
   const sourceCards = [
     { key: "meta", label: "Meta Ads", count: stats.bySource.meta, color: "bg-blue-500" },
-    { key: "google", label: "Google Ads", count: stats.bySource.google, color: "bg-yellow-500" },
-    { key: "other", label: "Outras Origens", count: stats.bySource.whatsapp + stats.bySource.manual, color: "bg-slate-400" },
+    { key: "other", label: "Outras Origens", count: stats.bySource.google + stats.bySource.whatsapp + stats.bySource.manual, color: "bg-slate-400" },
     { key: "unknown", label: "Não Rastreada", count: stats.bySource.unknown, color: "bg-orange-400" },
   ];
 
@@ -190,7 +186,7 @@ export function DashboardOverviewClient({ initialStats }: Props) {
             <CardTitle className="text-base font-bold text-slate-900">Origem das Conversas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
               {sourceCards.map((s) => (
                 <button
                   key={s.key}

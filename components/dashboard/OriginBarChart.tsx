@@ -56,8 +56,7 @@ export function OriginBarChart({ data, startDate, endDate }: Props) {
   const chartData = filledData.map((d) => ({
     date: formatDateLabel(d.date),
     "Meta Ads": d.meta,
-    "Google Ads": d.google,
-    "Outras Origens": d.other,
+    "Outras Origens": d.google + d.other,
     "Não rastreada": d.unknown,
   }));
 
@@ -95,7 +94,6 @@ export function OriginBarChart({ data, startDate, endDate }: Props) {
           wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
         />
         <Bar dataKey="Meta Ads" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-        <Bar dataKey="Google Ads" stackId="a" fill="#eab308" />
         <Bar dataKey="Outras Origens" stackId="a" fill="#a1a1aa" />
         <Bar dataKey="Não rastreada" stackId="a" fill="#fb923c" radius={[4, 4, 0, 0]} />
       </BarChart>

@@ -97,7 +97,7 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
     if (sourceFilter) {
       if (sourceFilter === "unknown") {
         result = result.filter(
-          (l) => !l.source || !["meta", "google", "whatsapp", "manual"].includes(l.source)
+          (l) => !l.source || !["meta", "whatsapp", "manual"].includes(l.source)
         );
       } else {
         result = result.filter((l) => l.source === sourceFilter);
@@ -167,7 +167,6 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
           options={[
             { value: "", label: "Todas as Origens" },
             { value: "meta", label: "Meta Ads" },
-            { value: "google", label: "Google Ads" },
             { value: "whatsapp", label: "WhatsApp" },
             { value: "manual", label: "Manual" },
             { value: "unknown", label: "Não Rastreada" },
