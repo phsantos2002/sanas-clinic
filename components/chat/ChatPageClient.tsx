@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Eye, Search, MessageCircle, Filter, X, ArrowLeft, Bot, BotOff, Clock } from "lucide-react";
+import { Eye, Search, MessageCircle, Filter, X, ArrowLeft, Bot, BotOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ChatPanel } from "@/components/chat/ChatPanel";
@@ -30,11 +30,10 @@ type Props = {
   initialSelectedId: string | null;
 };
 
-const ALL_SOURCES = ["meta", "google", "whatsapp", "manual", "unknown"] as const;
+const ALL_SOURCES = ["meta", "whatsapp", "manual", "unknown"] as const;
 const ALL_STAGES = ["Novo Lead", "Atendido", "Qualificado", "Agendado", "Cliente"] as const;
 
 type AiFilter = "all" | "on" | "off";
-type MessageFilter = "all" | "with" | "without";
 
 export function ChatPageClient({ leads, initialSelectedId }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
@@ -43,7 +42,6 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [aiFilter, setAiFilter] = useState<AiFilter>("all");
-  const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
   const [showFilters, setShowFilters] = useState(false);
 
   const selectedLead = leads.find((l) => l.id === selectedId) ?? null;
@@ -69,8 +67,7 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
   const activeFilterCount =
     (stageFilter !== "all" ? 1 : 0) +
     (sourceFilter !== "all" ? 1 : 0) +
-    (aiFilter !== "all" ? 1 : 0) +
-    (messageFilter !== "all" ? 1 : 0);
+    (aiFilter !== "all" ? 1 : 0);
 
   const filteredLeads = leads.filter((l) => {
     if (search.trim()) {
@@ -85,8 +82,6 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
     }
     if (aiFilter === "on" && !l.aiEnabled) return false;
     if (aiFilter === "off" && l.aiEnabled) return false;
-    if (messageFilter === "with" && l.messages.length === 0) return false;
-    if (messageFilter === "without" && l.messages.length > 0) return false;
     return true;
   });
 
@@ -94,7 +89,6 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
     setStageFilter("all");
     setSourceFilter("all");
     setAiFilter("all");
-    setMessageFilter("all");
   }
 
   function handleSelectLead(id: string) {
@@ -232,55 +226,30 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
                 </div>
               </div>
 
-              {/* AI + Messages */}
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">IA</label>
-                  <div className="flex gap-1 mt-1.5">
-                    {([
-                      { value: "all" as AiFilter, label: "Todas", icon: null },
-                      { value: "on" as AiFilter, label: "Ativa", icon: Bot },
-                      { value: "off" as AiFilter, label: "Off", icon: BotOff },
-                    ]).map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setAiFilter(opt.value === aiFilter ? "all" : opt.value)}
-                        className={`text-[11px] font-medium px-2 py-1 rounded-lg transition-all flex items-center gap-1 ${
-                          aiFilter === opt.value
-                            ? opt.value === "on" ? "bg-emerald-50 text-emerald-700 shadow-sm" :
-                              opt.value === "off" ? "bg-amber-50 text-amber-700 shadow-sm" :
-                              "bg-slate-900 text-white shadow-sm"
-                            : "bg-slate-50 text-slate-500 hover:bg-slate-100"
-                        }`}
-                      >
-                        {opt.icon && <opt.icon className="h-3 w-3" />}
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Mensagens</label>
-                  <div className="flex gap-1 mt-1.5">
-                    {([
-                      { value: "all" as MessageFilter, label: "Todas", icon: null },
-                      { value: "with" as MessageFilter, label: "Com", icon: MessageCircle },
-                      { value: "without" as MessageFilter, label: "Sem", icon: Clock },
-                    ]).map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setMessageFilter(opt.value === messageFilter ? "all" : opt.value)}
-                        className={`text-[11px] font-medium px-2 py-1 rounded-lg transition-all flex items-center gap-1 ${
-                          messageFilter === opt.value
-                            ? "bg-slate-900 text-white shadow-sm"
-                            : "bg-slate-50 text-slate-500 hover:bg-slate-100"
-                        }`}
-                      >
-                        {opt.icon && <opt.icon className="h-3 w-3" />}
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+              {/* AI */}
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">IA</label>
+                <div className="flex gap-1 mt-1.5">
+                  {([
+                    { value: "all" as AiFilter, label: "Todas", icon: null },
+                    { value: "on" as AiFilter, label: "Ativa", icon: Bot },
+                    { value: "off" as AiFilter, label: "Off", icon: BotOff },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setAiFilter(opt.value === aiFilter ? "all" : opt.value)}
+                      className={`text-[11px] font-medium px-2 py-1 rounded-lg transition-all flex items-center gap-1 ${
+                        aiFilter === opt.value
+                          ? opt.value === "on" ? "bg-emerald-50 text-emerald-700 shadow-sm" :
+                            opt.value === "off" ? "bg-amber-50 text-amber-700 shadow-sm" :
+                            "bg-slate-900 text-white shadow-sm"
+                          : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                      }`}
+                    >
+                      {opt.icon && <opt.icon className="h-3 w-3" />}
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
