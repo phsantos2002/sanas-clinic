@@ -22,6 +22,8 @@ model User {
   aiConfig        AIConfig?
   whatsappConfig  WhatsAppConfig?
   googleBusiness  GoogleBusinessConfig?
+  alerts          Alert[]
+  campaignActions CampaignAction[]
 }
 
 model AIConfig {
@@ -48,6 +50,11 @@ model Pixel {
   adAccountId        String?
   metaAdsToken       String?
   selectedCampaignId String?  // Meta campaign ID chosen in settings
+  campaignObjective      String?   // MESSAGES | CONVERSIONS | LEADS | ENGAGEMENT | TRAFFIC
+  conversionDestination  String?   // WHATSAPP | WEBSITE | INSTAGRAM | FORM | STORE
+  accountPhase           String?   // LEARNING | STABILIZING | SCALING | MATURE
+  monthlyBudget          Float?    // Verba mensal declarada em BRL
+  bidStrategy            String?   // LOWEST_COST | COST_CAP | BID_CAP | ROAS_MIN
   userId             String   @unique
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt          DateTime @default(now())
@@ -79,6 +86,9 @@ model Lead {
   adAccountName  String?            // ad account name
   platform       String?            // "facebook", "instagram", "google", "whatsapp"
   referrer       String?            // original referrer URL
+  metaAdId       String?            // ad_id numérico da Meta Lead Ads API
+  metaAdSetId    String?            // adset_id numérico da Meta
+  metaCampaignId String?            // campaign_id numérico da Meta
   pixelEvents    PixelEvent[]
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
@@ -153,5 +163,37 @@ model GoogleBusinessConfig {
   whatsappMsg   String?  // Mensagem personalizada do botão WhatsApp
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  type        String   // HIGH_FREQUENCY | LOW_CTR | BUDGET_EXHAUSTED | PAYMENT_ERROR | HIGH_CPM | LEARNING_LIMITED | CREATIVE_FATIGUE
+  severity    String   // WARNING | CRITICAL
+  message     String
+  suggestion  String
+  campaignId  String?
+  adSetId     String?
+  adId        String?
+  resolved    Boolean  @default(false)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, resolved])
+}
+
+model CampaignAction {
+  id          String   @id @default(cuid())
+  type        String   // PAUSE | ACTIVATE | BUDGET_CHANGE | BID_CHANGE | STRATEGY_CHANGE
+  entityType  String   // CAMPAIGN | ADSET | AD
+  entityId    String
+  entityName  String
+  before      String?
+  after       String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 

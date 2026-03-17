@@ -84,6 +84,33 @@ export async function saveSelectedCampaign(
   }
 }
 
+export async function saveCampaignObjective(data: {
+  campaignObjective: string;
+  conversionDestination: string;
+  monthlyBudget: number | null;
+  bidStrategy?: string | null;
+}): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Não autenticado" };
+
+  try {
+    await prisma.pixel.update({
+      where: { userId: user.id },
+      data: {
+        campaignObjective: data.campaignObjective || null,
+        conversionDestination: data.conversionDestination || null,
+        monthlyBudget: data.monthlyBudget,
+        ...(data.bidStrategy !== undefined ? { bidStrategy: data.bidStrategy || null } : {}),
+      },
+    });
+    revalidatePath("/dashboard/meta");
+    revalidatePath("/dashboard/settings");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao salvar objetivo da campanha" };
+  }
+}
+
 export async function testPixelConnection(): Promise<ActionResult> {
   try {
     const user = await getCurrentUser();

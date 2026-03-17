@@ -19,6 +19,19 @@ type MetaEntry = {
         timestamp: string;
         type: string;
         text?: { body: string };
+        referral?: {
+          source_url?: string;
+          source_type?: string;
+          source_id?: string;
+          headline?: string;
+          body?: string;
+          ad_id?: string;
+          ads_context_metadata?: {
+            ad_title?: string;
+            adset_id?: string;
+            campaign_id?: string;
+          };
+        };
       }[];
     };
     field: string;
@@ -82,8 +95,11 @@ export async function POST(req: NextRequest) {
           const phone = msg.from;
           const pushName = value.contacts?.[0]?.profile?.name ?? "";
 
+          // Extract Meta Ads referral data (Click-to-WhatsApp ads)
+          const referral = msg.referral ?? undefined;
+
           try {
-            await processMessage(whatsappConfig, msg.id, phone, text, pushName);
+            await processMessage(whatsappConfig, msg.id, phone, text, pushName, referral);
           } catch (err) {
             console.error(`[webhook] Erro processando msg ${msg.id}:`, err);
             // Continue processing other messages even if one fails
@@ -100,12 +116,27 @@ export async function POST(req: NextRequest) {
   }
 }
 
+type ReferralData = {
+  source_url?: string;
+  source_type?: string;
+  source_id?: string;
+  headline?: string;
+  body?: string;
+  ad_id?: string;
+  ads_context_metadata?: {
+    ad_title?: string;
+    adset_id?: string;
+    campaign_id?: string;
+  };
+};
+
 async function processMessage(
   whatsappConfig: { userId: string; phoneNumberId: string; accessToken: string },
   metaMsgId: string,
   phone: string,
   text: string,
   pushName: string,
+  referral?: ReferralData,
 ) {
   // Deduplication: check if we already processed this Meta message ID
   const phoneSuffix = phone.slice(-9);
@@ -141,15 +172,21 @@ async function processMessage(
     });
 
     try {
+      const isFromAd = !!referral?.ad_id;
       const created = await prisma.lead.create({
         data: {
           name: pushName || phone,
           phone,
           userId: whatsappConfig.userId,
           stageId: firstStage?.id ?? null,
-          source: "whatsapp",
+          source: isFromAd ? "meta" : "whatsapp",
           platform: "whatsapp",
-          medium: "organic",
+          medium: isFromAd ? "cpc" : "organic",
+          metaAdId: referral?.ad_id ?? null,
+          metaAdSetId: referral?.ads_context_metadata?.adset_id ?? null,
+          metaCampaignId: referral?.ads_context_metadata?.campaign_id ?? null,
+          adName: referral?.ads_context_metadata?.ad_title ?? null,
+          campaign: referral?.headline ?? null,
         },
         include: {
           messages: { orderBy: { createdAt: "asc" } },
@@ -178,6 +215,22 @@ async function processMessage(
       });
       if (!lead) throw new Error("Failed to find or create lead");
     }
+  }
+
+  // If lead came from a Meta ad and doesn't have ad IDs yet, update them
+  if (referral?.ad_id && !lead.metaAdId) {
+    await prisma.lead.update({
+      where: { id: lead.id },
+      data: {
+        source: "meta",
+        medium: "cpc",
+        metaAdId: referral.ad_id,
+        metaAdSetId: referral.ads_context_metadata?.adset_id ?? null,
+        metaCampaignId: referral.ads_context_metadata?.campaign_id ?? null,
+        adName: referral.ads_context_metadata?.ad_title ?? lead.adName,
+        campaign: referral.headline ?? lead.campaign,
+      },
+    });
   }
 
   // Save incoming message

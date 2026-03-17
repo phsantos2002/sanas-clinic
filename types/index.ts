@@ -50,6 +50,11 @@ export type Pixel = {
   adAccountId: string | null;
   metaAdsToken: string | null;
   selectedCampaignId: string | null;
+  campaignObjective: string | null;
+  conversionDestination: string | null;
+  accountPhase: string | null;
+  monthlyBudget: number | null;
+  bidStrategy: string | null;
   userId: string;
   createdAt: Date;
   updatedAt: Date;

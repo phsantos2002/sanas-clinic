@@ -9,6 +9,7 @@ import {
   type MetaAdsInsights,
   type MetaCampaign,
 } from "@/services/metaAds";
+import { getMetaAds, getMetaAdSets, getSelectedCampaignData } from "./meta";
 
 export type PipelineAnalytics = {
   totalLeads: number;
@@ -141,4 +142,83 @@ export async function getAnalytics(): Promise<FullAnalytics | null> {
     selectedCampaignId,
     selectedCampaignName,
   };
+}
+
+// ─── Ad Creative Report ───
+
+export type CreativeHealthStatus = "performing" | "saturating" | "declining" | "paused" | "new";
+
+export type AdCreativeRow = {
+  id: string;
+  name: string;
+  status: string;
+  adSetName: string;
+  thumbnailUrl: string | null;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  reach: number;
+  ctr: number;
+  cpm: number;
+  cpc: number;
+  frequency: number;
+  health: CreativeHealthStatus;
+};
+
+function classifyCreativeHealth(ad: {
+  status: string;
+  impressions: number;
+  frequency: number;
+  ctr: number;
+}): CreativeHealthStatus {
+  if (ad.status !== "ACTIVE") return "paused";
+  if (ad.impressions === 0) return "new";
+  if (ad.frequency >= 4) return "declining";
+  if (ad.frequency >= 2.5 && ad.ctr < 0.8) return "saturating";
+  if (ad.ctr < 0.3 && ad.impressions > 1000) return "declining";
+  return "performing";
+}
+
+export async function getAdCreativeReport(): Promise<AdCreativeRow[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  const selectedData = await getSelectedCampaignData();
+  if (!selectedData.campaign || selectedData.adSets.length === 0) return [];
+
+  const rows: AdCreativeRow[] = [];
+
+  for (const adSet of selectedData.adSets) {
+    const ads = await getMetaAds(adSet.id);
+    for (const ad of ads) {
+      rows.push({
+        id: ad.id,
+        name: ad.name,
+        status: ad.status,
+        adSetName: adSet.name,
+        thumbnailUrl: ad.thumbnailUrl,
+        spend: ad.spend,
+        impressions: ad.impressions,
+        clicks: ad.clicks,
+        reach: ad.reach,
+        ctr: ad.ctr,
+        cpm: ad.cpm,
+        cpc: ad.cpc,
+        frequency: ad.frequency,
+        health: classifyCreativeHealth(ad),
+      });
+    }
+  }
+
+  // Sort: declining first, then saturating, performing, new, paused
+  const healthOrder: Record<CreativeHealthStatus, number> = {
+    declining: 0,
+    saturating: 1,
+    performing: 2,
+    new: 3,
+    paused: 4,
+  };
+  rows.sort((a, b) => healthOrder[a.health] - healthOrder[b.health]);
+
+  return rows;
 }

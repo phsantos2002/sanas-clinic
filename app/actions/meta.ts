@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
+import { recordCampaignAction } from "./campaignActions";
 
 const GRAPH_URL = "https://graph.facebook.com/v18.0";
 
@@ -243,6 +244,16 @@ export async function updateCampaignStatus(
     });
     const json = await res.json();
     if (json.error) return { success: false, error: json.error.message };
+
+    await recordCampaignAction({
+      type: status === "ACTIVE" ? "ACTIVATE" : "PAUSE",
+      entityType: "CAMPAIGN",
+      entityId: campaignId,
+      entityName: campaignId,
+      before: status === "ACTIVE" ? "PAUSED" : "ACTIVE",
+      after: status,
+    });
+
     return { success: true };
   } catch (e) {
     return { success: false, error: String(e) };
@@ -264,6 +275,15 @@ export async function updateCampaignBudget(
     });
     const json = await res.json();
     if (json.error) return { success: false, error: json.error.message };
+
+    await recordCampaignAction({
+      type: "BUDGET_CHANGE",
+      entityType: "CAMPAIGN",
+      entityId: campaignId,
+      entityName: campaignId,
+      after: `R$ ${dailyBudget.toFixed(2)}/dia`,
+    });
+
     return { success: true };
   } catch (e) {
     return { success: false, error: String(e) };
@@ -288,6 +308,15 @@ export async function updateAdSetBidCap(
     });
     const json = await res.json();
     if (json.error) return { success: false, error: json.error.message };
+
+    await recordCampaignAction({
+      type: "BID_CHANGE",
+      entityType: "ADSET",
+      entityId: adSetId,
+      entityName: adSetId,
+      after: `R$ ${bidAmount.toFixed(2)} (Bid Cap)`,
+    });
+
     return { success: true };
   } catch (e) {
     return { success: false, error: String(e) };
@@ -309,6 +338,16 @@ export async function updateAdStatus(
     });
     const json = await res.json();
     if (json.error) return { success: false, error: json.error.message };
+
+    await recordCampaignAction({
+      type: status === "ACTIVE" ? "ACTIVATE" : "PAUSE",
+      entityType: "AD",
+      entityId: adId,
+      entityName: adId,
+      before: status === "ACTIVE" ? "PAUSED" : "ACTIVE",
+      after: status,
+    });
+
     return { success: true };
   } catch (e) {
     return { success: false, error: String(e) };
