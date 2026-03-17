@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { Zap, ZapOff, Play, Pause, AlertCircle, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ import { CampaignKPIs } from "./CampaignKPIs";
 import { AdSetItem } from "./AdSetList";
 import { OptimizationTips } from "./OptimizationTips";
 import { CampaignObjectiveWizard } from "./CampaignObjectiveWizard";
+import { StrategyPanel } from "./StrategyIndicators";
+import { getBenchmark } from "@/lib/benchmarks";
 
 type Props = {
   campaigns: MetaCampaignFull[];
@@ -31,6 +33,11 @@ type Props = {
   bidStrategy?: string | null;
   conversionDestination?: string | null;
   campaignObjective?: string | null;
+  businessSegment?: string | null;
+  coverageArea?: string | null;
+  conversionValue?: number | null;
+  maxCostPerResult?: number | null;
+  bidValue?: number | null;
   userId?: string;
   initialAlerts?: Alert[];
 };
@@ -44,13 +51,20 @@ function toPhase(val: string | null | undefined): Phase | null {
 export function MetaPageClient({
   campaigns, hasConfig, pixelId, events, stages,
   selectedCampaign, selectedAdSets, selectedInsights, selectedCampaignId, apiError,
-  accountPhase, bidStrategy, conversionDestination, campaignObjective, userId, initialAlerts,
+  accountPhase, bidStrategy, conversionDestination, campaignObjective,
+  businessSegment, coverageArea, conversionValue, maxCostPerResult, bidValue,
+  userId, initialAlerts,
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [campaignStatus, setCampaignStatus] = useState(selectedCampaign?.status ?? "PAUSED");
   const [wizardDone, setWizardDone] = useState(false);
   const isActive = campaignStatus === "ACTIVE";
   const showWizard = !campaignObjective && !wizardDone && hasConfig && !!selectedCampaignId && !!selectedCampaign;
+
+  const benchmark = useMemo(
+    () => getBenchmark(campaignObjective, businessSegment, coverageArea),
+    [campaignObjective, businessSegment, coverageArea]
+  );
 
   if (!hasConfig) {
     return (
@@ -189,6 +203,18 @@ export function MetaPageClient({
       {/* Campaign KPIs, Quality, Budget, Bid Cap */}
       <CampaignKPIs campaign={selectedCampaign} />
 
+      {/* Strategy-specific Indicators */}
+      <StrategyPanel
+        campaign={selectedCampaign}
+        bidStrategy={bidStrategy ?? null}
+        objective={campaignObjective ?? null}
+        segment={businessSegment ?? null}
+        coverage={coverageArea ?? null}
+        maxCostPerResult={maxCostPerResult}
+        conversionValue={conversionValue}
+        bidValue={bidValue}
+      />
+
       {/* Ad Sets & Creatives */}
       <div className="space-y-4">
         <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -204,7 +230,7 @@ export function MetaPageClient({
         ) : (
           <div className="space-y-3">
             {selectedAdSets.map((adSet) => (
-              <AdSetItem key={adSet.id} adSet={adSet} campaignCpc={selectedCampaign.cpc} campaignCpm={selectedCampaign.cpm} />
+              <AdSetItem key={adSet.id} adSet={adSet} campaignCpc={selectedCampaign.cpc} campaignCpm={selectedCampaign.cpm} benchmark={benchmark} />
             ))}
           </div>
         )}

@@ -89,6 +89,11 @@ export async function saveCampaignObjective(data: {
   conversionDestination: string;
   monthlyBudget: number | null;
   bidStrategy?: string | null;
+  businessSegment?: string | null;
+  coverageArea?: string | null;
+  conversionValue?: number | null;
+  maxCostPerResult?: number | null;
+  bidValue?: number | null;
 }): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Não autenticado" };
@@ -101,6 +106,11 @@ export async function saveCampaignObjective(data: {
         conversionDestination: data.conversionDestination || null,
         monthlyBudget: data.monthlyBudget,
         ...(data.bidStrategy !== undefined ? { bidStrategy: data.bidStrategy || null } : {}),
+        ...(data.businessSegment !== undefined ? { businessSegment: data.businessSegment || null } : {}),
+        ...(data.coverageArea !== undefined ? { coverageArea: data.coverageArea || null } : {}),
+        ...(data.conversionValue !== undefined ? { conversionValue: data.conversionValue } : {}),
+        ...(data.maxCostPerResult !== undefined ? { maxCostPerResult: data.maxCostPerResult } : {}),
+        ...(data.bidValue !== undefined ? { bidValue: data.bidValue } : {}),
       },
     });
     revalidatePath("/dashboard/meta");

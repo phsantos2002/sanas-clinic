@@ -39,6 +39,28 @@ const BID_STRATEGY_OPTIONS = [
   { value: "ROAS_MIN", label: "ROAS Mínimo" },
 ];
 
+const SEGMENT_OPTIONS = [
+  { value: "", label: "Não configurado" },
+  { value: "HEALTH", label: "Saúde / Clínicas" },
+  { value: "EDUCATION", label: "Educação" },
+  { value: "ECOMMERCE", label: "E-commerce" },
+  { value: "SERVICES", label: "Serviços" },
+  { value: "REAL_ESTATE", label: "Imobiliário" },
+  { value: "FOOD", label: "Alimentação" },
+  { value: "FITNESS", label: "Fitness / Academia" },
+  { value: "BEAUTY", label: "Beleza / Estética" },
+  { value: "LEGAL", label: "Jurídico" },
+  { value: "OTHER", label: "Outro" },
+];
+
+const COVERAGE_OPTIONS = [
+  { value: "", label: "Não configurado" },
+  { value: "LOCAL", label: "Local (cidade)" },
+  { value: "REGIONAL", label: "Regional (estado)" },
+  { value: "NATIONAL", label: "Nacional" },
+  { value: "INTERNATIONAL", label: "Internacional" },
+];
+
 export function FacebookPixelForm({ pixel }: Props) {
   const [pixelId, setPixelId] = useState(pixel?.pixelId ?? "");
   const [accessToken, setAccessToken] = useState(pixel?.accessToken ?? "");
@@ -48,9 +70,16 @@ export function FacebookPixelForm({ pixel }: Props) {
   const [conversionDestination, setConversionDestination] = useState(pixel?.conversionDestination ?? "");
   const [monthlyBudget, setMonthlyBudget] = useState(pixel?.monthlyBudget?.toString() ?? "");
   const [bidStrategy, setBidStrategy] = useState(pixel?.bidStrategy ?? "");
+  const [businessSegment, setBusinessSegment] = useState(pixel?.businessSegment ?? "");
+  const [coverageArea, setCoverageArea] = useState(pixel?.coverageArea ?? "");
+  const [conversionValue, setConversionValue] = useState(pixel?.conversionValue?.toString() ?? "");
+  const [maxCostPerResult, setMaxCostPerResult] = useState(pixel?.maxCostPerResult?.toString() ?? "");
+  const [bidValue, setBidValue] = useState(pixel?.bidValue?.toString() ?? "");
   const [loading, setLoading] = useState(false);
   const [savingCampaign, setSavingCampaign] = useState(false);
   const [testing, setTesting] = useState(false);
+
+  const showBidValue = bidStrategy === "COST_CAP" || bidStrategy === "BID_CAP" || bidStrategy === "ROAS_MIN";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -72,6 +101,11 @@ export function FacebookPixelForm({ pixel }: Props) {
       conversionDestination: conversionDestination || "",
       monthlyBudget: monthlyBudget ? parseFloat(monthlyBudget) : null,
       bidStrategy: bidStrategy || null,
+      businessSegment: businessSegment || null,
+      coverageArea: coverageArea || null,
+      conversionValue: conversionValue ? parseFloat(conversionValue) : null,
+      maxCostPerResult: maxCostPerResult ? parseFloat(maxCostPerResult) : null,
+      bidValue: bidValue ? parseFloat(bidValue) : null,
     });
     setSavingCampaign(false);
     if (result.success) {
@@ -162,7 +196,28 @@ export function FacebookPixelForm({ pixel }: Props) {
       {pixel && (
         <div className="border-t border-zinc-100 pt-4 space-y-3">
           <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Configuração de Campanha</p>
-          <p className="text-xs text-zinc-400">Esses dados são usados para diagnóstico de fase, alertas e recomendações personalizadas.</p>
+          <p className="text-xs text-zinc-400">Esses dados são usados para diagnóstico de fase, alertas, benchmarks e recomendações personalizadas.</p>
+
+          <div className="space-y-1.5">
+            <Label>Segmento do Negócio</Label>
+            <CustomSelect
+              options={SEGMENT_OPTIONS}
+              value={businessSegment}
+              onChange={setBusinessSegment}
+              placeholder="Selecione o segmento"
+            />
+            <p className="text-xs text-zinc-400">Ajusta os benchmarks de acordo com o seu mercado.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Cobertura Geográfica</Label>
+            <CustomSelect
+              options={COVERAGE_OPTIONS}
+              value={coverageArea}
+              onChange={setCoverageArea}
+              placeholder="Selecione a cobertura"
+            />
+          </div>
 
           <div className="space-y-1.5">
             <Label>Objetivo da Campanha</Label>
@@ -199,6 +254,20 @@ export function FacebookPixelForm({ pixel }: Props) {
           </div>
 
           <div className="space-y-1.5">
+            <Label htmlFor="conversionValue">Valor Médio por Conversão (R$)</Label>
+            <Input
+              id="conversionValue"
+              type="number"
+              placeholder="Ex: 150"
+              value={conversionValue}
+              onChange={(e) => setConversionValue(e.target.value)}
+              min="0"
+              step="10"
+            />
+            <p className="text-xs text-zinc-400">Quanto vale cada cliente/conversão em média.</p>
+          </div>
+
+          <div className="space-y-1.5">
             <Label>Estratégia de Lance</Label>
             <CustomSelect
               options={BID_STRATEGY_OPTIONS}
@@ -207,6 +276,45 @@ export function FacebookPixelForm({ pixel }: Props) {
               placeholder="Selecione a estratégia"
             />
           </div>
+
+          {showBidValue && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="maxCostPerResult">
+                  {bidStrategy === "ROAS_MIN" ? "ROAS Mínimo Desejado" : "Custo Máximo por Resultado (R$)"}
+                </Label>
+                <Input
+                  id="maxCostPerResult"
+                  type="number"
+                  placeholder={bidStrategy === "ROAS_MIN" ? "Ex: 3.0" : "Ex: 25"}
+                  value={maxCostPerResult}
+                  onChange={(e) => setMaxCostPerResult(e.target.value)}
+                  min="0"
+                  step={bidStrategy === "ROAS_MIN" ? "0.1" : "1"}
+                />
+                <p className="text-xs text-zinc-400">
+                  {bidStrategy === "ROAS_MIN"
+                    ? "Meta mínima de retorno sobre investimento em anúncios."
+                    : "Limite de custo por resultado que a Meta deve respeitar."}
+                </p>
+              </div>
+              {bidStrategy === "BID_CAP" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="bidValue">Valor do Lance (R$)</Label>
+                  <Input
+                    id="bidValue"
+                    type="number"
+                    placeholder="Ex: 10"
+                    value={bidValue}
+                    onChange={(e) => setBidValue(e.target.value)}
+                    min="0"
+                    step="0.5"
+                  />
+                  <p className="text-xs text-zinc-400">Lance máximo por leilão.</p>
+                </div>
+              )}
+            </>
+          )}
 
           <Button
             type="button"

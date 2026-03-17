@@ -24,13 +24,21 @@ export default async function MetaPage() {
   let bidStrategy: string | null = null;
   let conversionDestination: string | null = null;
   let campaignObjective: string | null = null;
+  let businessSegment: string | null = null;
+  let coverageArea: string | null = null;
+  let conversionValue: number | null = null;
+  let maxCostPerResult: number | null = null;
+  let bidValue: number | null = null;
   let alerts: Array<{ id: string; type: string; severity: string; message: string; suggestion: string; resolved: boolean; createdAt: Date }> = [];
 
   if (user) {
     const [pixel, userAlerts] = await Promise.all([
       prisma.pixel.findUnique({
         where: { userId: user.id },
-        select: { accountPhase: true, bidStrategy: true, conversionDestination: true, campaignObjective: true },
+        select: {
+          accountPhase: true, bidStrategy: true, conversionDestination: true, campaignObjective: true,
+          businessSegment: true, coverageArea: true, conversionValue: true, maxCostPerResult: true, bidValue: true,
+        },
       }),
       getAlerts(user.id),
     ]);
@@ -39,6 +47,11 @@ export default async function MetaPage() {
       bidStrategy = pixel.bidStrategy ?? null;
       conversionDestination = pixel.conversionDestination ?? null;
       campaignObjective = pixel.campaignObjective ?? null;
+      businessSegment = pixel.businessSegment ?? null;
+      coverageArea = pixel.coverageArea ?? null;
+      conversionValue = pixel.conversionValue ?? null;
+      maxCostPerResult = pixel.maxCostPerResult ?? null;
+      bidValue = pixel.bidValue ?? null;
     }
     alerts = userAlerts;
   }
@@ -59,6 +72,11 @@ export default async function MetaPage() {
       bidStrategy={bidStrategy}
       conversionDestination={conversionDestination}
       campaignObjective={campaignObjective}
+      businessSegment={businessSegment}
+      coverageArea={coverageArea}
+      conversionValue={conversionValue}
+      maxCostPerResult={maxCostPerResult}
+      bidValue={bidValue}
       userId={user?.id}
       initialAlerts={alerts}
     />

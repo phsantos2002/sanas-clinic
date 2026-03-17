@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { updateAdStatus, type MetaAd } from "@/app/actions/meta";
 import { fmt, fmtBrl, getCreativeHealth, healthConfig } from "./shared";
+import { classifyMetric, METRIC_COLORS, type BenchmarkMetrics } from "@/lib/benchmarks";
 
 type Props = {
   ad: MetaAd;
+  benchmark?: BenchmarkMetrics | null;
 };
 
-export function AdCard({ ad }: Props) {
+export function AdCard({ ad, benchmark }: Props) {
   const [status, setStatus] = useState(ad.status);
   const [isPending, startTransition] = useTransition();
   const isActive = status === "ACTIVE";
@@ -26,6 +28,11 @@ export function AdCard({ ad }: Props) {
       if (result.success) { setStatus(newStatus); toast.success(`Anúncio ${newStatus === "ACTIVE" ? "ativado" : "pausado"}`); }
       else toast.error(result.error);
     });
+  }
+
+  function metricColor(metric: "ctr" | "cpm" | "cpc", value: number): string {
+    if (!benchmark || value === 0) return "text-slate-800";
+    return METRIC_COLORS[classifyMetric(metric, value, benchmark)];
   }
 
   return (
@@ -58,20 +65,25 @@ export function AdCard({ ad }: Props) {
         </Button>
       </div>
 
-      {/* Mini KPIs for ad */}
+      {/* Mini KPIs for ad with benchmark coloring */}
       {ad.impressions > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[
-            { label: "Gasto", value: fmtBrl(ad.spend) },
-            { label: "CTR", value: `${fmt(ad.ctr)}%` },
-            { label: "CPC", value: fmtBrl(ad.cpc) },
-            { label: "CPM", value: fmtBrl(ad.cpm) },
-          ].map((k) => (
-            <div key={k.label} className="bg-white/60 rounded-lg px-2 py-1">
-              <p className="text-[9px] text-slate-400">{k.label}</p>
-              <p className="text-[11px] font-bold text-slate-800">{k.value}</p>
-            </div>
-          ))}
+          <div className="bg-white/60 rounded-lg px-2 py-1">
+            <p className="text-[9px] text-slate-400">Gasto</p>
+            <p className="text-[11px] font-bold text-slate-800">{fmtBrl(ad.spend)}</p>
+          </div>
+          <div className="bg-white/60 rounded-lg px-2 py-1">
+            <p className="text-[9px] text-slate-400">CTR</p>
+            <p className={`text-[11px] font-bold ${metricColor("ctr", ad.ctr)}`}>{fmt(ad.ctr)}%</p>
+          </div>
+          <div className="bg-white/60 rounded-lg px-2 py-1">
+            <p className="text-[9px] text-slate-400">CPC</p>
+            <p className={`text-[11px] font-bold ${metricColor("cpc", ad.cpc)}`}>{fmtBrl(ad.cpc)}</p>
+          </div>
+          <div className="bg-white/60 rounded-lg px-2 py-1">
+            <p className="text-[9px] text-slate-400">CPM</p>
+            <p className={`text-[11px] font-bold ${metricColor("cpm", ad.cpm)}`}>{fmtBrl(ad.cpm)}</p>
+          </div>
         </div>
       )}
 

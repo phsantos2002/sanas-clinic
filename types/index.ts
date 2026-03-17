@@ -55,6 +55,11 @@ export type Pixel = {
   accountPhase: string | null;
   monthlyBudget: number | null;
   bidStrategy: string | null;
+  businessSegment: string | null;
+  coverageArea: string | null;
+  conversionValue: number | null;
+  maxCostPerResult: number | null;
+  bidValue: number | null;
   userId: string;
   createdAt: Date;
   updatedAt: Date;

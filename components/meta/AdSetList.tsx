@@ -17,14 +17,16 @@ import {
 import { fmtBrl, getCreativeHealth } from "./shared";
 import { AdCard } from "./AdCard";
 import { CreateAdModal } from "./CreateAdModal";
+import type { BenchmarkMetrics } from "@/lib/benchmarks";
 
 type Props = {
   adSet: MetaAdSet;
   campaignCpc: number;
   campaignCpm: number;
+  benchmark?: BenchmarkMetrics | null;
 };
 
-export function AdSetItem({ adSet, campaignCpc, campaignCpm }: Props) {
+export function AdSetItem({ adSet, campaignCpc, campaignCpm, benchmark }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [ads, setAds] = useState<MetaAd[]>([]);
   const [loadingAds, setLoadingAds] = useState(false);
@@ -168,7 +170,7 @@ export function AdSetItem({ adSet, campaignCpc, campaignCpm }: Props) {
             <p className="text-[10px] text-slate-400">Nenhum anúncio encontrado</p>
           ) : (
             <div className="space-y-2">
-              {ads.map((ad) => <AdCard key={ad.id} ad={ad} />)}
+              {ads.map((ad) => <AdCard key={ad.id} ad={ad} benchmark={benchmark} />)}
 
               {/* Summary bar */}
               {ads.length > 1 && (

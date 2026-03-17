@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Phone, MoreHorizontal, MessageCircle, Eye, Pencil, Trash2 } from "lucide-react";
+import { GripVertical, Phone, MoreHorizontal, MessageCircle, Eye, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,10 +21,9 @@ import type { Lead } from "@/types";
 type Props = {
   lead: Lead;
   onClickLead?: (leadId: string) => void;
-  onEditLead?: (leadId: string) => void;
 };
 
-export function LeadCard({ lead, onClickLead, onEditLead }: Props) {
+export function LeadCard({ lead, onClickLead }: Props) {
   const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -125,15 +124,6 @@ export function LeadCard({ lead, onClickLead, onEditLead }: Props) {
             >
               <MessageCircle className="h-3.5 w-3.5 mr-2" />
               Abrir Chat
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditLead?.(lead.id);
-              }}
-            >
-              <Pencil className="h-3.5 w-3.5 mr-2" />
-              Editar
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

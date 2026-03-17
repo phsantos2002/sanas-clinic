@@ -55,6 +55,11 @@ model Pixel {
   accountPhase           String?   // LEARNING | STABILIZING | SCALING | MATURE
   monthlyBudget          Float?    // Verba mensal declarada em BRL
   bidStrategy            String?   // LOWEST_COST | COST_CAP | BID_CAP | ROAS_MIN
+  businessSegment        String?   // HEALTH | EDUCATION | ECOMMERCE | SERVICES | REAL_ESTATE | FOOD | FITNESS | BEAUTY | LEGAL | OTHER
+  coverageArea           String?   // LOCAL | REGIONAL | NATIONAL | INTERNATIONAL
+  conversionValue        Float?    // Valor médio por conversão em BRL
+  maxCostPerResult       Float?    // Custo máximo por resultado (Cost Cap / Bid Cap)
+  bidValue               Float?    // Valor do lance manual
   userId             String   @unique
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt          DateTime @default(now())
