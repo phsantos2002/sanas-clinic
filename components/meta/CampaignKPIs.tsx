@@ -13,13 +13,15 @@ import {
 } from "./shared";
 import { Thermometer } from "./Thermometer";
 import { classifyMetric, METRIC_COLORS, type BenchmarkMetrics } from "@/lib/benchmarks";
+import { getThermometerText } from "@/lib/thermometerTexts";
 
 type CampaignKPIsProps = {
   campaign: MetaCampaignFull;
   benchmark?: BenchmarkMetrics | null;
+  objective?: string | null;
 };
 
-export function CampaignKPIs({ campaign, benchmark }: CampaignKPIsProps) {
+export function CampaignKPIs({ campaign, benchmark, objective }: CampaignKPIsProps) {
   const [editBudget, setEditBudget] = useState(false);
   const [budgetValue, setBudgetValue] = useState(campaign.dailyBudget?.toString() ?? "");
   const [isPending, startTransition] = useTransition();
@@ -34,27 +36,11 @@ export function CampaignKPIs({ campaign, benchmark }: CampaignKPIsProps) {
     });
   }
 
-  // Use benchmark-aware quality or fallback to hardcoded
-  function qualityCTR(ctr: number) {
-    if (benchmark) {
-      const q = classifyMetric("ctr", ctr, benchmark);
-      return q === "good" ? "good" as const : q === "average" ? "ok" as const : "bad" as const;
-    }
-    return ctr >= 1.5 ? "good" as const : ctr >= 0.5 ? "ok" as const : "bad" as const;
-  }
-  function qualityCPM(cpm: number) {
-    if (benchmark) {
-      const q = classifyMetric("cpm", cpm, benchmark);
-      return q === "good" ? "good" as const : q === "average" ? "ok" as const : "bad" as const;
-    }
-    return cpm <= 20 ? "good" as const : cpm <= 50 ? "ok" as const : "bad" as const;
-  }
-  function qualityCPC(cpc: number) {
-    if (benchmark) {
-      const q = classifyMetric("cpc", cpc, benchmark);
-      return q === "good" ? "good" as const : q === "average" ? "ok" as const : "bad" as const;
-    }
-    return cpc <= 2 ? "good" as const : cpc <= 5 ? "ok" as const : "bad" as const;
+  function getStatus(metric: "ctr" | "cpm" | "cpc", value: number) {
+    if (benchmark) return classifyMetric(metric, value, benchmark);
+    if (metric === "ctr") return value >= 1.5 ? "good" as const : value >= 0.5 ? "average" as const : "bad" as const;
+    if (metric === "cpm") return value <= 20 ? "good" as const : value <= 50 ? "average" as const : "bad" as const;
+    return value <= 2 ? "good" as const : value <= 5 ? "average" as const : "bad" as const;
   }
 
   return (
@@ -86,17 +72,28 @@ export function CampaignKPIs({ campaign, benchmark }: CampaignKPIsProps) {
           <CardHeader><CardTitle className="text-base font-bold text-slate-900">Qualidade dos Anúncios</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
-              <Thermometer label="CTR" value={`${fmt(campaign.ctr)}%`} quality={qualityCTR(campaign.ctr)} />
-              <Thermometer label="CPM" value={fmtBrl(campaign.cpm)} quality={qualityCPM(campaign.cpm)} />
-              <Thermometer label="CPC" value={fmtBrl(campaign.cpc)} quality={qualityCPC(campaign.cpc)} />
+              <Thermometer
+                label="CTR"
+                value={`${fmt(campaign.ctr)}%`}
+                status={getStatus("ctr", campaign.ctr)}
+                tip={getThermometerText("ctr", getStatus("ctr", campaign.ctr), objective)}
+                reference={benchmark ? `Ref: >${fmt(benchmark.ctr.good)}%` : undefined}
+              />
+              <Thermometer
+                label="CPM"
+                value={fmtBrl(campaign.cpm)}
+                status={getStatus("cpm", campaign.cpm)}
+                tip={getThermometerText("cpm", getStatus("cpm", campaign.cpm), objective)}
+                reference={benchmark ? `Ref: <R$ ${fmt(benchmark.cpm.good)}` : undefined}
+              />
+              <Thermometer
+                label="CPC"
+                value={fmtBrl(campaign.cpc)}
+                status={getStatus("cpc", campaign.cpc)}
+                tip={getThermometerText("cpc", getStatus("cpc", campaign.cpc), objective)}
+                reference={benchmark ? `Ref: <R$ ${fmt(benchmark.cpc.good)}` : undefined}
+              />
             </div>
-            {benchmark && (
-              <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-4 text-[10px] text-slate-400">
-                <p>Ref: {`>${fmt(benchmark.ctr.good)}%`}</p>
-                <p>Ref: {`<R$ ${fmt(benchmark.cpm.good)}`}</p>
-                <p>Ref: {`<R$ ${fmt(benchmark.cpc.good)}`}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 

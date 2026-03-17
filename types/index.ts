@@ -65,6 +65,23 @@ export type Pixel = {
   updatedAt: Date;
 };
 
+export type CampaignConfig = {
+  id: string;
+  campaignId: string;
+  campaignName: string;
+  campaignObjective: string;
+  conversionDestination: string;
+  businessSegment: string | null;
+  conversionValue: number | null;
+  maxCostPerResult: number | null;
+  monthlyBudget: number | null;
+  bidStrategy: string;
+  bidValue: number | null;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type Message = {
   id: string;
   leadId: string;

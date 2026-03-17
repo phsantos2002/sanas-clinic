@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
-import type { ActionResult, Pixel } from "@/types";
+import type { ActionResult, Pixel, CampaignConfig } from "@/types";
 
 function maskToken(token: string): string {
   if (token.length <= 8) return "•".repeat(token.length);
@@ -159,5 +159,82 @@ export async function testPixelConnection(): Promise<ActionResult> {
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao testar Pixel" };
+  }
+}
+
+// ─── Campaign Config ───
+
+export async function getCampaignConfig(campaignId: string): Promise<CampaignConfig | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const config = await prisma.campaignConfig.findUnique({
+    where: { campaignId_userId: { campaignId, userId: user.id } },
+  });
+
+  return config as CampaignConfig | null;
+}
+
+export async function getAllCampaignConfigs(): Promise<CampaignConfig[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  const configs = await prisma.campaignConfig.findMany({
+    where: { userId: user.id },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  return configs as CampaignConfig[];
+}
+
+export async function saveCampaignConfig(data: {
+  campaignId: string;
+  campaignName: string;
+  campaignObjective: string;
+  conversionDestination: string;
+  businessSegment?: string | null;
+  conversionValue?: number | null;
+  maxCostPerResult?: number | null;
+  monthlyBudget?: number | null;
+  bidStrategy: string;
+  bidValue?: number | null;
+}): Promise<ActionResult<CampaignConfig>> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Não autenticado" };
+
+  try {
+    const config = await prisma.campaignConfig.upsert({
+      where: { campaignId_userId: { campaignId: data.campaignId, userId: user.id } },
+      update: {
+        campaignName: data.campaignName,
+        campaignObjective: data.campaignObjective,
+        conversionDestination: data.conversionDestination,
+        businessSegment: data.businessSegment ?? null,
+        conversionValue: data.conversionValue ?? null,
+        maxCostPerResult: data.maxCostPerResult ?? null,
+        monthlyBudget: data.monthlyBudget ?? null,
+        bidStrategy: data.bidStrategy,
+        bidValue: data.bidValue ?? null,
+      },
+      create: {
+        campaignId: data.campaignId,
+        campaignName: data.campaignName,
+        campaignObjective: data.campaignObjective,
+        conversionDestination: data.conversionDestination,
+        businessSegment: data.businessSegment ?? null,
+        conversionValue: data.conversionValue ?? null,
+        maxCostPerResult: data.maxCostPerResult ?? null,
+        monthlyBudget: data.monthlyBudget ?? null,
+        bidStrategy: data.bidStrategy,
+        bidValue: data.bidValue ?? null,
+        userId: user.id,
+      },
+    });
+
+    revalidatePath("/dashboard/meta");
+    revalidatePath("/dashboard/settings");
+    return { success: true, data: config as CampaignConfig };
+  } catch {
+    return { success: false, error: "Erro ao salvar configuração da campanha" };
   }
 }

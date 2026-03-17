@@ -24,6 +24,7 @@ model User {
   googleBusiness  GoogleBusinessConfig?
   alerts          Alert[]
   campaignActions CampaignAction[]
+  campaignConfigs CampaignConfig[]
 }
 
 model AIConfig {
@@ -185,6 +186,27 @@ model Alert {
   createdAt   DateTime @default(now())
 
   @@index([userId, resolved])
+}
+
+model CampaignConfig {
+  id                    String   @id @default(cuid())
+  campaignId            String
+  campaignName          String
+  campaignObjective     String
+  conversionDestination String
+  businessSegment       String?
+  conversionValue       Float?
+  maxCostPerResult      Float?
+  monthlyBudget         Float?
+  bidStrategy           String
+  bidValue              Float?
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([campaignId, userId])
+  @@index([userId])
 }
 
 model CampaignAction {

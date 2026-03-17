@@ -1,7 +1,15 @@
 /**
- * Benchmarks por objetivo de campanha e multiplicadores por segmento de negócio.
+ * Benchmarks por objetivo de campanha × segmento × cobertura.
  * Valores base representam medianas do mercado brasileiro (Meta Ads, 2024-2025).
+ *
+ * Cada métrica tem 3 faixas: good, average, bad.
+ * - "higher is better": ctr
+ * - "lower is better": cpm, cpc, cpl, frequency
  */
+
+// ─── Types ───
+
+export type MetricStatus = "good" | "average" | "bad";
 
 export type BenchmarkMetrics = {
   ctr: { good: number; average: number; bad: number };
@@ -11,8 +19,9 @@ export type BenchmarkMetrics = {
   frequency: { good: number; average: number; bad: number };
 };
 
-// Benchmarks base por objetivo de campanha
-const BENCHMARKS: Record<string, BenchmarkMetrics> = {
+// ─── Base benchmarks por objetivo ───
+
+const BASE_BENCHMARKS: Record<string, BenchmarkMetrics> = {
   MESSAGES: {
     ctr: { good: 2.0, average: 1.2, bad: 0.6 },
     cpm: { good: 25, average: 45, bad: 70 },
@@ -48,38 +57,52 @@ const BENCHMARKS: Record<string, BenchmarkMetrics> = {
     cpl: { good: 12, average: 35, bad: 70 },
     frequency: { good: 2.0, average: 3.5, bad: 5.0 },
   },
+  SALES: {
+    ctr: { good: 1.2, average: 0.7, bad: 0.3 },
+    cpm: { good: 35, average: 60, bad: 100 },
+    cpc: { good: 2.5, average: 5.0, bad: 10.0 },
+    cpl: { good: 20, average: 50, bad: 100 },
+    frequency: { good: 1.5, average: 2.5, bad: 3.5 },
+  },
 };
 
-// Multiplicadores por segmento de negócio (aplicados sobre os benchmarks base)
+// ─── Multiplicadores por segmento de negócio ───
+
 const SEGMENT_MULTIPLIERS: Record<string, { cpm: number; cpc: number; cpl: number }> = {
-  HEALTH: { cpm: 1.3, cpc: 1.4, cpl: 1.5 },
-  EDUCATION: { cpm: 1.1, cpc: 1.0, cpl: 0.9 },
-  ECOMMERCE: { cpm: 1.0, cpc: 0.9, cpl: 1.0 },
-  SERVICES: { cpm: 1.1, cpc: 1.1, cpl: 1.2 },
+  HEALTH:      { cpm: 1.3, cpc: 1.4, cpl: 1.5 },
+  EDUCATION:   { cpm: 1.1, cpc: 1.0, cpl: 0.9 },
+  ECOMMERCE:   { cpm: 1.0, cpc: 0.9, cpl: 1.0 },
+  SERVICES:    { cpm: 1.1, cpc: 1.1, cpl: 1.2 },
   REAL_ESTATE: { cpm: 1.4, cpc: 1.5, cpl: 1.8 },
-  FOOD: { cpm: 0.8, cpc: 0.7, cpl: 0.7 },
-  FITNESS: { cpm: 1.0, cpc: 1.0, cpl: 1.0 },
-  BEAUTY: { cpm: 0.9, cpc: 0.9, cpl: 0.8 },
-  LEGAL: { cpm: 1.5, cpc: 1.6, cpl: 2.0 },
-  OTHER: { cpm: 1.0, cpc: 1.0, cpl: 1.0 },
+  FOOD:        { cpm: 0.8, cpc: 0.7, cpl: 0.7 },
+  FITNESS:     { cpm: 1.0, cpc: 1.0, cpl: 1.0 },
+  BEAUTY:      { cpm: 0.9, cpc: 0.9, cpl: 0.8 },
+  LEGAL:       { cpm: 1.5, cpc: 1.6, cpl: 2.0 },
+  OTHER:       { cpm: 1.0, cpc: 1.0, cpl: 1.0 },
 };
 
-// Multiplicador por cobertura geográfica
+// ─── Multiplicador por cobertura geográfica ───
+
 const COVERAGE_MULTIPLIERS: Record<string, { cpm: number }> = {
-  LOCAL: { cpm: 0.85 },
-  REGIONAL: { cpm: 1.0 },
-  NATIONAL: { cpm: 1.15 },
+  LOCAL:         { cpm: 0.85 },
+  REGIONAL:      { cpm: 1.0 },
+  NATIONAL:      { cpm: 1.15 },
   INTERNATIONAL: { cpm: 1.3 },
 };
 
-const DEFAULT_BENCHMARK = BENCHMARKS.MESSAGES;
+const DEFAULT_BENCHMARK = BASE_BENCHMARKS.MESSAGES;
 
+// ─── Public API ───
+
+/**
+ * Retorna benchmarks ajustados por objetivo × segmento × cobertura.
+ */
 export function getBenchmark(
   objective: string | null | undefined,
   segment?: string | null,
   coverage?: string | null
 ): BenchmarkMetrics {
-  const base = BENCHMARKS[objective ?? ""] ?? DEFAULT_BENCHMARK;
+  const base = BASE_BENCHMARKS[objective ?? ""] ?? DEFAULT_BENCHMARK;
   const segMult = SEGMENT_MULTIPLIERS[segment ?? ""] ?? SEGMENT_MULTIPLIERS.OTHER;
   const covMult = COVERAGE_MULTIPLIERS[coverage ?? ""] ?? COVERAGE_MULTIPLIERS.REGIONAL;
 
@@ -104,18 +127,14 @@ export function getBenchmark(
   };
 }
 
-export type MetricQuality = "good" | "average" | "bad";
-
 /**
- * Classifica uma métrica comparando com o benchmark.
- * Para métricas "lower is better" (cpm, cpc, cpl, frequency): valor menor = melhor.
- * Para métricas "higher is better" (ctr): valor maior = melhor.
+ * Classifica o status de uma métrica comparando com o benchmark.
  */
-export function classifyMetric(
+export function getMetricStatus(
   metric: keyof BenchmarkMetrics,
   value: number,
   benchmark: BenchmarkMetrics
-): MetricQuality {
+): MetricStatus {
   const thresholds = benchmark[metric];
   const higherIsBetter = metric === "ctr";
 
@@ -130,14 +149,24 @@ export function classifyMetric(
   }
 }
 
-export const METRIC_COLORS: Record<MetricQuality, string> = {
+// Aliases for backwards compatibility
+export const classifyMetric = getMetricStatus;
+export type MetricQuality = MetricStatus;
+
+// ─── Status Colors ───
+
+export const STATUS_COLORS: Record<MetricStatus, string> = {
   good: "text-emerald-600",
   average: "text-amber-600",
   bad: "text-red-600",
 };
 
-export const METRIC_BG_COLORS: Record<MetricQuality, string> = {
+export const STATUS_BG_COLORS: Record<MetricStatus, string> = {
   good: "bg-emerald-50",
   average: "bg-amber-50",
   bad: "bg-red-50",
 };
+
+// Aliases for backwards compatibility
+export const METRIC_COLORS = STATUS_COLORS;
+export const METRIC_BG_COLORS = STATUS_BG_COLORS;

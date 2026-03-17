@@ -1,7 +1,7 @@
 import { getMetaCampaigns, getSelectedCampaignData, getPixelEvents } from "@/app/actions/meta";
 import { getStages } from "@/app/actions/stages";
 import { getCurrentUser } from "@/app/actions/user";
-import { getAlerts } from "@/app/actions/alerts";
+import { getAllCampaignConfigs } from "@/app/actions/pixel";
 import { prisma } from "@/lib/prisma";
 import { MetaPageClient } from "@/components/meta/MetaPageClient";
 
@@ -23,37 +23,22 @@ export default async function MetaPage() {
   let accountPhase: string | null = null;
   let bidStrategy: string | null = null;
   let conversionDestination: string | null = null;
-  let campaignObjective: string | null = null;
-  let businessSegment: string | null = null;
-  let coverageArea: string | null = null;
-  let conversionValue: number | null = null;
-  let maxCostPerResult: number | null = null;
-  let bidValue: number | null = null;
-  let alerts: Array<{ id: string; type: string; severity: string; message: string; suggestion: string; resolved: boolean; createdAt: Date }> = [];
+  let campaignConfigs: Awaited<ReturnType<typeof getAllCampaignConfigs>> = [];
 
   if (user) {
-    const [pixel, userAlerts] = await Promise.all([
+    const [pixel, configs] = await Promise.all([
       prisma.pixel.findUnique({
         where: { userId: user.id },
-        select: {
-          accountPhase: true, bidStrategy: true, conversionDestination: true, campaignObjective: true,
-          businessSegment: true, coverageArea: true, conversionValue: true, maxCostPerResult: true, bidValue: true,
-        },
+        select: { accountPhase: true, bidStrategy: true, conversionDestination: true },
       }),
-      getAlerts(user.id),
+      getAllCampaignConfigs(),
     ]);
     if (pixel) {
       accountPhase = pixel.accountPhase ?? null;
       bidStrategy = pixel.bidStrategy ?? null;
       conversionDestination = pixel.conversionDestination ?? null;
-      campaignObjective = pixel.campaignObjective ?? null;
-      businessSegment = pixel.businessSegment ?? null;
-      coverageArea = pixel.coverageArea ?? null;
-      conversionValue = pixel.conversionValue ?? null;
-      maxCostPerResult = pixel.maxCostPerResult ?? null;
-      bidValue = pixel.bidValue ?? null;
     }
-    alerts = userAlerts;
+    campaignConfigs = configs;
   }
 
   return (
@@ -71,14 +56,8 @@ export default async function MetaPage() {
       accountPhase={accountPhase}
       bidStrategy={bidStrategy}
       conversionDestination={conversionDestination}
-      campaignObjective={campaignObjective}
-      businessSegment={businessSegment}
-      coverageArea={coverageArea}
-      conversionValue={conversionValue}
-      maxCostPerResult={maxCostPerResult}
-      bidValue={bidValue}
       userId={user?.id}
-      initialAlerts={alerts}
+      campaignConfigs={campaignConfigs}
     />
   );
 }

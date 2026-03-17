@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"process.env\" app/actions/*.ts lib/*.ts services/*.ts)",
+      "Read(//c/Users/phsan/Desktop/lupa-sjc/backend/**)",
+      "Bash(node -e \":*)",
+      "Bash(git status:*)"
+    ]
+  }
+}
