@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition, useEffect, useMemo } from "react";
-import { Zap, ZapOff, Play, Pause, Send } from "lucide-react";
+import { useState, useTransition, useEffect, useMemo, useRef, useCallback } from "react";
+import { Zap, ZapOff, Play, Pause, Send, AlertTriangle, ArrowDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -42,6 +42,8 @@ export function CampaignPanel({
   const [config, setConfig] = useState(initialConfig);
   const [adSets, setAdSets] = useState<MetaAdSet[]>(initialAdSets ?? []);
   const [loadingAdSets, setLoadingAdSets] = useState(!initialAdSets);
+  const [forceExpandConfig, setForceExpandConfig] = useState(false);
+  const configRef = useRef<HTMLDivElement>(null);
   const isActive = status === "ACTIVE";
 
   const benchmark = useMemo(
@@ -49,7 +51,6 @@ export function CampaignPanel({
     [config?.campaignObjective, config?.businessSegment]
   );
 
-  // Load ad sets on mount if not provided
   useEffect(() => {
     if (!initialAdSets) {
       getMetaAdSets(campaign.id).then((data) => {
@@ -72,14 +73,22 @@ export function CampaignPanel({
     });
   }
 
-  function handleConfigSaved(newConfig: CampaignConfig) {
+  const handleConfigSaved = useCallback((newConfig: CampaignConfig) => {
     setConfig(newConfig);
+    setForceExpandConfig(false);
     onConfigChange?.(newConfig);
+  }, [onConfigChange]);
+
+  function scrollToConfig() {
+    setForceExpandConfig(true);
+    setTimeout(() => {
+      configRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
   }
 
   return (
     <div className="space-y-5">
-      {/* Campaign header */}
+      {/* [4] Campaign header + status + toggle */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <p className="text-sm font-bold text-slate-900">{campaign.name}</p>
@@ -105,13 +114,21 @@ export function CampaignPanel({
         </div>
       </div>
 
-      {/* Config panel */}
-      <CampaignConfigPanel
-        campaignId={campaign.id}
-        campaignName={campaign.name}
-        config={config}
-        onSaved={handleConfigSaved}
-      />
+      {/* Banner "não configurado" — compact */}
+      {!config && (
+        <button
+          onClick={scrollToConfig}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-left hover:bg-amber-100/60 transition-colors"
+        >
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+          <span className="text-xs text-amber-800 flex-1">
+            Configure esta campanha para personalizar os termômetros e alertas
+          </span>
+          <span className="text-[10px] text-amber-600 font-medium flex items-center gap-0.5 flex-shrink-0">
+            Configurar <ArrowDown className="h-3 w-3" />
+          </span>
+        </button>
+      )}
 
       {/* Alerts */}
       {config && userId && (
@@ -122,10 +139,10 @@ export function CampaignPanel({
         />
       )}
 
-      {/* Thermometers */}
+      {/* [5] Thermometers — up high */}
       <CampaignThermometers campaign={campaign} config={config} />
 
-      {/* Ad Sets & Creatives */}
+      {/* [6] Ad Sets & Creatives */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
           <div className="w-1 h-4 rounded-full bg-blue-500" />
@@ -186,6 +203,17 @@ export function CampaignPanel({
           </CardContent>
         </Card>
       )}
+
+      {/* [7] Config panel — LAST section */}
+      <div ref={configRef}>
+        <CampaignConfigPanel
+          campaignId={campaign.id}
+          campaignName={campaign.name}
+          config={config}
+          onSaved={handleConfigSaved}
+          forceExpanded={forceExpandConfig}
+        />
+      </div>
     </div>
   );
 }

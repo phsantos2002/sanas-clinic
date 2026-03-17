@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Info } from "lucide-react";
 import type { MetricStatus } from "@/lib/benchmarks";
 import { getStatusLabel } from "@/lib/thermometerTexts";
 
@@ -20,7 +18,6 @@ const STATUS_CONFIG: Record<MetricStatus, { color: string; bg: string; position:
 };
 
 export function Thermometer({ label, value, status, tip, reference }: Props) {
-  const [showTip, setShowTip] = useState(false);
   const cfg = STATUS_CONFIG[status];
   const statusLabel = getStatusLabel(status);
 
@@ -28,18 +25,7 @@ export function Thermometer({ label, value, status, tip, reference }: Props) {
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs">
         <span className="text-slate-500">{label}</span>
-        <div className="flex items-center gap-1">
-          <span className={`font-semibold ${cfg.color}`}>{statusLabel}</span>
-          {tip && (
-            <button
-              type="button"
-              onClick={() => setShowTip(!showTip)}
-              className="text-slate-300 hover:text-slate-500 transition-colors"
-            >
-              <Info className="h-3 w-3" />
-            </button>
-          )}
-        </div>
+        <span className={`font-semibold ${cfg.color}`}>{statusLabel}</span>
       </div>
 
       <p className="text-lg font-bold leading-none">{value}</p>
@@ -59,10 +45,11 @@ export function Thermometer({ label, value, status, tip, reference }: Props) {
         <p className="text-[10px] text-slate-400">{reference}</p>
       )}
 
-      {showTip && tip && (
-        <div className={`text-[10px] leading-relaxed p-2 rounded-lg ${cfg.bg}`}>
+      {/* Always-visible contextual text */}
+      {tip && (
+        <p className={`text-[10px] leading-relaxed ${status === "bad" ? "text-red-600 font-medium" : "text-slate-500"}`}>
           {tip}
-        </div>
+        </p>
       )}
     </div>
   );

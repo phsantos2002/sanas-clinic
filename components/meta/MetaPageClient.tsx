@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Plus, PauseCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { MetaIcon } from "@/components/icons/SourceIcons";
 import type { MetaCampaignFull, MetaAdSet, MetaCampaignInsights } from "@/app/actions/meta";
 import type { CampaignConfig } from "@/types";
-import { fmtBrl, type Stage } from "./shared";
+import { type Stage } from "./shared";
 import { CampaignTabs } from "./CampaignTabs";
 import { CampaignPanel } from "./CampaignPanel";
 import { AccountPhaseCard } from "./AccountPhaseCard";
@@ -23,18 +24,15 @@ type Props = {
   pixelId: string | null;
   events: Array<{ name: string; count: number }>;
   stages: Stage[];
-  // Selected campaign data (pre-fetched for the initially selected one)
   selectedCampaign: MetaCampaignFull | null;
   selectedAdSets: MetaAdSet[];
   selectedInsights: MetaCampaignInsights | null;
   selectedCampaignId: string | null;
   apiError?: string;
-  // Global config
   accountPhase?: string | null;
   bidStrategy?: string | null;
   conversionDestination?: string | null;
   userId?: string;
-  // Per-campaign configs
   campaignConfigs?: CampaignConfig[];
 };
 
@@ -44,7 +42,6 @@ export function MetaPageClient({
   accountPhase, bidStrategy, conversionDestination,
   userId, campaignConfigs: initialConfigs,
 }: Props) {
-  // Build config map: campaignId → CampaignConfig
   const [configMap, setConfigMap] = useState<Record<string, CampaignConfig>>(() => {
     const map: Record<string, CampaignConfig> = {};
     for (const cfg of initialConfigs ?? []) {
@@ -53,7 +50,6 @@ export function MetaPageClient({
     return map;
   });
 
-  // Active campaign ID — defaults to the selected one or first active campaign
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(() => {
     if (selectedCampaignId && campaigns.some((c) => c.id === selectedCampaignId)) return selectedCampaignId;
     const active = campaigns.find((c) => c.status === "ACTIVE");
@@ -62,11 +58,11 @@ export function MetaPageClient({
 
   const activeCampaign = campaigns.find((c) => c.id === activeCampaignId) ?? null;
   const activeConfig = activeCampaignId ? configMap[activeCampaignId] ?? null : null;
-
-  // For the initially selected campaign, we have pre-fetched adSets and insights
   const isPreFetched = activeCampaignId === selectedCampaignId;
   const currentAdSets = isPreFetched ? selectedAdSets : undefined;
   const currentInsights = isPreFetched ? selectedInsights : null;
+
+  const allPaused = campaigns.length > 0 && campaigns.every((c) => c.status !== "ACTIVE");
 
   const handleConfigChange = useCallback((config: CampaignConfig) => {
     setConfigMap((prev) => ({ ...prev, [config.campaignId]: config }));
@@ -91,23 +87,23 @@ export function MetaPageClient({
     );
   }
 
-  // ─── No campaigns ───
+  // ─── No campaigns (Correção 8) ───
   if (campaigns.length === 0) {
     return (
       <div className="space-y-6">
         <Header />
-        <Card className="border-amber-100 bg-amber-50/30 rounded-2xl">
-          <CardContent className="py-10 text-center space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto">
-              <AlertCircle className="h-7 w-7 text-amber-600" />
+        <Card className="border-slate-100 rounded-2xl">
+          <CardContent className="py-16 text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto">
+              <MetaIcon size={32} />
             </div>
-            <p className="text-sm font-semibold text-amber-900">Nenhuma campanha encontrada</p>
-            <p className="text-xs text-amber-700/70 max-w-md mx-auto">
+            <p className="text-sm font-semibold text-slate-700">Nenhuma campanha encontrada</p>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
               Verifique se o token de acesso tem permissão <span className="font-mono">ads_read</span> e
-              se a conta de anúncios está correta em <span className="font-medium">Configurações</span>.
+              se a conta de anúncios está correta em <span className="font-medium text-indigo-600">Configurações</span>.
             </p>
             {apiError && (
-              <p className="text-xs font-mono text-red-600 bg-red-100 rounded-lg px-3 py-2 max-w-lg mx-auto break-all">
+              <p className="text-xs font-mono text-red-600 bg-red-50 rounded-lg px-3 py-2 max-w-lg mx-auto break-all">
                 {apiError}
               </p>
             )}
@@ -118,10 +114,11 @@ export function MetaPageClient({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* [1] Header */}
       <Header />
 
-      {/* Account Phase */}
+      {/* [2] Account Phase — compact banner */}
       {userId && (
         <AccountPhaseCard
           userId={userId}
@@ -131,7 +128,17 @@ export function MetaPageClient({
         />
       )}
 
-      {/* Campaign tabs */}
+      {/* Banner: all campaigns paused (Correção 8) */}
+      {allPaused && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200">
+          <PauseCircle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+          <span className="text-xs text-amber-800">
+            Todas as suas campanhas estão pausadas. Ative uma para começar a anunciar.
+          </span>
+        </div>
+      )}
+
+      {/* [3] Campaign tabs */}
       <CampaignTabs
         campaigns={campaigns}
         configs={configMap}
@@ -160,43 +167,27 @@ export function MetaPageClient({
           </CardContent>
         </Card>
       )}
-
-      {/* Other campaigns summary */}
-      {campaigns.length > 1 && activeCampaignId && (
-        <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-slate-400">Outras campanhas</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {campaigns.filter((c) => c.id !== activeCampaignId).map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setActiveCampaignId(c.id)}
-                className="bg-white border border-slate-100 rounded-xl p-3 text-left hover:border-indigo-200 transition-colors"
-              >
-                <p className="text-xs font-medium text-slate-700 truncate">{c.name}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
-                    c.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
-                  }`}>
-                    {c.status === "ACTIVE" ? "Ativa" : "Pausada"}
-                  </span>
-                  <span className="text-[10px] text-slate-400">{fmtBrl(c.spend)}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 function Header() {
   return (
-    <div>
-      <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
-        <MetaIcon size={20} /> Meta Ads
-      </h1>
-      <p className="text-sm text-slate-400 mt-1">Gerencie campanhas, métricas e criativos</p>
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+          <MetaIcon size={20} /> Meta Ads
+        </h1>
+        <p className="text-sm text-slate-400 mt-0.5">Gerencie campanhas, métricas e criativos</p>
+      </div>
+      <Button
+        size="sm"
+        className="h-8 text-xs rounded-xl gap-1.5"
+        onClick={() => window.open("https://business.facebook.com/adsmanager/manage/campaigns?act=", "_blank")}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline">Nova Campanha</span>
+      </Button>
     </div>
   );
 }

@@ -35,6 +35,12 @@ export function AdCard({ ad, benchmark }: Props) {
     return METRIC_COLORS[classifyMetric(metric, value, benchmark)];
   }
 
+  function metricDot(metric: "ctr" | "cpm" | "cpc", value: number): string | null {
+    if (!benchmark || value === 0) return null;
+    const status = classifyMetric(metric, value, benchmark);
+    return status === "good" ? "bg-emerald-500" : status === "average" ? "bg-amber-400" : "bg-red-500";
+  }
+
   return (
     <div className={`rounded-xl border p-3 space-y-2 ${hCfg.bg}`}>
       <div className="flex items-center justify-between">
@@ -74,15 +80,24 @@ export function AdCard({ ad, benchmark }: Props) {
           </div>
           <div className="bg-white/60 rounded-lg px-2 py-1">
             <p className="text-[9px] text-slate-400">CTR</p>
-            <p className={`text-[11px] font-bold ${metricColor("ctr", ad.ctr)}`}>{fmt(ad.ctr)}%</p>
+            <p className={`text-[11px] font-bold flex items-center gap-1 ${metricColor("ctr", ad.ctr)}`}>
+              {metricDot("ctr", ad.ctr) && <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${metricDot("ctr", ad.ctr)}`} />}
+              {fmt(ad.ctr)}%
+            </p>
           </div>
           <div className="bg-white/60 rounded-lg px-2 py-1">
             <p className="text-[9px] text-slate-400">CPC</p>
-            <p className={`text-[11px] font-bold ${metricColor("cpc", ad.cpc)}`}>{fmtBrl(ad.cpc)}</p>
+            <p className={`text-[11px] font-bold flex items-center gap-1 ${metricColor("cpc", ad.cpc)}`}>
+              {metricDot("cpc", ad.cpc) && <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${metricDot("cpc", ad.cpc)}`} />}
+              {fmtBrl(ad.cpc)}
+            </p>
           </div>
           <div className="bg-white/60 rounded-lg px-2 py-1">
             <p className="text-[9px] text-slate-400">CPM</p>
-            <p className={`text-[11px] font-bold ${metricColor("cpm", ad.cpm)}`}>{fmtBrl(ad.cpm)}</p>
+            <p className={`text-[11px] font-bold flex items-center gap-1 ${metricColor("cpm", ad.cpm)}`}>
+              {metricDot("cpm", ad.cpm) && <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${metricDot("cpm", ad.cpm)}`} />}
+              {fmtBrl(ad.cpm)}
+            </p>
           </div>
         </div>
       )}
