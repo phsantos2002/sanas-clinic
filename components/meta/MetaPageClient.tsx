@@ -201,7 +201,7 @@ export function MetaPageClient({
       />
 
       {/* Campaign KPIs, Quality, Budget, Bid Cap */}
-      <CampaignKPIs campaign={selectedCampaign} />
+      <CampaignKPIs campaign={selectedCampaign} benchmark={benchmark} />
 
       {/* Strategy-specific Indicators */}
       <StrategyPanel

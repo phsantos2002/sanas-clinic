@@ -14,13 +14,23 @@ import {
   CheckCircle, XCircle, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
 import { MetaIcon } from "@/components/icons/SourceIcons";
+import { getBenchmark, classifyMetric, type BenchmarkMetrics } from "@/lib/benchmarks";
 import type { FullAnalytics } from "@/app/actions/analytics";
 import type { LeadSourceStats } from "@/types";
 import type { MetaCampaign } from "@/services/metaAds";
 
+type PixelConfig = {
+  bidStrategy: string | null;
+  campaignObjective: string | null;
+  businessSegment: string | null;
+  coverageArea: string | null;
+  conversionValue: number | null;
+} | null;
+
 type Props = {
   data: FullAnalytics;
   sourceStats: LeadSourceStats;
+  pixelConfig?: PixelConfig;
 };
 
 function fmt(n: number, dec = 2) {
@@ -31,9 +41,16 @@ function fmtBrl(n: number) {
 }
 
 type Quality = "good" | "ok" | "bad";
-function scoreCTR(ctr: number): Quality { return ctr >= 1.5 ? "good" : ctr >= 0.5 ? "ok" : "bad"; }
-function scoreCPM(cpm: number): Quality { return cpm <= 20 ? "good" : cpm <= 50 ? "ok" : "bad"; }
-function scoreCPC(cpc: number): Quality { return cpc <= 2 ? "good" : cpc <= 5 ? "ok" : "bad"; }
+
+function scoreWithBenchmark(metric: "ctr" | "cpm" | "cpc", value: number, bench: BenchmarkMetrics | null): Quality {
+  if (bench) {
+    const q = classifyMetric(metric, value, bench);
+    return q === "good" ? "good" : q === "average" ? "ok" : "bad";
+  }
+  if (metric === "ctr") return value >= 1.5 ? "good" : value >= 0.5 ? "ok" : "bad";
+  if (metric === "cpm") return value <= 20 ? "good" : value <= 50 ? "ok" : "bad";
+  return value <= 2 ? "good" : value <= 5 ? "ok" : "bad";
+}
 
 const qualityConfig: Record<Quality, { label: string; color: string; bar: string }> = {
   good: { label: "Ótimo", color: "text-emerald-600", bar: "bg-emerald-500" },
@@ -58,7 +75,7 @@ function Thermometer({ label, value, quality }: { label: string; value: string; 
   );
 }
 
-function CampaignCard({ campaign, totalSpend }: { campaign: MetaCampaign; totalSpend: number }) {
+function CampaignCard({ campaign, totalSpend, bench }: { campaign: MetaCampaign; totalSpend: number; bench: BenchmarkMetrics | null }) {
   const isActive = campaign.status === "ACTIVE";
   const shareOfSpend = totalSpend > 0 ? Math.round((campaign.spend / totalSpend) * 100) : 0;
 
@@ -80,18 +97,18 @@ function CampaignCard({ campaign, totalSpend }: { campaign: MetaCampaign; totalS
         <div><p className="text-[11px] text-slate-400">Cliques</p><p className="text-base font-bold text-slate-900">{campaign.clicks.toLocaleString("pt-BR")}</p></div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <Thermometer label="CTR" value={`${fmt(campaign.ctr)}%`} quality={scoreCTR(campaign.ctr)} />
-        <Thermometer label="CPM" value={fmtBrl(campaign.cpm)} quality={scoreCPM(campaign.cpm)} />
-        <Thermometer label="CPC" value={fmtBrl(campaign.cpc)} quality={scoreCPC(campaign.cpc)} />
+        <Thermometer label="CTR" value={`${fmt(campaign.ctr)}%`} quality={scoreWithBenchmark("ctr", campaign.ctr, bench)} />
+        <Thermometer label="CPM" value={fmtBrl(campaign.cpm)} quality={scoreWithBenchmark("cpm", campaign.cpm, bench)} />
+        <Thermometer label="CPC" value={fmtBrl(campaign.cpc)} quality={scoreWithBenchmark("cpc", campaign.cpc, bench)} />
       </div>
     </div>
   );
 }
 
-function BidCapInsight({ label, status, detail }: { label: string; status: "good" | "warning" | "bad" | "ok"; detail: string }) {
-  const icons = { good: CheckCircle, ok: CheckCircle, warning: AlertTriangle, bad: XCircle };
-  const colors = { good: "text-emerald-600", ok: "text-emerald-600", warning: "text-amber-600", bad: "text-red-500" };
-  const bgs = { good: "bg-emerald-50", ok: "bg-emerald-50", warning: "bg-amber-50", bad: "bg-red-50" };
+function StrategyInsight({ label, status, detail }: { label: string; status: Quality; detail: string }) {
+  const icons = { good: CheckCircle, ok: CheckCircle, bad: XCircle };
+  const colors = { good: "text-emerald-600", ok: "text-amber-600", bad: "text-red-500" };
+  const bgs = { good: "bg-emerald-50", ok: "bg-amber-50", bad: "bg-red-50" };
   const Icon = icons[status];
   return (
     <div className={`flex items-start gap-3 p-3 rounded-xl ${bgs[status]}`}>
@@ -104,10 +121,17 @@ function BidCapInsight({ label, status, detail }: { label: string; status: "good
   );
 }
 
+const STRATEGY_NAMES: Record<string, string> = {
+  LOWEST_COST: "Menor Custo",
+  COST_CAP: "Cost Cap",
+  BID_CAP: "Bid Cap",
+  ROAS_MIN: "ROAS Mínimo",
+};
+
 const STAGE_COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981"];
 const SOURCE_COLORS = ["#3b82f6", "#eab308", "#22c55e", "#8b5cf6", "#a1a1aa"];
 
-export function AnalyticsClient({ data, sourceStats }: Props) {
+export function AnalyticsClient({ data, sourceStats, pixelConfig }: Props) {
   const { pipeline, metaAds, campaigns, hasMetaConfig, metaError, selectedCampaignId, selectedCampaignName } = data;
   const costPerLead = metaAds && pipeline.totalLeads > 0 ? metaAds.spend / pipeline.totalLeads : null;
   const costPerConversation = metaAds && pipeline.leadsWithConversation > 0 ? metaAds.spend / pipeline.leadsWithConversation : null;
@@ -117,6 +141,12 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
   const costPerClient = metaAds && clientCount > 0 ? metaAds.spend / clientCount : null;
   const activeCampaigns = campaigns.filter((c) => c.status === "ACTIVE");
   const sortedCampaigns = [...activeCampaigns, ...campaigns.filter((c) => c.status !== "ACTIVE")];
+
+  // Benchmark-aware scoring
+  const bench = pixelConfig
+    ? getBenchmark(pixelConfig.campaignObjective, pixelConfig.businessSegment, pixelConfig.coverageArea)
+    : null;
+  const strategyName = pixelConfig?.bidStrategy ? STRATEGY_NAMES[pixelConfig.bidStrategy] ?? pixelConfig.bidStrategy : null;
 
   const stageChartData = pipeline.leadsByStage.map((s) => ({
     name: s.stageName,
@@ -145,11 +175,15 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
     { metric: "Cliques", value: Math.min(metaAds.clicks / Math.max(pipeline.totalLeads, 1) * 20, 100), raw: metaAds.clicks.toLocaleString("pt-BR") },
   ] : [];
 
-  // Bid cap analysis
-  const bidCapEfficiency = metaAds ? (() => {
-    const cpcScore = metaAds.cpc <= 1 ? 100 : metaAds.cpc <= 2 ? 80 : metaAds.cpc <= 5 ? 50 : 20;
-    const ctrScore = metaAds.ctr >= 2 ? 100 : metaAds.ctr >= 1 ? 70 : metaAds.ctr >= 0.5 ? 40 : 15;
-    const cpmScore = metaAds.cpm <= 15 ? 100 : metaAds.cpm <= 30 ? 70 : metaAds.cpm <= 50 ? 40 : 15;
+  // Strategy-aware efficiency scoring
+  const strategyEfficiency = metaAds ? (() => {
+    const cpcQ = scoreWithBenchmark("cpc", metaAds.cpc, bench);
+    const ctrQ = scoreWithBenchmark("ctr", metaAds.ctr, bench);
+    const cpmQ = scoreWithBenchmark("cpm", metaAds.cpm, bench);
+    const scoreMap = { good: 100, ok: 55, bad: 15 };
+    const cpcScore = scoreMap[cpcQ];
+    const ctrScore = scoreMap[ctrQ];
+    const cpmScore = scoreMap[cpmQ];
     return { cpcScore, ctrScore, cpmScore, avg: Math.round((cpcScore + ctrScore + cpmScore) / 3) };
   })() : null;
 
@@ -159,6 +193,34 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
     leads: step.count,
     custo: step.count > 0 ? Math.round(metaAds.spend / step.count * 100) / 100 : 0,
   })) : [];
+
+  // Strategy-specific insight descriptions
+  function getCpcDescription(cpc: number): string {
+    const q = scoreWithBenchmark("cpc", cpc, bench);
+    if (strategyName === "Menor Custo") {
+      return q === "good" ? "CPC excelente — a Meta está otimizando bem o custo" : q === "ok" ? "CPC moderado — expanda o público para reduzir concorrência" : "CPC alto — revise segmentação e criativos";
+    }
+    if (strategyName === "Cost Cap") {
+      return q === "good" ? "CPC dentro do cap — boa eficiência de entrega" : q === "ok" ? "CPC próximo do limite — monitore a entrega" : "CPC acima do ideal — considere aumentar o cap ou otimizar criativos";
+    }
+    if (strategyName === "Bid Cap") {
+      return q === "good" ? "CPC baixo — bid cap competitivo" : q === "ok" ? "CPC moderado — considere ajustar o bid" : "CPC alto — bid cap pode estar elevado";
+    }
+    if (strategyName === "ROAS Mínimo") {
+      return q === "good" ? "CPC baixo — bom retorno por clique" : q === "ok" ? "CPC moderado — monitore o ROAS" : "CPC alto — impacta negativamente o ROAS";
+    }
+    return q === "good" ? "CPC eficiente" : q === "ok" ? "CPC moderado — busque otimizar" : "CPC alto — revise segmentação e criativos";
+  }
+
+  function getCtrDescription(ctr: number): string {
+    const q = scoreWithBenchmark("ctr", ctr, bench);
+    return q === "good" ? "CTR alto — criativos performando bem" : q === "ok" ? "CTR moderado — teste novos criativos" : "CTR baixo — revise criativos e segmentação";
+  }
+
+  function getCpmDescription(cpm: number): string {
+    const q = scoreWithBenchmark("cpm", cpm, bench);
+    return q === "good" ? "CPM saudável — boa entrega" : q === "ok" ? "CPM elevado — audiência pode estar saturada" : "CPM muito alto — reduza público ou mude posicionamento";
+  }
 
   return (
     <div className="space-y-8">
@@ -232,27 +294,37 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
               </div>
             </div>
 
-            {/* Bid Cap Strategy Analysis */}
-            {bidCapEfficiency && (
+            {/* Strategy Analysis — adapts to configured strategy */}
+            {strategyEfficiency && (
               <div className="bg-white border border-slate-100 rounded-2xl p-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-900">Análise de Estratégia Bid Cap</h3>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      Análise de Performance
+                      {strategyName && <span className="text-slate-400 font-normal ml-1">— {strategyName}</span>}
+                    </h3>
+                    {bench && (
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Benchmarks ajustados para seu segmento e objetivo
+                      </p>
+                    )}
+                  </div>
                   <div className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                    bidCapEfficiency.avg >= 70 ? "bg-emerald-50 text-emerald-700" :
-                    bidCapEfficiency.avg >= 40 ? "bg-amber-50 text-amber-700" :
+                    strategyEfficiency.avg >= 70 ? "bg-emerald-50 text-emerald-700" :
+                    strategyEfficiency.avg >= 40 ? "bg-amber-50 text-amber-700" :
                     "bg-red-50 text-red-700"
                   }`}>
-                    {bidCapEfficiency.avg >= 70 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                    Score: {bidCapEfficiency.avg}/100
+                    {strategyEfficiency.avg >= 70 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                    Score: {strategyEfficiency.avg}/100
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="space-y-4">
                     {[
-                      { label: "Eficiência do CPC", score: bidCapEfficiency.cpcScore, value: fmtBrl(metaAds.cpc), desc: metaAds.cpc <= 2 ? "CPC baixo — bid cap competitivo" : metaAds.cpc <= 5 ? "CPC moderado — considere reduzir o bid" : "CPC alto — bid cap pode estar muito elevado" },
-                      { label: "Engajamento (CTR)", score: bidCapEfficiency.ctrScore, value: `${fmt(metaAds.ctr)}%`, desc: metaAds.ctr >= 1.5 ? "CTR alto — criativos performando bem" : metaAds.ctr >= 0.5 ? "CTR moderado — teste novos criativos" : "CTR baixo — revise criativos e segmentação" },
-                      { label: "Custo de Exposição (CPM)", score: bidCapEfficiency.cpmScore, value: fmtBrl(metaAds.cpm), desc: metaAds.cpm <= 20 ? "CPM saudável — boa entrega" : metaAds.cpm <= 50 ? "CPM elevado — audiência pode estar saturada" : "CPM muito alto — reduza público ou mude posicionamento" },
+                      { label: "Eficiência do CPC", score: strategyEfficiency.cpcScore, value: fmtBrl(metaAds.cpc), desc: getCpcDescription(metaAds.cpc) },
+                      { label: "Engajamento (CTR)", score: strategyEfficiency.ctrScore, value: `${fmt(metaAds.ctr)}%`, desc: getCtrDescription(metaAds.ctr) },
+                      { label: "Custo de Exposição (CPM)", score: strategyEfficiency.cpmScore, value: fmtBrl(metaAds.cpm), desc: getCpmDescription(metaAds.cpm) },
                     ].map((item) => (
                       <div key={item.label} className="space-y-1.5">
                         <div className="flex items-center justify-between">
@@ -273,26 +345,26 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
                   </div>
 
                   <div className="space-y-2">
-                    <BidCapInsight
+                    <StrategyInsight
                       label="Relação Gasto x Resultados"
-                      status={costPerClient != null && costPerClient < metaAds.spend * 0.3 ? "good" : costPerLead != null && costPerLead < 10 ? "ok" : "warning"}
+                      status={costPerClient != null && costPerClient < metaAds.spend * 0.3 ? "good" : costPerLead != null && costPerLead < (bench?.cpl.average ?? 10) ? "ok" : "bad"}
                       detail={costPerClient != null
-                        ? `Cada cliente custa ${fmtBrl(costPerClient)}. ${costPerClient < 50 ? "Valor aceitável para conversão via WhatsApp." : "Considere otimizar funil para reduzir esse custo."}`
+                        ? `Cada cliente custa ${fmtBrl(costPerClient)}. ${costPerClient < (bench?.cpl.average ?? 50) ? "Valor dentro do benchmark para seu segmento." : "Considere otimizar funil para reduzir esse custo."}`
                         : "Sem dados suficientes de conversão para analisar."
                       }
                     />
-                    <BidCapInsight
+                    <StrategyInsight
                       label="Taxa de Cliques vs Impressões"
-                      status={scoreCTR(metaAds.ctr)}
+                      status={scoreWithBenchmark("ctr", metaAds.ctr, bench)}
                       detail={`${metaAds.clicks.toLocaleString("pt-BR")} cliques de ${metaAds.impressions.toLocaleString("pt-BR")} impressões (${fmt(metaAds.ctr)}%). ${
-                        metaAds.ctr >= 1.5 ? "O público está respondendo bem ao criativo." :
-                        metaAds.ctr >= 0.5 ? "Há espaço para melhorar — teste variações de copy e imagem." :
+                        scoreWithBenchmark("ctr", metaAds.ctr, bench) === "good" ? "O público está respondendo bem ao criativo." :
+                        scoreWithBenchmark("ctr", metaAds.ctr, bench) === "ok" ? "Há espaço para melhorar — teste variações de copy e imagem." :
                         "Público ou criativo precisa de revisão urgente."
                       }`}
                     />
-                    <BidCapInsight
+                    <StrategyInsight
                       label="Eficiência do Alcance"
-                      status={metaAds.reach / Math.max(metaAds.impressions, 1) > 0.5 ? "good" : metaAds.reach / Math.max(metaAds.impressions, 1) > 0.3 ? "ok" : "warning"}
+                      status={metaAds.reach / Math.max(metaAds.impressions, 1) > 0.5 ? "good" : metaAds.reach / Math.max(metaAds.impressions, 1) > 0.3 ? "ok" : "bad"}
                       detail={`Alcance de ${metaAds.reach.toLocaleString("pt-BR")} pessoas com ${metaAds.impressions.toLocaleString("pt-BR")} impressões. ${
                         metaAds.reach / Math.max(metaAds.impressions, 1) > 0.5
                           ? "Boa diversidade de público — frequência controlada."
@@ -318,9 +390,9 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
                   </RadarChart>
                 </ResponsiveContainer>
                 <div className="grid grid-cols-3 gap-4 mt-4 border-t border-slate-100 pt-4">
-                  <Thermometer label="CTR médio" value={`${fmt(metaAds.ctr)}%`} quality={scoreCTR(metaAds.ctr)} />
-                  <Thermometer label="CPM médio" value={fmtBrl(metaAds.cpm)} quality={scoreCPM(metaAds.cpm)} />
-                  <Thermometer label="CPC médio" value={fmtBrl(metaAds.cpc)} quality={scoreCPC(metaAds.cpc)} />
+                  <Thermometer label="CTR médio" value={`${fmt(metaAds.ctr)}%`} quality={scoreWithBenchmark("ctr", metaAds.ctr, bench)} />
+                  <Thermometer label="CPM médio" value={fmtBrl(metaAds.cpm)} quality={scoreWithBenchmark("cpm", metaAds.cpm, bench)} />
+                  <Thermometer label="CPC médio" value={fmtBrl(metaAds.cpc)} quality={scoreWithBenchmark("cpc", metaAds.cpc, bench)} />
                 </div>
               </div>
 
@@ -357,7 +429,7 @@ export function AnalyticsClient({ data, sourceStats }: Props) {
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {sortedCampaigns.map((c) => (
-                    <CampaignCard key={c.id} campaign={c} totalSpend={metaAds?.spend ?? 0} />
+                    <CampaignCard key={c.id} campaign={c} totalSpend={metaAds?.spend ?? 0} bench={bench} />
                   ))}
                 </div>
               </div>
