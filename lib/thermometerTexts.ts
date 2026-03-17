@@ -90,15 +90,76 @@ const OBJECTIVE_TEXTS: Record<string, Partial<Record<MetricKey, Partial<Record<M
   },
 };
 
+// ─── Textos específicos por estratégia de lance ───
+
+const STRATEGY_TEXTS: Record<string, Partial<Record<MetricKey, Partial<Record<MetricStatus, string>>>>> = {
+  COST_CAP: {
+    cpc: {
+      bad: "CPC acima do Cost Cap configurado. A Meta vai reduzir entrega automaticamente. Aumente o cap em 10-20% ou melhore criativos.",
+      average: "CPC próximo do limite do Cost Cap. Monitore — se subir mais, a entrega pode cair.",
+      good: "CPC bem abaixo do Cost Cap. Boa margem para manter ou até reduzir o cap gradualmente.",
+    },
+    cpm: {
+      bad: "CPM elevado com Cost Cap — o custo por mil impressões está corroendo seu orçamento. Expanda o público ou renove criativos.",
+    },
+    frequency: {
+      bad: "Frequência alta com Cost Cap — público saturado está encarecendo cada resultado. Renove criativos urgentemente.",
+    },
+  },
+  BID_CAP: {
+    cpc: {
+      bad: "CPC alto com Bid Cap ativo. Seu lance pode estar baixo demais, limitando a entrega. Aumente o bid gradualmente em 10-15%.",
+      average: "CPC no limite do Bid Cap. Você está competindo no limite — considere um leve aumento para manter volume.",
+      good: "CPC abaixo do lance máximo — boa folga no Bid Cap. A entrega deve estar fluindo bem.",
+    },
+    cpm: {
+      bad: "CPM alto com Bid Cap — o mercado está caro para esse público. Considere expandir a segmentação.",
+    },
+    ctr: {
+      bad: "CTR baixo com Bid Cap ativo — criativos fracos + bid limitado = entrega muito restrita. Priorize melhorar criativos.",
+    },
+  },
+  ROAS_MIN: {
+    cpc: {
+      bad: "CPC elevado impacta diretamente o ROAS. Foque em criativos com maior taxa de conversão para compensar.",
+      good: "CPC baixo favorece um ROAS mais alto — cada clique é barato, maximizando o retorno.",
+    },
+    cpm: {
+      bad: "CPM alto com meta de ROAS — seu custo de alcance está alto. Isso dificulta atingir o retorno mínimo.",
+    },
+    ctr: {
+      bad: "CTR baixo com ROAS Mínimo — poucos cliques = menos conversões = ROAS em risco. Melhore criativos urgentemente.",
+      good: "CTR alto favorece o ROAS — mais cliques por impressão = mais chances de conversão.",
+    },
+  },
+  LOWEST_COST: {
+    cpc: {
+      bad: "CPC alto no modo Menor Custo — sem cap, a Meta está gastando livremente. Considere migrar para Cost Cap para controlar.",
+    },
+    cpm: {
+      bad: "CPM elevado sem limite de custo — o público pode estar saturado. Expanda a segmentação ou renove criativos.",
+    },
+    frequency: {
+      bad: "Frequência alta no Menor Custo — sem limite, a Meta repete para o mesmo público. Troque criativos ou considere Bid Cap.",
+    },
+  },
+};
+
 /**
- * Retorna o texto contextual para uma métrica + status + objetivo.
- * Se houver texto específico para o objetivo, usa ele; senão, usa o genérico.
+ * Retorna o texto contextual para uma métrica + status + objetivo + estratégia.
+ * Prioridade: estratégia > objetivo > genérico.
  */
 export function getThermometerText(
   metric: MetricKey,
   status: MetricStatus,
-  objective?: string | null
+  objective?: string | null,
+  bidStrategy?: string | null
 ): string {
+  // Strategy-specific text takes priority
+  if (bidStrategy) {
+    const stratText = STRATEGY_TEXTS[bidStrategy]?.[metric]?.[status];
+    if (stratText) return stratText;
+  }
   if (objective) {
     const objText = OBJECTIVE_TEXTS[objective]?.[metric]?.[status];
     if (objText) return objText;

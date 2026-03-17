@@ -233,6 +233,12 @@ async function processMessage(
     });
   }
 
+  // Resolve campaign name from Meta API in background (non-blocking)
+  const campaignId = referral?.ads_context_metadata?.campaign_id ?? lead.metaCampaignId;
+  if (campaignId && (!lead.campaign || lead.campaign === referral?.headline)) {
+    resolveMetaCampaignName(lead.id, campaignId, whatsappConfig.userId).catch(() => {});
+  }
+
   // Save incoming message
   await prisma.message.create({
     data: { leadId: lead.id, role: "user", content: text },
@@ -304,5 +310,29 @@ async function processMessage(
         stageName: newStage.name,
       });
     }
+  }
+}
+
+// ─── Background: resolve campaign name from Meta API ───
+
+async function resolveMetaCampaignName(leadId: string, campaignId: string, userId: string) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pixel = await prisma.pixel.findUnique({ where: { userId } }) as any;
+    if (!pixel?.metaAdsToken) return;
+
+    const res = await fetch(
+      `https://graph.facebook.com/v18.0/${campaignId}?fields=name&access_token=${pixel.metaAdsToken}`,
+      { cache: "no-store" }
+    );
+    const json = await res.json();
+    if (json.name) {
+      await prisma.lead.update({
+        where: { id: leadId },
+        data: { campaign: json.name },
+      });
+    }
+  } catch {
+    // Non-critical — campaign name will just not be resolved
   }
 }

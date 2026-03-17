@@ -72,13 +72,69 @@ export function CampaignAlerts({ campaign, config, benchmark }: Props) {
     }
   }
 
-  // Cost Cap/Bid Cap over limit
-  if ((config.bidStrategy === "COST_CAP" || config.bidStrategy === "BID_CAP") && config.maxCostPerResult) {
+  // ─── Strategy-specific alerts ───
+
+  const strat = config.bidStrategy;
+
+  if (strat === "COST_CAP" && config.maxCostPerResult && config.maxCostPerResult > 0) {
     if (campaign.cpc > config.maxCostPerResult * 1.2) {
       alerts.push({
         type: "critical",
-        title: "CPC acima do limite configurado",
-        description: `CPC real (${fmtBrl(campaign.cpc)}) está 20%+ acima do cap (${fmtBrl(config.maxCostPerResult)}). A entrega pode ser limitada.`,
+        title: "CPC acima do Cost Cap",
+        description: `CPC real (${fmtBrl(campaign.cpc)}) está ${Math.round(((campaign.cpc / config.maxCostPerResult) - 1) * 100)}% acima do cap (${fmtBrl(config.maxCostPerResult)}). A Meta vai reduzir entrega. Aumente o cap em 10-20% ou otimize criativos.`,
+      });
+    } else if (campaign.cpc > config.maxCostPerResult * 0.8 && campaign.impressions > 1000) {
+      alerts.push({
+        type: "warning",
+        title: "CPC aproximando-se do Cost Cap",
+        description: `CPC real (${fmtBrl(campaign.cpc)}) está a ${Math.round((1 - campaign.cpc / config.maxCostPerResult) * 100)}% do limite (${fmtBrl(config.maxCostPerResult)}). Se ultrapassar, a entrega cai. Monitore de perto.`,
+      });
+    }
+  }
+
+  if (strat === "BID_CAP" && config.bidValue && config.bidValue > 0) {
+    const ratio = campaign.cpc / config.bidValue;
+    if (ratio > 0.95 && campaign.impressions > 500) {
+      alerts.push({
+        type: "warning",
+        title: "CPC muito próximo do Bid Cap",
+        description: `CPC real (${fmtBrl(campaign.cpc)}) atingiu ${Math.round(ratio * 100)}% do lance máximo (${fmtBrl(config.bidValue)}). Aumente o bid em 10-15% para manter volume de entrega.`,
+      });
+    }
+    if (campaign.impressions > 0 && campaign.impressions < 200 && campaign.status === "ACTIVE") {
+      alerts.push({
+        type: "critical",
+        title: "Entrega limitada pelo Bid Cap",
+        description: `Apenas ${campaign.impressions.toLocaleString("pt-BR")} impressões — o lance pode estar abaixo do mercado. Aumente gradualmente ou considere Cost Cap.`,
+      });
+    }
+  }
+
+  if (strat === "ROAS_MIN" && config.maxCostPerResult && config.maxCostPerResult > 0) {
+    const targetRoas = config.maxCostPerResult;
+    const convValue = config.conversionValue ?? 0;
+    if (convValue > 0 && campaign.spend > 0) {
+      // Estimate ROAS
+      const estConversions = campaign.clicks > 0 ? Math.max(1, Math.round(campaign.clicks * 0.05)) : 0;
+      const estRevenue = estConversions * convValue;
+      const estRoas = estRevenue / campaign.spend;
+      if (estRoas < targetRoas) {
+        alerts.push({
+          type: "critical",
+          title: `ROAS estimado abaixo da meta (${fmt(estRoas, 1)}x vs ${fmt(targetRoas, 1)}x)`,
+          description: "O retorno está abaixo do mínimo configurado. Otimize criativos para aumentar conversões ou aumente o valor médio do produto/serviço.",
+        });
+      }
+    }
+  }
+
+  if (strat === "LOWEST_COST" && campaign.impressions > 2000) {
+    // Lowest cost without any limit — warn if costs are rising
+    if (getMetricStatus("cpc", campaign.cpc, benchmark) === "bad" && getMetricStatus("cpm", campaign.cpm, benchmark) === "bad") {
+      alerts.push({
+        type: "warning",
+        title: "Custos subindo sem limite",
+        description: "CPC e CPM estão altos com estratégia Menor Custo (sem cap). Considere migrar para Cost Cap ou Bid Cap para controlar gastos.",
       });
     }
   }

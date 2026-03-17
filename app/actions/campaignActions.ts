@@ -11,7 +11,8 @@ export type ActionType =
   | "BUDGET_CHANGE"
   | "BID_CHANGE"
   | "STRATEGY_CHANGE"
-  | "AD_CREATED";
+  | "AD_CREATED"
+  | "CREATE";
 
 export type EntityType = "CAMPAIGN" | "ADSET" | "AD";
 

@@ -48,28 +48,28 @@ export function CampaignThermometers({ campaign, config }: Props) {
             label="CTR"
             value={`${fmt(campaign.ctr)}%`}
             status={ctrStatus}
-            tip={getThermometerText("ctr", ctrStatus, objective)}
+            tip={getThermometerText("ctr", ctrStatus, objective, bidStrategy)}
             reference={`Ref: >${fmt(benchmark.ctr.good)}%`}
           />
           <Thermometer
             label="CPM"
             value={fmtBrl(campaign.cpm)}
             status={cpmStatus}
-            tip={getThermometerText("cpm", cpmStatus, objective)}
+            tip={getThermometerText("cpm", cpmStatus, objective, bidStrategy)}
             reference={`Ref: <R$ ${fmt(benchmark.cpm.good)}`}
           />
           <Thermometer
             label="CPC"
             value={fmtBrl(campaign.cpc)}
             status={cpcStatus}
-            tip={getThermometerText("cpc", cpcStatus, objective)}
+            tip={getThermometerText("cpc", cpcStatus, objective, bidStrategy)}
             reference={`Ref: <R$ ${fmt(benchmark.cpc.good)}`}
           />
           <Thermometer
             label="Frequência"
             value={`${fmt(frequency, 1)}x`}
             status={freqStatus}
-            tip={getThermometerText("frequency", freqStatus, objective)}
+            tip={getThermometerText("frequency", freqStatus, objective, bidStrategy)}
             reference={`Ref: <${fmt(benchmark.frequency.good, 1)}x`}
           />
         </div>

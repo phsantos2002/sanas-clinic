@@ -604,3 +604,274 @@ export async function getSelectedCampaignId(): Promise<string | null> {
   const config = await getMetaConfig();
   return config?.selectedCampaignId ?? null;
 }
+
+// ─── Campaign Creation ───
+
+/** Meta v18.0 outcome-based objectives */
+const OBJECTIVE_MAP: Record<string, string> = {
+  seguidores: "OUTCOME_AWARENESS",
+  mensagens: "OUTCOME_ENGAGEMENT",
+  visualizacao: "OUTCOME_AWARENESS",
+  impulsionar: "OUTCOME_ENGAGEMENT",
+  leads: "OUTCOME_LEADS",
+  vendas: "OUTCOME_SALES",
+  trafego: "OUTCOME_TRAFFIC",
+};
+
+const OPTIMIZATION_MAP: Record<string, string> = {
+  seguidores: "REACH",
+  mensagens: "CONVERSATIONS",
+  visualizacao: "IMPRESSIONS",
+  impulsionar: "POST_ENGAGEMENT",
+  leads: "LEAD_GENERATION",
+  vendas: "OFFSITE_CONVERSIONS",
+  trafego: "LINK_CLICKS",
+};
+
+const BILLING_MAP: Record<string, string> = {
+  seguidores: "IMPRESSIONS",
+  mensagens: "IMPRESSIONS",
+  visualizacao: "IMPRESSIONS",
+  impulsionar: "IMPRESSIONS",
+  leads: "IMPRESSIONS",
+  vendas: "IMPRESSIONS",
+  trafego: "IMPRESSIONS",
+};
+
+export type CreateCampaignInput = {
+  name: string;
+  goal: string; // seguidores | mensagens | visualizacao | impulsionar | leads | vendas | trafego
+  dailyBudget: number; // in BRL
+  adSetName?: string;
+  // For boosting
+  postId?: string; // Facebook/IG post ID to boost
+  // For new creative
+  imageBase64?: string;
+  primaryText?: string;
+  headline?: string;
+  linkUrl?: string;
+  callToAction?: string;
+  // Destination for messages
+  destination?: string; // WHATSAPP | MESSENGER | INSTAGRAM_DIRECT
+};
+
+export async function createCampaign(input: CreateCampaignInput): Promise<{
+  success: boolean;
+  campaignId?: string;
+  adSetId?: string;
+  error?: string;
+}> {
+  const config = await getMetaConfig();
+  if (!config) return { success: false, error: "Meta não configurado" };
+
+  const objective = OBJECTIVE_MAP[input.goal];
+  if (!objective) return { success: false, error: "Objetivo inválido" };
+
+  try {
+    // Step 1: Create campaign
+    const campaignRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/campaigns?access_token=${config.metaAdsToken}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: input.name,
+        objective,
+        status: "PAUSED",
+        special_ad_categories: [],
+      }),
+    });
+    const campaignJson = await campaignRes.json();
+    if (campaignJson.error) return { success: false, error: `Campanha: ${campaignJson.error.message}` };
+
+    const campaignId = campaignJson.id;
+    if (!campaignId) return { success: false, error: "Falha ao criar campanha" };
+
+    // Step 2: Create ad set
+    const optimizationGoal = OPTIMIZATION_MAP[input.goal] ?? "IMPRESSIONS";
+    const billingEvent = BILLING_MAP[input.goal] ?? "IMPRESSIONS";
+
+    // Build promoted_object based on goal
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const promotedObject: any = {};
+    if (input.goal === "mensagens") {
+      // Get page ID
+      const pageJson = await graphGet(`${config.adAccountId}/promote_pages`, config.metaAdsToken, { fields: "id", limit: "1" });
+      const pageId = pageJson?.data?.[0]?.id;
+      if (pageId) promotedObject.page_id = pageId;
+    } else if (input.goal === "leads" || input.goal === "vendas") {
+      if (config.pixelId) promotedObject.pixel_id = config.pixelId;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adSetBody: any = {
+      name: input.adSetName || `${input.name} - Conjunto`,
+      campaign_id: campaignId,
+      daily_budget: Math.round(input.dailyBudget * 100),
+      optimization_goal: optimizationGoal,
+      billing_event: billingEvent,
+      bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+      status: "PAUSED",
+      // Default broad targeting (Brazil, 18-65)
+      targeting: {
+        geo_locations: { countries: ["BR"] },
+        age_min: 18,
+        age_max: 65,
+      },
+    };
+
+    if (Object.keys(promotedObject).length > 0) {
+      adSetBody.promoted_object = promotedObject;
+    }
+
+    // Messages destination
+    if (input.goal === "mensagens" && input.destination) {
+      adSetBody.destination_type = input.destination;
+    }
+
+    const adSetRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/adsets?access_token=${config.metaAdsToken}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(adSetBody),
+    });
+    const adSetJson = await adSetRes.json();
+    if (adSetJson.error) {
+      // Campaign was created but ad set failed — report both
+      return { success: false, campaignId, error: `Conjunto: ${adSetJson.error.message}` };
+    }
+
+    const adSetId = adSetJson.id;
+
+    // Step 3: Create ad (if creative data provided)
+    if (input.postId) {
+      // Boosting existing post
+      const pageJson = await graphGet(`${config.adAccountId}/promote_pages`, config.metaAdsToken, { fields: "id", limit: "1" });
+      const pageId = pageJson?.data?.[0]?.id;
+
+      if (pageId) {
+        const creativeRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/adcreatives?access_token=${config.metaAdsToken}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: `${input.name} - Criativo`,
+            object_story_id: input.postId,
+          }),
+        });
+        const creativeJson = await creativeRes.json();
+
+        if (creativeJson.id) {
+          await fetch(`${GRAPH_URL}/${config.adAccountId}/ads?access_token=${config.metaAdsToken}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: `${input.name} - Anúncio`,
+              adset_id: adSetId,
+              creative: { creative_id: creativeJson.id },
+              status: "PAUSED",
+            }),
+          });
+        }
+      }
+    } else if (input.imageBase64) {
+      // New creative with uploaded image
+      await createAd({
+        adSetId,
+        name: `${input.name} - Anúncio`,
+        primaryText: input.primaryText ?? "",
+        headline: input.headline ?? "",
+        linkUrl: input.linkUrl ?? "",
+        callToAction: input.callToAction ?? "LEARN_MORE",
+        imageBase64: input.imageBase64,
+      });
+    }
+
+    await recordCampaignAction({
+      type: "CREATE",
+      entityType: "CAMPAIGN",
+      entityId: campaignId,
+      entityName: input.name,
+      after: `${input.goal} | R$ ${input.dailyBudget}/dia`,
+    });
+
+    return { success: true, campaignId, adSetId };
+  } catch (e) {
+    return { success: false, error: String(e) };
+  }
+}
+
+// ─── Facebook/Instagram Posts for Boosting ───
+
+export type SocialPost = {
+  id: string;
+  message: string;
+  imageUrl: string | null;
+  permalink: string;
+  createdTime: string;
+  type: "facebook" | "instagram";
+  mediaType?: string; // IMAGE, VIDEO, CAROUSEL_ALBUM
+};
+
+export async function getFacebookPosts(): Promise<SocialPost[]> {
+  const config = await getMetaConfig();
+  if (!config) return [];
+
+  try {
+    // Get page ID first
+    const pageJson = await graphGet(`${config.adAccountId}/promote_pages`, config.metaAdsToken, {
+      fields: "id,name",
+      limit: "1",
+    });
+    const pageId = pageJson?.data?.[0]?.id;
+    if (!pageId) return [];
+
+    const json = await graphGet(`${pageId}/feed`, config.metaAdsToken, {
+      fields: "id,message,full_picture,created_time,permalink_url",
+      limit: "20",
+    });
+    if (json.error) return [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (json.data ?? []).map((p: any) => ({
+      id: `${pageId}_${p.id.split("_").pop()}`, // Ensure format pageId_postId
+      message: p.message ?? "",
+      imageUrl: p.full_picture ?? null,
+      permalink: p.permalink_url ?? "",
+      createdTime: p.created_time ?? "",
+      type: "facebook" as const,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function getInstagramMedia(): Promise<SocialPost[]> {
+  const config = await getMetaConfig();
+  if (!config) return [];
+
+  try {
+    // Get page → IG business account
+    const pageJson = await graphGet(`${config.adAccountId}/promote_pages`, config.metaAdsToken, {
+      fields: "id,instagram_business_account",
+      limit: "1",
+    });
+    const igId = pageJson?.data?.[0]?.instagram_business_account?.id;
+    if (!igId) return [];
+
+    const json = await graphGet(`${igId}/media`, config.metaAdsToken, {
+      fields: "id,caption,media_url,media_type,thumbnail_url,permalink",
+      limit: "20",
+    });
+    if (json.error) return [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (json.data ?? []).map((m: any) => ({
+      id: m.id,
+      message: m.caption ?? "",
+      imageUrl: m.media_type === "VIDEO" ? m.thumbnail_url : m.media_url ?? null,
+      permalink: m.permalink ?? "",
+      createdTime: "",
+      type: "instagram" as const,
+      mediaType: m.media_type,
+    }));
+  } catch {
+    return [];
+  }
+}

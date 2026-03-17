@@ -1,6 +1,8 @@
 import { getAnalytics, getAdCreativeReport } from "@/app/actions/analytics";
 import { getLeadSourceStats } from "@/app/actions/leads";
 import { getCurrentUser } from "@/app/actions/user";
+import { listCampaignsForSelector } from "@/app/actions/meta";
+import { getAllCampaignConfigs } from "@/app/actions/pixel";
 import { prisma } from "@/lib/prisma";
 import { AnalyticsClient } from "@/components/dashboard/AnalyticsClient";
 import { AdCreativeReportTable } from "@/components/dashboard/AdCreativeReportTable";
@@ -25,6 +27,12 @@ export default async function AnalyticsPage() {
     conversionValue: number | null;
   } | null = null;
 
+  // Fetch campaigns list and per-campaign configs for selector
+  const [campaignsList, campaignConfigs] = await Promise.all([
+    listCampaignsForSelector(),
+    getAllCampaignConfigs(),
+  ]);
+
   if (user) {
     const pixel = await prisma.pixel.findUnique({
       where: { userId: user.id },
@@ -41,9 +49,25 @@ export default async function AnalyticsPage() {
     }
   }
 
+  // Build config map for campaign selector
+  const configMap: Record<string, { bidStrategy: string | null; campaignObjective: string | null; businessSegment: string | null }> = {};
+  for (const cfg of campaignConfigs) {
+    configMap[cfg.campaignId] = {
+      bidStrategy: cfg.bidStrategy ?? null,
+      campaignObjective: cfg.campaignObjective ?? null,
+      businessSegment: cfg.businessSegment ?? null,
+    };
+  }
+
   return (
     <div className="space-y-8">
-      <AnalyticsClient data={data} sourceStats={sourceStats} pixelConfig={pixelConfig} />
+      <AnalyticsClient
+        data={data}
+        sourceStats={sourceStats}
+        pixelConfig={pixelConfig}
+        campaignsList={campaignsList}
+        campaignConfigMap={configMap}
+      />
       {creatives.length > 0 && <AdCreativeReportTable creatives={creatives} />}
     </div>
   );

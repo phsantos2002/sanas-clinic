@@ -84,13 +84,18 @@ export function LeadCard({ lead, onClickLead }: Props) {
           )}
 
           {config && (
-            <div className="flex items-center gap-1.5 mt-2">
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               <div className={`flex items-center justify-center w-5 h-5 rounded ${config.bg}`}>
                 <SourceIcon source={lead.source} size={12} />
               </div>
               <span className={`text-[10px] font-medium ${config.text}`}>
                 {config.label}
               </span>
+              {lead.campaign && (
+                <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded truncate max-w-[120px]" title={lead.campaign}>
+                  {lead.campaign}
+                </span>
+              )}
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -27,10 +28,18 @@ type PixelConfig = {
   conversionValue: number | null;
 } | null;
 
+type CampaignConfigInfo = {
+  bidStrategy: string | null;
+  campaignObjective: string | null;
+  businessSegment: string | null;
+};
+
 type Props = {
   data: FullAnalytics;
   sourceStats: LeadSourceStats;
   pixelConfig?: PixelConfig;
+  campaignsList?: Array<{ id: string; name: string; status: string }>;
+  campaignConfigMap?: Record<string, CampaignConfigInfo>;
 };
 
 function fmt(n: number, dec = 2) {
@@ -131,22 +140,44 @@ const STRATEGY_NAMES: Record<string, string> = {
 const STAGE_COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981"];
 const SOURCE_COLORS = ["#3b82f6", "#eab308", "#22c55e", "#8b5cf6", "#a1a1aa"];
 
-export function AnalyticsClient({ data, sourceStats, pixelConfig }: Props) {
+export function AnalyticsClient({ data, sourceStats, pixelConfig, campaignsList, campaignConfigMap }: Props) {
   const { pipeline, metaAds, campaigns, hasMetaConfig, metaError, selectedCampaignId, selectedCampaignName } = data;
-  const costPerLead = metaAds && pipeline.totalLeads > 0 ? metaAds.spend / pipeline.totalLeads : null;
-  const costPerConversation = metaAds && pipeline.leadsWithConversation > 0 ? metaAds.spend / pipeline.leadsWithConversation : null;
+
+  // Campaign selector state — "all" means full account, otherwise campaign ID
+  const [analysisCampaignId, setAnalysisCampaignId] = useState<string>("all");
+  const analysisCampaign = analysisCampaignId !== "all"
+    ? campaigns.find((c) => c.id === analysisCampaignId)
+    : null;
+
+  // Use per-campaign config if selected, otherwise fall back to pixel config
+  const campaignCfg = analysisCampaignId !== "all" ? campaignConfigMap?.[analysisCampaignId] : null;
+  const effectiveObjective = campaignCfg?.campaignObjective ?? pixelConfig?.campaignObjective ?? null;
+  const effectiveSegment = campaignCfg?.businessSegment ?? pixelConfig?.businessSegment ?? null;
+  const effectiveStrategy = campaignCfg?.bidStrategy ?? pixelConfig?.bidStrategy ?? null;
+
+  // Use campaign-specific metrics when a campaign is selected
+  const displayMetrics = analysisCampaign ? {
+    spend: analysisCampaign.spend,
+    impressions: analysisCampaign.impressions,
+    clicks: analysisCampaign.clicks,
+    reach: analysisCampaign.reach,
+    ctr: analysisCampaign.ctr,
+    cpm: analysisCampaign.cpm,
+    cpc: analysisCampaign.cpc,
+  } : metaAds;
+
+  const costPerLead = displayMetrics && pipeline.totalLeads > 0 ? displayMetrics.spend / pipeline.totalLeads : null;
+  const costPerConversation = displayMetrics && pipeline.leadsWithConversation > 0 ? displayMetrics.spend / pipeline.leadsWithConversation : null;
   const scheduledCount = pipeline.funnelSteps[3]?.count ?? 0;
   const clientCount = pipeline.funnelSteps[4]?.count ?? 0;
-  const costPerScheduled = metaAds && scheduledCount > 0 ? metaAds.spend / scheduledCount : null;
-  const costPerClient = metaAds && clientCount > 0 ? metaAds.spend / clientCount : null;
+  const costPerScheduled = displayMetrics && scheduledCount > 0 ? displayMetrics.spend / scheduledCount : null;
+  const costPerClient = displayMetrics && clientCount > 0 ? displayMetrics.spend / clientCount : null;
   const activeCampaigns = campaigns.filter((c) => c.status === "ACTIVE");
   const sortedCampaigns = [...activeCampaigns, ...campaigns.filter((c) => c.status !== "ACTIVE")];
 
-  // Benchmark-aware scoring
-  const bench = pixelConfig
-    ? getBenchmark(pixelConfig.campaignObjective, pixelConfig.businessSegment, pixelConfig.coverageArea)
-    : null;
-  const strategyName = pixelConfig?.bidStrategy ? STRATEGY_NAMES[pixelConfig.bidStrategy] ?? pixelConfig.bidStrategy : null;
+  // Benchmark-aware scoring — adapted to selected campaign config
+  const bench = getBenchmark(effectiveObjective, effectiveSegment, pixelConfig?.coverageArea ?? null);
+  const strategyName = effectiveStrategy ? STRATEGY_NAMES[effectiveStrategy] ?? effectiveStrategy : null;
 
   const stageChartData = pipeline.leadsByStage.map((s) => ({
     name: s.stageName,
@@ -167,19 +198,19 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig }: Props) {
     rate: s.rate,
   }));
 
-  const radarData = metaAds ? [
-    { metric: "CTR", value: Math.min(metaAds.ctr / 3 * 100, 100), raw: `${fmt(metaAds.ctr)}%` },
-    { metric: "Alcance", value: Math.min(metaAds.reach / Math.max(metaAds.impressions, 1) * 100, 100), raw: metaAds.reach.toLocaleString("pt-BR") },
-    { metric: "CPC", value: Math.max(0, 100 - metaAds.cpc * 10), raw: fmtBrl(metaAds.cpc) },
-    { metric: "CPM", value: Math.max(0, 100 - metaAds.cpm * 1.5), raw: fmtBrl(metaAds.cpm) },
-    { metric: "Cliques", value: Math.min(metaAds.clicks / Math.max(pipeline.totalLeads, 1) * 20, 100), raw: metaAds.clicks.toLocaleString("pt-BR") },
+  const radarData = displayMetrics ? [
+    { metric: "CTR", value: Math.min(displayMetrics.ctr / 3 * 100, 100), raw: `${fmt(displayMetrics.ctr)}%` },
+    { metric: "Alcance", value: Math.min(displayMetrics.reach / Math.max(displayMetrics.impressions, 1) * 100, 100), raw: displayMetrics.reach.toLocaleString("pt-BR") },
+    { metric: "CPC", value: Math.max(0, 100 - displayMetrics.cpc * 10), raw: fmtBrl(displayMetrics.cpc) },
+    { metric: "CPM", value: Math.max(0, 100 - displayMetrics.cpm * 1.5), raw: fmtBrl(displayMetrics.cpm) },
+    { metric: "Cliques", value: Math.min(displayMetrics.clicks / Math.max(pipeline.totalLeads, 1) * 20, 100), raw: displayMetrics.clicks.toLocaleString("pt-BR") },
   ] : [];
 
   // Strategy-aware efficiency scoring
-  const strategyEfficiency = metaAds ? (() => {
-    const cpcQ = scoreWithBenchmark("cpc", metaAds.cpc, bench);
-    const ctrQ = scoreWithBenchmark("ctr", metaAds.ctr, bench);
-    const cpmQ = scoreWithBenchmark("cpm", metaAds.cpm, bench);
+  const strategyEfficiency = displayMetrics ? (() => {
+    const cpcQ = scoreWithBenchmark("cpc", displayMetrics.cpc, bench);
+    const ctrQ = scoreWithBenchmark("ctr", displayMetrics.ctr, bench);
+    const cpmQ = scoreWithBenchmark("cpm", displayMetrics.cpm, bench);
     const scoreMap = { good: 100, ok: 55, bad: 15 };
     const cpcScore = scoreMap[cpcQ];
     const ctrScore = scoreMap[ctrQ];
@@ -188,10 +219,10 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig }: Props) {
   })() : null;
 
   // Pipeline cost flow
-  const pipelineCostFlow = metaAds ? pipeline.funnelSteps.map((step) => ({
+  const pipelineCostFlow = displayMetrics ? pipeline.funnelSteps.map((step) => ({
     name: step.label.replace("Leads captados", "Leads").replace("Conversas WhatsApp", "Conversas"),
     leads: step.count,
-    custo: step.count > 0 ? Math.round(metaAds.spend / step.count * 100) / 100 : 0,
+    custo: step.count > 0 ? Math.round(displayMetrics.spend / step.count * 100) / 100 : 0,
   })) : [];
 
   // Strategy-specific insight descriptions
@@ -252,33 +283,43 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig }: Props) {
 
       {/* ============== CAMPANHA / INSIGHTS META ADS ============== */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
               <MetaIcon size={16} />
             </div>
-            {selectedCampaignName ? `Insights: ${selectedCampaignName}` : "Insights Meta Ads"}
+            Insights Meta Ads
           </h2>
-          {selectedCampaignName && (
-            <span className="text-xs text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full font-medium">
-              Campanha selecionada
-            </span>
+          {/* Campaign selector */}
+          {(campaignsList ?? campaigns).length > 0 && (
+            <select
+              value={analysisCampaignId}
+              onChange={(e) => setAnalysisCampaignId(e.target.value)}
+              className="text-xs rounded-xl border border-slate-200 px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent max-w-[220px] truncate"
+            >
+              <option value="all">Conta completa</option>
+              {(campaignsList ?? campaigns).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.status === "ACTIVE" ? "🟢 " : "⏸ "}{c.name}
+                </option>
+              ))}
+            </select>
           )}
         </div>
 
-        {metaAds ? (
+        {displayMetrics ? (
           <div className="space-y-4">
             {/* Main KPIs */}
             <div className="bg-white border border-slate-100 rounded-2xl p-5">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
-                {selectedCampaignId ? "Campanha selecionada — Últimos 30 dias" : "Conta completa — Últimos 30 dias"}
+                {analysisCampaign ? `${analysisCampaign.name} — Últimos 30 dias` : "Conta completa — Últimos 30 dias"}
               </p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
                 {[
-                  { label: "Gasto", value: fmtBrl(metaAds.spend), icon: DollarSign },
-                  { label: "Impressões", value: metaAds.impressions.toLocaleString("pt-BR"), icon: Eye },
-                  { label: "Cliques", value: metaAds.clicks.toLocaleString("pt-BR"), icon: MousePointerClick },
-                  { label: "Alcance", value: metaAds.reach.toLocaleString("pt-BR"), icon: Users },
+                  { label: "Gasto", value: fmtBrl(displayMetrics.spend), icon: DollarSign },
+                  { label: "Impressões", value: displayMetrics.impressions.toLocaleString("pt-BR"), icon: Eye },
+                  { label: "Cliques", value: displayMetrics.clicks.toLocaleString("pt-BR"), icon: MousePointerClick },
+                  { label: "Alcance", value: displayMetrics.reach.toLocaleString("pt-BR"), icon: Users },
                   { label: "Custo/Lead", value: costPerLead != null ? fmtBrl(costPerLead) : "—", icon: Target },
                   { label: "Custo/Conversa", value: costPerConversation != null ? fmtBrl(costPerConversation) : "—", icon: MessageCircle },
                   { label: "Custo/Cliente", value: costPerClient != null ? fmtBrl(costPerClient) : "—", icon: TrendingUp },
@@ -322,9 +363,9 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig }: Props) {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="space-y-4">
                     {[
-                      { label: "Eficiência do CPC", score: strategyEfficiency.cpcScore, value: fmtBrl(metaAds.cpc), desc: getCpcDescription(metaAds.cpc) },
-                      { label: "Engajamento (CTR)", score: strategyEfficiency.ctrScore, value: `${fmt(metaAds.ctr)}%`, desc: getCtrDescription(metaAds.ctr) },
-                      { label: "Custo de Exposição (CPM)", score: strategyEfficiency.cpmScore, value: fmtBrl(metaAds.cpm), desc: getCpmDescription(metaAds.cpm) },
+                      { label: "Eficiência do CPC", score: strategyEfficiency.cpcScore, value: fmtBrl(displayMetrics.cpc), desc: getCpcDescription(displayMetrics.cpc) },
+                      { label: "Engajamento (CTR)", score: strategyEfficiency.ctrScore, value: `${fmt(displayMetrics.ctr)}%`, desc: getCtrDescription(displayMetrics.ctr) },
+                      { label: "Custo de Exposição (CPM)", score: strategyEfficiency.cpmScore, value: fmtBrl(displayMetrics.cpm), desc: getCpmDescription(displayMetrics.cpm) },
                     ].map((item) => (
                       <div key={item.label} className="space-y-1.5">
                         <div className="flex items-center justify-between">
@@ -347,7 +388,7 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig }: Props) {
                   <div className="space-y-2">
                     <StrategyInsight
                       label="Relação Gasto x Resultados"
-                      status={costPerClient != null && costPerClient < metaAds.spend * 0.3 ? "good" : costPerLead != null && costPerLead < (bench?.cpl.average ?? 10) ? "ok" : "bad"}
+                      status={costPerClient != null && costPerClient < displayMetrics.spend * 0.3 ? "good" : costPerLead != null && costPerLead < (bench?.cpl.average ?? 10) ? "ok" : "bad"}
                       detail={costPerClient != null
                         ? `Cada cliente custa ${fmtBrl(costPerClient)}. ${costPerClient < (bench?.cpl.average ?? 50) ? "Valor dentro do benchmark para seu segmento." : "Considere otimizar funil para reduzir esse custo."}`
                         : "Sem dados suficientes de conversão para analisar."
@@ -355,18 +396,18 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig }: Props) {
                     />
                     <StrategyInsight
                       label="Taxa de Cliques vs Impressões"
-                      status={scoreWithBenchmark("ctr", metaAds.ctr, bench)}
-                      detail={`${metaAds.clicks.toLocaleString("pt-BR")} cliques de ${metaAds.impressions.toLocaleString("pt-BR")} impressões (${fmt(metaAds.ctr)}%). ${
-                        scoreWithBenchmark("ctr", metaAds.ctr, bench) === "good" ? "O público está respondendo bem ao criativo." :
-                        scoreWithBenchmark("ctr", metaAds.ctr, bench) === "ok" ? "Há espaço para melhorar — teste variações de copy e imagem." :
+                      status={scoreWithBenchmark("ctr", displayMetrics.ctr, bench)}
+                      detail={`${displayMetrics.clicks.toLocaleString("pt-BR")} cliques de ${displayMetrics.impressions.toLocaleString("pt-BR")} impressões (${fmt(displayMetrics.ctr)}%). ${
+                        scoreWithBenchmark("ctr", displayMetrics.ctr, bench) === "good" ? "O público está respondendo bem ao criativo." :
+                        scoreWithBenchmark("ctr", displayMetrics.ctr, bench) === "ok" ? "Há espaço para melhorar — teste variações de copy e imagem." :
                         "Público ou criativo precisa de revisão urgente."
                       }`}
                     />
                     <StrategyInsight
                       label="Eficiência do Alcance"
-                      status={metaAds.reach / Math.max(metaAds.impressions, 1) > 0.5 ? "good" : metaAds.reach / Math.max(metaAds.impressions, 1) > 0.3 ? "ok" : "bad"}
-                      detail={`Alcance de ${metaAds.reach.toLocaleString("pt-BR")} pessoas com ${metaAds.impressions.toLocaleString("pt-BR")} impressões. ${
-                        metaAds.reach / Math.max(metaAds.impressions, 1) > 0.5
+                      status={displayMetrics.reach / Math.max(displayMetrics.impressions, 1) > 0.5 ? "good" : displayMetrics.reach / Math.max(displayMetrics.impressions, 1) > 0.3 ? "ok" : "bad"}
+                      detail={`Alcance de ${displayMetrics.reach.toLocaleString("pt-BR")} pessoas com ${displayMetrics.impressions.toLocaleString("pt-BR")} impressões. ${
+                        displayMetrics.reach / Math.max(displayMetrics.impressions, 1) > 0.5
                           ? "Boa diversidade de público — frequência controlada."
                           : "Frequência alta — o mesmo público está vendo o anúncio várias vezes."
                       }`}
@@ -390,9 +431,9 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig }: Props) {
                   </RadarChart>
                 </ResponsiveContainer>
                 <div className="grid grid-cols-3 gap-4 mt-4 border-t border-slate-100 pt-4">
-                  <Thermometer label="CTR médio" value={`${fmt(metaAds.ctr)}%`} quality={scoreWithBenchmark("ctr", metaAds.ctr, bench)} />
-                  <Thermometer label="CPM médio" value={fmtBrl(metaAds.cpm)} quality={scoreWithBenchmark("cpm", metaAds.cpm, bench)} />
-                  <Thermometer label="CPC médio" value={fmtBrl(metaAds.cpc)} quality={scoreWithBenchmark("cpc", metaAds.cpc, bench)} />
+                  <Thermometer label="CTR médio" value={`${fmt(displayMetrics.ctr)}%`} quality={scoreWithBenchmark("ctr", displayMetrics.ctr, bench)} />
+                  <Thermometer label="CPM médio" value={fmtBrl(displayMetrics.cpm)} quality={scoreWithBenchmark("cpm", displayMetrics.cpm, bench)} />
+                  <Thermometer label="CPC médio" value={fmtBrl(displayMetrics.cpc)} quality={scoreWithBenchmark("cpc", displayMetrics.cpc, bench)} />
                 </div>
               </div>
 
@@ -417,7 +458,7 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig }: Props) {
             </div>
 
             {/* Campaigns */}
-            {!selectedCampaignId && campaigns.length > 0 && (
+            {analysisCampaignId === "all" && campaigns.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-slate-900">Campanhas</h3>
@@ -531,9 +572,9 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig }: Props) {
                             {retention}% retidos
                           </span>
                         )}
-                        {metaAds && step.count > 0 && (
+                        {displayMetrics && step.count > 0 && (
                           <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-lg">
-                            {fmtBrl(metaAds.spend / step.count)}/un
+                            {fmtBrl(displayMetrics.spend / step.count)}/un
                           </span>
                         )}
                       </div>

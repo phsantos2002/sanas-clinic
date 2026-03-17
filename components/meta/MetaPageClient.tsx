@@ -11,6 +11,7 @@ import { type Stage } from "./shared";
 import { CampaignTabs } from "./CampaignTabs";
 import { CampaignPanel } from "./CampaignPanel";
 import { AccountPhaseCard } from "./AccountPhaseCard";
+import { CreateCampaignWizard } from "./CreateCampaignWizard";
 
 type Phase = "LEARNING" | "STABILIZING" | "SCALING" | "MATURE";
 const VALID_PHASES = new Set<string>(["LEARNING", "STABILIZING", "SCALING", "MATURE"]);
@@ -64,15 +65,23 @@ export function MetaPageClient({
 
   const allPaused = campaigns.length > 0 && campaigns.every((c) => c.status !== "ACTIVE");
 
+  const [showWizard, setShowWizard] = useState(false);
+
   const handleConfigChange = useCallback((config: CampaignConfig) => {
     setConfigMap((prev) => ({ ...prev, [config.campaignId]: config }));
+  }, []);
+
+  const handleCampaignCreated = useCallback((campaignId: string) => {
+    // The page will need to be refreshed to see the new campaign from the API
+    // For now, redirect to force SSR re-fetch
+    window.location.reload();
   }, []);
 
   // ─── Not configured ───
   if (!hasConfig) {
     return (
       <div className="space-y-6">
-        <Header />
+        <Header onNewCampaign={() => setShowWizard(true)} />
         <Card className="border-slate-100 rounded-2xl">
           <CardContent className="py-12 text-center space-y-3">
             <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto"><MetaIcon size={28} /></div>
@@ -91,7 +100,7 @@ export function MetaPageClient({
   if (campaigns.length === 0) {
     return (
       <div className="space-y-6">
-        <Header />
+        <Header onNewCampaign={() => setShowWizard(true)} />
         <Card className="border-slate-100 rounded-2xl">
           <CardContent className="py-16 text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto">
@@ -116,7 +125,7 @@ export function MetaPageClient({
   return (
     <div className="space-y-5">
       {/* [1] Header */}
-      <Header />
+      <Header onNewCampaign={() => setShowWizard(true)} />
 
       {/* [2] Account Phase — compact banner */}
       {userId && (
@@ -167,11 +176,19 @@ export function MetaPageClient({
           </CardContent>
         </Card>
       )}
+      {/* Campaign Creation Wizard */}
+      {showWizard && (
+        <CreateCampaignWizard
+          onClose={() => setShowWizard(false)}
+          onCreated={handleCampaignCreated}
+          userId={userId}
+        />
+      )}
     </div>
   );
 }
 
-function Header() {
+function Header({ onNewCampaign }: { onNewCampaign: () => void }) {
   return (
     <div className="flex items-center justify-between">
       <div>
@@ -183,7 +200,7 @@ function Header() {
       <Button
         size="sm"
         className="h-8 text-xs rounded-xl gap-1.5"
-        onClick={() => window.open("https://business.facebook.com/adsmanager/manage/campaigns?act=", "_blank")}
+        onClick={onNewCampaign}
       >
         <Plus className="h-3.5 w-3.5" />
         <span className="hidden sm:inline">Nova Campanha</span>
