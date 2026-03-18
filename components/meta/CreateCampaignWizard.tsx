@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useRef, useEffect, lazy, Suspense } from "react";
 import {
   X, ChevronLeft, ChevronRight, Users, MessageCircle, Eye, Rocket,
   ClipboardList, ShoppingCart, Globe, Upload, Info, Loader2,
@@ -22,6 +22,9 @@ import {
 } from "@/app/actions/meta";
 import { saveCampaignConfig } from "@/app/actions/pixel";
 import { CTA_OPTIONS } from "./shared";
+
+// Dynamic import for map (Leaflet doesn't support SSR)
+const LocationMap = lazy(() => import("./LocationMap").then((m) => ({ default: m.LocationMap })));
 
 type Props = {
   onClose: () => void;
@@ -723,6 +726,15 @@ function Step2Config({
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Map preview */}
+          {locationPins.length > 0 && locationPins.some((p) => p.geo.latitude && p.geo.longitude) && (
+            <div className="mt-2">
+              <Suspense fallback={<div className="w-full h-[200px] rounded-xl bg-slate-100 flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-slate-400" /></div>}>
+                <LocationMap pins={locationPins} />
+              </Suspense>
             </div>
           )}
         </div>

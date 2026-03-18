@@ -660,9 +660,9 @@ export async function searchGeoLocations(query: string): Promise<GeoLocation[]> 
       access_token: config.metaAdsToken,
       q: query.trim(),
       type: "adgeolocation",
-      location_types: '["city","subcity","neighborhood","zip"]',
+      location_types: '["city","subcity","neighborhood","zip","geo_market"]',
       country_code: "BR",
-      limit: "8",
+      limit: "12",
     });
     const res = await fetch(`${GRAPH_URL}/search?${qs}`, { cache: "no-store" });
     const json = await res.json();
