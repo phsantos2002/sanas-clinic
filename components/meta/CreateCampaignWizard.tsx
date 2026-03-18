@@ -492,13 +492,17 @@ function Step2Config({
   function handleGeoSearch(query: string) {
     setGeoQuery(query);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    if (query.trim().length < 3) { setGeoResults([]); return; }
+    if (query.trim().length < 3) { setGeoResults([]); setGeoLoading(false); return; }
     setGeoLoading(true);
     searchTimeout.current = setTimeout(async () => {
-      const results = await searchGeoLocations(query);
-      setGeoResults(results);
+      try {
+        const results = await searchGeoLocations(query);
+        setGeoResults(results);
+      } catch {
+        setGeoResults([]);
+      }
       setGeoLoading(false);
-    }, 400);
+    }, 500);
   }
 
   function addGeoLocation(geo: GeoLocation) {
@@ -670,6 +674,13 @@ function Step2Config({
               />
               {geoLoading && <Loader2 className="h-3 w-3 animate-spin text-slate-400" />}
             </div>
+
+            {/* No results */}
+            {geoQuery.trim().length >= 3 && !geoLoading && geoResults.length === 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg p-3 text-center">
+                <p className="text-[10px] text-slate-400">Nenhuma localização encontrada para &quot;{geoQuery}&quot;</p>
+              </div>
+            )}
 
             {/* Search results dropdown */}
             {geoResults.length > 0 && (

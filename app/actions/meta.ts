@@ -656,17 +656,13 @@ export async function searchGeoLocations(query: string): Promise<GeoLocation[]> 
   if (!config || !query.trim()) return [];
 
   try {
-    const qs = new URLSearchParams({
-      access_token: config.metaAdsToken,
-      q: query.trim(),
-      type: "adgeolocation",
-      location_types: '["city","subcity","neighborhood","zip","geo_market"]',
-      country_code: "BR",
-      limit: "12",
-    });
-    const res = await fetch(`${GRAPH_URL}/search?${qs}`, { cache: "no-store" });
+    const url = `${GRAPH_URL}/search?type=adgeolocation&q=${encodeURIComponent(query.trim())}&location_types=["city","subcity","neighborhood","zip"]&country_code=BR&limit=12&access_token=${config.metaAdsToken}`;
+    const res = await fetch(url, { cache: "no-store" });
     const json = await res.json();
-    if (!json.data) return [];
+    if (!json.data) {
+      console.error("[GeoSearch] No data:", json);
+      return [];
+    }
 
     return json.data.map((item: Record<string, unknown>) => ({
       key: String(item.key ?? ""),
