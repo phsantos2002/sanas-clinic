@@ -16,14 +16,20 @@ type Props = {
   pins: MapPin[];
   onAddPin: (lat: number, lng: number) => void;
   height?: number;
+  addMode: boolean;
+  onPinPlaced: () => void; // called after a pin is placed to exit add mode
 };
 
-export function LocationMap({ pins, onAddPin, height = 260 }: Props) {
+export function LocationMap({ pins, onAddPin, height = 260, addMode, onPinPlaced }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const layersRef = useRef<L.LayerGroup | null>(null);
   const onAddPinRef = useRef(onAddPin);
+  const onPinPlacedRef = useRef(onPinPlaced);
+  const addModeRef = useRef(addMode);
   onAddPinRef.current = onAddPin;
+  onPinPlacedRef.current = onPinPlaced;
+  addModeRef.current = addMode;
 
   // Initialize map
   useEffect(() => {
@@ -42,9 +48,11 @@ export function LocationMap({ pins, onAddPin, height = 260 }: Props) {
 
     layersRef.current = L.layerGroup().addTo(mapInstance.current);
 
-    // Click to add pin
+    // Click to add pin only in add mode
     mapInstance.current.on("click", (e: L.LeafletMouseEvent) => {
+      if (!addModeRef.current) return;
       onAddPinRef.current(e.latlng.lat, e.latlng.lng);
+      onPinPlacedRef.current();
     });
 
     return () => {
@@ -52,6 +60,13 @@ export function LocationMap({ pins, onAddPin, height = 260 }: Props) {
       mapInstance.current = null;
     };
   }, []);
+
+  // Toggle cursor style based on addMode
+  useEffect(() => {
+    const container = mapInstance.current?.getContainer();
+    if (!container) return;
+    container.style.cursor = addMode ? "crosshair" : "";
+  }, [addMode]);
 
   // Update markers and circles when pins change
   useEffect(() => {
@@ -112,10 +127,17 @@ export function LocationMap({ pins, onAddPin, height = 260 }: Props) {
   }, [panTo]);
 
   return (
-    <div
-      ref={mapRef}
-      className="w-full rounded-xl overflow-hidden border border-slate-200"
-      style={{ height: `${height}px`, zIndex: 0 }}
-    />
+    <div className="relative">
+      <div
+        ref={mapRef}
+        className="w-full rounded-xl overflow-hidden border border-slate-200"
+        style={{ height: `${height}px`, zIndex: 0 }}
+      />
+      {addMode && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-indigo-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full shadow-lg pointer-events-none animate-pulse">
+          Clique no mapa para posicionar o pino
+        </div>
+      )}
+    </div>
   );
 }

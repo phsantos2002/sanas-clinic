@@ -480,6 +480,7 @@ function Step2Config({
   bidValue: string; onBidValueChange: (v: string) => void;
 }) {
   const [geoLoading, setGeoLoading] = useState(false);
+  const [addPinMode, setAddPinMode] = useState(false);
 
   async function reverseGeocode(lat: number, lng: number): Promise<string> {
     try {
@@ -671,7 +672,7 @@ function Step2Config({
           </p>
 
           {/* Actions */}
-          <div className="flex gap-2 mb-2">
+          <div className="flex gap-2 mb-2 flex-wrap">
             <Button
               type="button"
               variant="outline"
@@ -683,7 +684,16 @@ function Step2Config({
               {geoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <LocateFixed className="h-3 w-3" />}
               Usar minha localização
             </Button>
-            <span className="text-[10px] text-slate-400 self-center">ou clique no mapa</span>
+            <Button
+              type="button"
+              variant={addPinMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setAddPinMode(!addPinMode)}
+              className={`rounded-xl text-xs gap-1.5 ${addPinMode ? "bg-indigo-600 hover:bg-indigo-700 text-white" : ""}`}
+            >
+              <MapPin className="h-3 w-3" />
+              {addPinMode ? "Posicionando pino..." : "Adicionar pino"}
+            </Button>
           </div>
 
           {/* Map — always visible */}
@@ -692,6 +702,8 @@ function Step2Config({
               pins={locationPins}
               onAddPin={handleAddPin}
               height={220}
+              addMode={addPinMode}
+              onPinPlaced={() => setAddPinMode(false)}
             />
           </Suspense>
 
