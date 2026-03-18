@@ -67,8 +67,8 @@ export function MetaPageClient({
 
   const [showWizard, setShowWizard] = useState(false);
 
-  const handleConfigChange = useCallback((config: CampaignConfig) => {
-    setConfigMap((prev) => ({ ...prev, [config.campaignId]: config }));
+  const handleConfigChange = useCallback((_config: CampaignConfig) => {
+    // Config is now set during campaign creation, no live editing needed
   }, []);
 
   const handleCampaignCreated = useCallback((campaignId: string) => {

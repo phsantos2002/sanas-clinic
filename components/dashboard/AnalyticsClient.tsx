@@ -290,20 +290,13 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig, campaignsList,
             </div>
             Insights Meta Ads
           </h2>
-          {/* Campaign selector */}
+          {/* Campaign selector — styled */}
           {(campaignsList ?? campaigns).length > 0 && (
-            <select
+            <CampaignSelectorDropdown
+              campaigns={campaignsList ?? campaigns}
               value={analysisCampaignId}
-              onChange={(e) => setAnalysisCampaignId(e.target.value)}
-              className="text-xs rounded-xl border border-slate-200 px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent max-w-[220px] truncate"
-            >
-              <option value="all">Conta completa</option>
-              {(campaignsList ?? campaigns).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.status === "ACTIVE" ? "🟢 " : "⏸ "}{c.name}
-                </option>
-              ))}
-            </select>
+              onChange={setAnalysisCampaignId}
+            />
           )}
         </div>
 
@@ -415,6 +408,19 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig, campaignsList,
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Campaign-type-specific insights */}
+            {analysisCampaign && effectiveObjective && (
+              <CampaignTypeInsights
+                objective={effectiveObjective}
+                metrics={displayMetrics}
+                pipeline={pipeline}
+                bench={bench}
+                costPerLead={costPerLead}
+                costPerConversation={costPerConversation}
+                costPerClient={costPerClient}
+              />
             )}
 
             {/* Quality radar + cost per step */}
@@ -686,6 +692,227 @@ export function AnalyticsClient({ data, sourceStats, pixelConfig, campaignsList,
           </BarChart>
         </ResponsiveContainer>
       </div>
+    </div>
+  );
+}
+
+// ─── Styled Campaign Selector ───
+
+function CampaignSelectorDropdown({
+  campaigns,
+  value,
+  onChange,
+}: {
+  campaigns: Array<{ id: string; name: string; status: string }>;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = value === "all" ? null : campaigns.find((c) => c.id === value);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 text-xs rounded-xl border border-slate-200 px-3 py-2 bg-white hover:bg-slate-50 transition-colors max-w-[260px]"
+      >
+        {selected ? (
+          <>
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${selected.status === "ACTIVE" ? "bg-emerald-500" : "bg-slate-300"}`} />
+            <span className="truncate font-medium text-slate-700">{selected.name}</span>
+          </>
+        ) : (
+          <>
+            <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />
+            <span className="font-medium text-slate-700">Conta completa</span>
+          </>
+        )}
+        <svg className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg py-1 min-w-[240px] max-h-[280px] overflow-y-auto">
+            <button
+              onClick={() => { onChange("all"); setOpen(false); }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-slate-50 transition-colors ${value === "all" ? "bg-indigo-50 text-indigo-700 font-semibold" : "text-slate-700"}`}
+            >
+              <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />
+              Conta completa
+            </button>
+            {campaigns.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => { onChange(c.id); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-slate-50 transition-colors ${value === c.id ? "bg-indigo-50 text-indigo-700 font-semibold" : "text-slate-700"}`}
+              >
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${c.status === "ACTIVE" ? "bg-emerald-500" : "bg-slate-300"}`} />
+                <span className="truncate">{c.name}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Campaign Type-Specific Insights ───
+
+const OBJECTIVE_INSIGHTS: Record<string, {
+  title: string;
+  metrics: Array<{ label: string; key: string; format: (v: number) => string }>;
+  tips: Array<{ condition: (m: Record<string, number>) => boolean; text: string; status: Quality }>;
+}> = {
+  AWARENESS: {
+    title: "Insights — Seguidores & Alcance",
+    metrics: [
+      { label: "Custo por 1.000 alcançados", key: "costPer1kReach", format: (v) => `R$ ${v.toFixed(2)}` },
+      { label: "Alcance total", key: "reach", format: (v) => v.toLocaleString("pt-BR") },
+      { label: "Frequência", key: "frequency", format: (v) => `${v.toFixed(1)}x` },
+      { label: "Impressões", key: "impressions", format: (v) => v.toLocaleString("pt-BR") },
+    ],
+    tips: [
+      { condition: (m) => m.frequency > 3, text: "Frequência acima de 3x — o público está vendo o anúncio repetidamente. Expanda a audiência ou renove os criativos.", status: "bad" },
+      { condition: (m) => m.frequency <= 2, text: "Frequência saudável — boa distribuição do alcance sem saturação.", status: "good" },
+      { condition: (m) => m.costPer1kReach > 30, text: "Custo por alcance alto — teste públicos mais amplos ou posicionamentos automáticos.", status: "bad" },
+      { condition: (m) => m.costPer1kReach <= 15 && m.costPer1kReach > 0, text: "Custo por alcance eficiente — campanha com boa entrega.", status: "good" },
+      { condition: (m) => m.ctr < 0.5 && m.impressions > 1000, text: "CTR baixo para campanha de alcance — criativos não geram interesse.", status: "bad" },
+    ],
+  },
+  MESSAGES: {
+    title: "Insights — Mensagens",
+    metrics: [
+      { label: "Custo por conversa", key: "costPerConversation", format: (v) => v > 0 ? `R$ ${v.toFixed(2)}` : "—" },
+      { label: "Custo por lead", key: "costPerLead", format: (v) => v > 0 ? `R$ ${v.toFixed(2)}` : "—" },
+      { label: "Conversas iniciadas", key: "conversations", format: (v) => v.toLocaleString("pt-BR") },
+      { label: "Taxa clique→conversa", key: "clickToConvRate", format: (v) => `${v.toFixed(1)}%` },
+    ],
+    tips: [
+      { condition: (m) => m.costPerConversation > 0 && m.costPerConversation < 10, text: "Custo por conversa excelente — abaixo de R$ 10.", status: "good" },
+      { condition: (m) => m.costPerConversation > 30, text: "Custo por conversa alto — revise público-alvo e criativos.", status: "bad" },
+      { condition: (m) => m.clickToConvRate < 20 && m.clicks > 10, text: "Poucos cliques viram conversas — revise a mensagem inicial do WhatsApp.", status: "bad" },
+      { condition: (m) => m.clickToConvRate >= 40, text: "Boa taxa de conversão clique→conversa — funil eficiente.", status: "good" },
+    ],
+  },
+  ENGAGEMENT: {
+    title: "Insights — Engajamento",
+    metrics: [
+      { label: "Custo por engajamento", key: "costPerEngagement", format: (v) => `R$ ${v.toFixed(2)}` },
+      { label: "Engajamentos", key: "engagements", format: (v) => v.toLocaleString("pt-BR") },
+      { label: "CTR", key: "ctr", format: (v) => `${v.toFixed(2)}%` },
+      { label: "Alcance", key: "reach", format: (v) => v.toLocaleString("pt-BR") },
+    ],
+    tips: [
+      { condition: (m) => m.ctr >= 2, text: "CTR alto — o público está engajando bem com o conteúdo.", status: "good" },
+      { condition: (m) => m.ctr < 0.5 && m.impressions > 1000, text: "CTR muito baixo — teste vídeos curtos ou carrosséis.", status: "bad" },
+      { condition: (m) => m.costPerEngagement < 0.5 && m.costPerEngagement > 0, text: "Custo por engajamento baixo — excelente para brand awareness.", status: "good" },
+    ],
+  },
+  TRAFFIC: {
+    title: "Insights — Tráfego",
+    metrics: [
+      { label: "CPC (link)", key: "cpc", format: (v) => `R$ ${v.toFixed(2)}` },
+      { label: "Cliques no link", key: "clicks", format: (v) => v.toLocaleString("pt-BR") },
+      { label: "CTR (link)", key: "ctr", format: (v) => `${v.toFixed(2)}%` },
+      { label: "Custo por lead", key: "costPerLead", format: (v) => v > 0 ? `R$ ${v.toFixed(2)}` : "—" },
+    ],
+    tips: [
+      { condition: (m) => m.cpc < 1.5 && m.cpc > 0, text: "CPC de link baixo — tráfego barato e eficiente.", status: "good" },
+      { condition: (m) => m.cpc > 5, text: "CPC de link alto — revise a segmentação ou teste landing pages.", status: "bad" },
+      { condition: (m) => m.ctr >= 1.5, text: "CTR acima da média — anúncios gerando interesse.", status: "good" },
+      { condition: (m) => m.ctr < 0.5 && m.impressions > 1000, text: "CTR baixo — teste títulos e imagens mais chamativos.", status: "bad" },
+    ],
+  },
+  LEADS: {
+    title: "Insights — Geração de Leads",
+    metrics: [
+      { label: "Custo por lead", key: "costPerLead", format: (v) => v > 0 ? `R$ ${v.toFixed(2)}` : "—" },
+      { label: "Leads captados", key: "totalLeads", format: (v) => v.toLocaleString("pt-BR") },
+      { label: "Taxa conversão", key: "conversionRate", format: (v) => `${v.toFixed(1)}%` },
+      { label: "Custo por cliente", key: "costPerClient", format: (v) => v > 0 ? `R$ ${v.toFixed(2)}` : "—" },
+    ],
+    tips: [
+      { condition: (m) => m.costPerLead > 0 && m.costPerLead < 15, text: "Custo por lead saudável — abaixo de R$ 15.", status: "good" },
+      { condition: (m) => m.costPerLead > 50, text: "CPL alto — revise público, criativo e formulário.", status: "bad" },
+      { condition: (m) => m.conversionRate >= 5, text: "Boa taxa de conversão — funil eficiente.", status: "good" },
+      { condition: (m) => m.conversionRate < 1 && m.totalLeads > 5, text: "Taxa de conversão muito baixa — verifique qualificação dos leads.", status: "bad" },
+    ],
+  },
+  SALES: {
+    title: "Insights — Vendas",
+    metrics: [
+      { label: "Custo por venda", key: "costPerClient", format: (v) => v > 0 ? `R$ ${v.toFixed(2)}` : "—" },
+      { label: "ROAS estimado", key: "roas", format: (v) => v > 0 ? `${v.toFixed(1)}x` : "—" },
+      { label: "Clientes", key: "clients", format: (v) => v.toLocaleString("pt-BR") },
+      { label: "Custo por lead", key: "costPerLead", format: (v) => v > 0 ? `R$ ${v.toFixed(2)}` : "—" },
+    ],
+    tips: [
+      { condition: (m) => m.roas >= 3, text: "ROAS acima de 3x — campanha lucrativa. Considere escalar.", status: "good" },
+      { condition: (m) => m.roas > 0 && m.roas < 1, text: "ROAS abaixo de 1x — gastando mais do que faturando.", status: "bad" },
+      { condition: (m) => m.costPerClient > 0 && m.costPerClient < 100, text: "Custo por venda controlado. Monitore o volume.", status: "good" },
+    ],
+  },
+};
+
+function CampaignTypeInsights({
+  objective,
+  metrics,
+  pipeline,
+  bench,
+  costPerLead,
+  costPerConversation,
+  costPerClient,
+}: {
+  objective: string;
+  metrics: { spend: number; impressions: number; clicks: number; reach: number; ctr: number; cpm: number; cpc: number };
+  pipeline: { totalLeads: number; leadsWithConversation: number; conversionRate: number; funnelSteps: Array<{ count: number }> };
+  bench: BenchmarkMetrics | null;
+  costPerLead: number | null;
+  costPerConversation: number | null;
+  costPerClient: number | null;
+}) {
+  const insightConfig = OBJECTIVE_INSIGHTS[objective];
+  if (!insightConfig) return null;
+
+  const clientCount = pipeline.funnelSteps[4]?.count ?? 0;
+  const frequency = metrics.impressions > 0 ? metrics.impressions / Math.max(metrics.reach, 1) : 0;
+  const costPer1kReach = metrics.reach > 0 ? (metrics.spend / metrics.reach) * 1000 : 0;
+  const clickToConvRate = metrics.clicks > 0 ? (pipeline.leadsWithConversation / metrics.clicks) * 100 : 0;
+  const costPerEngagement = metrics.clicks > 0 ? metrics.spend / metrics.clicks : 0;
+  const roas = costPerClient && costPerClient > 0 ? (150 / costPerClient) : 0;
+
+  const metricsMap: Record<string, number> = {
+    spend: metrics.spend, impressions: metrics.impressions, clicks: metrics.clicks,
+    reach: metrics.reach, ctr: metrics.ctr, cpm: metrics.cpm, cpc: metrics.cpc,
+    frequency, costPer1kReach,
+    costPerLead: costPerLead ?? 0, costPerConversation: costPerConversation ?? 0,
+    costPerClient: costPerClient ?? 0, conversations: pipeline.leadsWithConversation,
+    clickToConvRate, costPerEngagement, engagements: metrics.clicks,
+    totalLeads: pipeline.totalLeads, conversionRate: pipeline.conversionRate,
+    clients: clientCount, roas,
+  };
+
+  const activeTips = insightConfig.tips.filter((tip) => tip.condition(metricsMap));
+
+  return (
+    <div className="bg-white border border-slate-100 rounded-2xl p-5 space-y-4">
+      <h3 className="text-sm font-semibold text-slate-900">{insightConfig.title}</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {insightConfig.metrics.map((m) => (
+          <div key={m.key} className="bg-slate-50 rounded-xl p-3">
+            <p className="text-[11px] text-slate-400">{m.label}</p>
+            <p className="text-sm font-bold text-slate-900 mt-0.5">{m.format(metricsMap[m.key] ?? 0)}</p>
+          </div>
+        ))}
+      </div>
+      {activeTips.length > 0 && (
+        <div className="space-y-2">
+          {activeTips.slice(0, 3).map((tip, i) => (
+            <StrategyInsight key={i} label={tip.status === "good" ? "Positivo" : tip.status === "ok" ? "Atenção" : "Ação necessária"} status={tip.status} detail={tip.text} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition, useEffect, useMemo, useRef, useCallback } from "react";
-import { Zap, ZapOff, Play, Pause, Send, AlertTriangle, ArrowDown } from "lucide-react";
+import { useState, useTransition, useEffect, useMemo } from "react";
+import { Zap, ZapOff, Play, Pause, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -12,9 +12,8 @@ import {
   type MetaAdSet,
   type MetaCampaignInsights,
 } from "@/app/actions/meta";
-import { fmtBrl, type Stage } from "./shared";
+import { fmtBrl, type Stage, scoreCtr, scoreCpm, scoreCpc } from "./shared";
 import { CampaignThermometers } from "./CampaignThermometers";
-import { CampaignConfigPanel } from "./CampaignConfigPanel";
 import { CampaignAlerts } from "./CampaignAlerts";
 import { AdSetItem } from "./AdSetList";
 import { OptimizationTips } from "./OptimizationTips";
@@ -39,11 +38,9 @@ export function CampaignPanel({
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState(campaign.status);
-  const [config, setConfig] = useState(initialConfig);
+  const [config] = useState(initialConfig);
   const [adSets, setAdSets] = useState<MetaAdSet[]>(initialAdSets ?? []);
   const [loadingAdSets, setLoadingAdSets] = useState(!initialAdSets);
-  const [forceExpandConfig, setForceExpandConfig] = useState(false);
-  const configRef = useRef<HTMLDivElement>(null);
   const isActive = status === "ACTIVE";
 
   const benchmark = useMemo(
@@ -73,18 +70,28 @@ export function CampaignPanel({
     });
   }
 
-  const handleConfigSaved = useCallback((newConfig: CampaignConfig) => {
-    setConfig(newConfig);
-    setForceExpandConfig(false);
-    onConfigChange?.(newConfig);
-  }, [onConfigChange]);
+  // Determine if bid strategy recommendation should show
+  const shouldRecommendBidChange = useMemo(() => {
+    if (!config) return null;
+    const currentStrategy = config.bidStrategy ?? "LOWEST_COST";
+    const cpcQ = scoreCpc(campaign.cpc, benchmark);
+    const cpmQ = scoreCpm(campaign.cpm, benchmark);
+    const ctrQ = scoreCtr(campaign.ctr, benchmark);
 
-  function scrollToConfig() {
-    setForceExpandConfig(true);
-    setTimeout(() => {
-      configRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-  }
+    // Recommend Cost Cap if on Lowest Cost and CPC is bad
+    if (currentStrategy === "LOWEST_COST" && cpcQ === "bad" && cpmQ !== "good") {
+      return { strategy: "Cost Cap", reason: "CPC alto sem limite — o Cost Cap controla o custo médio por resultado." };
+    }
+    // Recommend Bid Cap if CPC is bad even on Cost Cap
+    if (currentStrategy === "COST_CAP" && cpcQ === "bad") {
+      return { strategy: "Bid Cap", reason: "CPC acima do cap — o Bid Cap limita o lance máximo por clique." };
+    }
+    // Recommend back to Lowest Cost if everything is good on a restricted strategy
+    if ((currentStrategy === "BID_CAP" || currentStrategy === "COST_CAP") && cpcQ === "good" && ctrQ === "good" && cpmQ === "good") {
+      return { strategy: "Menor Custo", reason: "Performance excelente — voltar para Menor Custo pode aumentar a entrega." };
+    }
+    return null;
+  }, [config, campaign, benchmark]);
 
   return (
     <div className="space-y-5">
@@ -114,20 +121,14 @@ export function CampaignPanel({
         </div>
       </div>
 
-      {/* Banner "não configurado" — compact */}
-      {!config && (
-        <button
-          onClick={scrollToConfig}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-left hover:bg-amber-100/60 transition-colors"
-        >
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-          <span className="text-xs text-amber-800 flex-1">
-            Configure esta campanha para personalizar os termômetros e alertas
+      {/* Bid Strategy Recommendation — only when thermometer suggests it */}
+      {shouldRecommendBidChange && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 border border-blue-200">
+          <Zap className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+          <span className="text-xs text-blue-800 flex-1">
+            <span className="font-semibold">Considere usar {shouldRecommendBidChange.strategy}</span> — {shouldRecommendBidChange.reason}
           </span>
-          <span className="text-[10px] text-amber-600 font-medium flex items-center gap-0.5 flex-shrink-0">
-            Configurar <ArrowDown className="h-3 w-3" />
-          </span>
-        </button>
+        </div>
       )}
 
       {/* Alerts */}
@@ -204,16 +205,6 @@ export function CampaignPanel({
         </Card>
       )}
 
-      {/* [7] Config panel — LAST section */}
-      <div ref={configRef}>
-        <CampaignConfigPanel
-          campaignId={campaign.id}
-          campaignName={campaign.name}
-          config={config}
-          onSaved={handleConfigSaved}
-          forceExpanded={forceExpandConfig}
-        />
-      </div>
     </div>
   );
 }

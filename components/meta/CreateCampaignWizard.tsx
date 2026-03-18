@@ -4,12 +4,13 @@ import { useState, useTransition, useRef, useEffect } from "react";
 import {
   X, ChevronLeft, ChevronRight, Users, MessageCircle, Eye, Rocket,
   ClipboardList, ShoppingCart, Globe, Upload, Info, Loader2,
-  Zap, DollarSign, Target, TrendingUp, MapPin,
+  Zap, DollarSign, Target, TrendingUp, MapPin, Plus, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { WhatsAppIcon, MessengerIcon, InstagramIcon } from "@/components/icons/SourceIcons";
 import {
   createCampaign,
   getFacebookPosts,
@@ -124,10 +125,18 @@ const STRATEGIES: StrategyCard[] = [
 // ─── Message destinations ───
 
 const MSG_DESTINATIONS = [
-  { id: "WHATSAPP", label: "WhatsApp", emoji: "💬" },
-  { id: "MESSENGER", label: "Messenger", emoji: "💭" },
-  { id: "INSTAGRAM_DIRECT", label: "Instagram Direct", emoji: "📩" },
+  { id: "WHATSAPP", label: "WhatsApp", iconType: "whatsapp" as const },
+  { id: "MESSENGER", label: "Messenger", iconType: "messenger" as const },
+  { id: "INSTAGRAM_DIRECT", label: "Instagram Direct", iconType: "instagram" as const },
 ];
+
+// ─── Location pin type ───
+
+type LocationPin = {
+  id: string;
+  name: string;
+  radius: number; // km
+};
 
 // ─── Brazilian states for targeting ───
 
@@ -167,6 +176,7 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
   const [ageMax, setAgeMax] = useState(65);
   const [gender, setGender] = useState("all");
   const [regions, setRegions] = useState<string[]>([]);
+  const [locationPins, setLocationPins] = useState<LocationPin[]>([]);
 
   // Step 3 - Boost
   const [posts, setPosts] = useState<SocialPost[]>([]);
@@ -249,6 +259,7 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
         ageMax,
         gender: gender === "all" ? undefined : gender === "male" ? 1 : 2,
         regions: regions.length > 0 ? regions : undefined,
+        locationPins: locationPins.length > 0 ? locationPins.map((p) => ({ name: p.name, radius: p.radius })) : undefined,
       };
 
       const result = await createCampaign(input);
@@ -326,6 +337,7 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
               ageMax={ageMax} onAgeMaxChange={setAgeMax}
               gender={gender} onGenderChange={setGender}
               regions={regions} onRegionsChange={setRegions}
+              locationPins={locationPins} onLocationPinsChange={setLocationPins}
             />
           )}
           {step === 3 && (
@@ -366,6 +378,7 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
               ageMax={ageMax}
               gender={gender}
               regions={regions}
+              locationPins={locationPins}
             />
           )}
         </div>
@@ -459,6 +472,7 @@ function Step2Config({
   isMessages, msgDestination, onMsgDestChange,
   ageMin, onAgeMinChange, ageMax, onAgeMaxChange,
   gender, onGenderChange, regions, onRegionsChange,
+  locationPins, onLocationPinsChange,
 }: {
   name: string; onNameChange: (v: string) => void;
   budget: number; onBudgetChange: (v: number) => void;
@@ -469,6 +483,7 @@ function Step2Config({
   ageMax: number; onAgeMaxChange: (v: number) => void;
   gender: string; onGenderChange: (v: string) => void;
   regions: string[]; onRegionsChange: (v: string[]) => void;
+  locationPins: LocationPin[]; onLocationPinsChange: (v: LocationPin[]) => void;
 }) {
   function handleBudgetInput(val: string) {
     const n = parseInt(val, 10);
@@ -505,20 +520,24 @@ function Step2Config({
         <div>
           <Label className="text-xs font-medium text-slate-700">Para onde enviar as mensagens?</Label>
           <div className="grid grid-cols-3 gap-2 mt-2">
-            {MSG_DESTINATIONS.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => onMsgDestChange(d.id)}
-                className={`p-2.5 rounded-xl border text-center transition-all ${
-                  msgDestination === d.id
-                    ? "border-emerald-300 bg-emerald-50 ring-1 ring-emerald-300"
-                    : "border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                <span className="text-lg">{d.emoji}</span>
-                <p className="text-[10px] font-medium text-slate-700 mt-1">{d.label}</p>
-              </button>
-            ))}
+            {MSG_DESTINATIONS.map((d) => {
+              const IconMap = { whatsapp: WhatsAppIcon, messenger: MessengerIcon, instagram: InstagramIcon };
+              const MsgIcon = IconMap[d.iconType];
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => onMsgDestChange(d.id)}
+                  className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1.5 ${
+                    msgDestination === d.id
+                      ? "border-emerald-300 bg-emerald-50 ring-1 ring-emerald-300"
+                      : "border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <MsgIcon size={28} />
+                  <p className="text-[10px] font-medium text-slate-700">{d.label}</p>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -635,6 +654,66 @@ function Step2Config({
           </div>
           {regions.length === 0 && (
             <p className="text-[10px] text-slate-400 mt-1">Nenhuma seleção = Brasil inteiro</p>
+          )}
+        </div>
+
+        {/* Location Pins — for local campaigns */}
+        <div>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium text-slate-700">
+              Localizações específicas {locationPins.length > 0 && `(${locationPins.length})`}
+            </Label>
+            <button
+              type="button"
+              onClick={() => onLocationPinsChange([...locationPins, { id: crypto.randomUUID(), name: "", radius: 16 }])}
+              className="flex items-center gap-1 text-[10px] text-indigo-600 font-medium hover:text-indigo-800"
+            >
+              <Plus className="h-3 w-3" /> Adicionar pino
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-0.5 mb-2">
+            Adicione cidades, bairros ou endereços com raio para campanhas locais.
+          </p>
+          {locationPins.length > 0 && (
+            <div className="space-y-2">
+              {locationPins.map((pin, idx) => (
+                <div key={pin.id} className="flex items-center gap-2 bg-slate-50 rounded-xl p-2">
+                  <MapPin className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
+                  <Input
+                    value={pin.name}
+                    onChange={(e) => {
+                      const updated = [...locationPins];
+                      updated[idx] = { ...pin, name: e.target.value };
+                      onLocationPinsChange(updated);
+                    }}
+                    placeholder="Ex: São José dos Campos, SP"
+                    className="flex-1 h-7 text-xs rounded-lg"
+                  />
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Input
+                      type="number"
+                      value={pin.radius}
+                      onChange={(e) => {
+                        const updated = [...locationPins];
+                        updated[idx] = { ...pin, radius: Math.max(1, Math.min(80, Number(e.target.value) || 1)) };
+                        onLocationPinsChange(updated);
+                      }}
+                      min={1}
+                      max={80}
+                      className="w-14 h-7 text-xs rounded-lg text-center"
+                    />
+                    <span className="text-[10px] text-slate-400">km</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onLocationPinsChange(locationPins.filter((_, i) => i !== idx))}
+                    className="text-slate-400 hover:text-red-500 p-0.5"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -860,7 +939,7 @@ function Step3Creative({
 
 function Step4Review({
   goal, name, budget, strategy, isBoost, selectedPost, hasCreative, destination,
-  ageMin, ageMax, gender, regions,
+  ageMin, ageMax, gender, regions, locationPins,
 }: {
   goal: GoalOption | undefined;
   name: string;
@@ -874,10 +953,11 @@ function Step4Review({
   ageMax: number;
   gender: string;
   regions: string[];
+  locationPins: LocationPin[];
 }) {
   const RIcon = goal?.icon ?? Rocket;
   const genderLabel = gender === "male" ? "Masculino" : gender === "female" ? "Feminino" : "Todos";
-  const regionLabel = regions.length > 0 ? regions.join(", ") : "Brasil inteiro";
+  const regionLabel = regions.length > 0 ? regions.join(", ") : locationPins.length > 0 ? "Localizações específicas" : "Brasil inteiro";
 
   return (
     <div className="space-y-4">
@@ -907,6 +987,9 @@ function Step4Review({
           <ReviewRow label="Idade" value={`${ageMin} - ${ageMax} anos`} />
           <ReviewRow label="Gênero" value={genderLabel} />
           <ReviewRow label="Região" value={regionLabel} />
+          {locationPins.length > 0 && locationPins.filter((p) => p.name.trim()).map((pin, i) => (
+            <ReviewRow key={i} label={`📍 ${pin.name}`} value={`${pin.radius} km`} />
+          ))}
           {isBoost && selectedPost && (
             <ReviewRow label="Publicação" value={selectedPost.message?.substring(0, 60) || "Post selecionado"} />
           )}

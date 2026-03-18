@@ -19,6 +19,14 @@ export function WhatsAppIcon({ className, size = 20 }: IconProps) {
   return <Image src="/icons/whatsapp.svg" alt="WhatsApp" width={size} height={size} className={className} />;
 }
 
+export function MessengerIcon({ className, size = 20 }: IconProps) {
+  return <Image src="/icons/messenger.svg" alt="Messenger" width={size} height={size} className={className} />;
+}
+
+export function InstagramIcon({ className, size = 20 }: IconProps) {
+  return <Image src="/icons/instagram.svg" alt="Instagram" width={size} height={size} className={className} />;
+}
+
 export function GlobeIcon({ className, size = 20 }: IconProps) {
   return (
     <svg

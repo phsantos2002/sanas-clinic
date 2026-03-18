@@ -658,6 +658,7 @@ export type CreateCampaignInput = {
   ageMax?: number;
   gender?: number; // undefined=all, 1=male, 2=female (Meta API format)
   regions?: string[]; // BR state codes (e.g. ["SP", "RJ"])
+  locationPins?: Array<{ name: string; radius: number }>; // specific locations with radius in km
 };
 
 export async function createCampaign(input: CreateCampaignInput): Promise<{
@@ -714,8 +715,20 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
       age_max: input.ageMax ?? 65,
     };
 
-    // Geo: use regions if provided, otherwise whole Brazil
-    if (input.regions && input.regions.length > 0) {
+    // Geo: use location pins if provided, regions, or whole Brazil
+    if (input.locationPins && input.locationPins.length > 0) {
+      targeting.geo_locations = {
+        countries: ["BR"],
+        location_types: ["home", "recent"],
+        custom_locations: input.locationPins
+          .filter((p) => p.name.trim())
+          .map((p) => ({
+            address_string: p.name.trim(),
+            radius: p.radius,
+            distance_unit: "kilometer",
+          })),
+      };
+    } else if (input.regions && input.regions.length > 0) {
       targeting.geo_locations = {
         regions: input.regions.map((r) => ({ key: r, country: "BR" })),
       };

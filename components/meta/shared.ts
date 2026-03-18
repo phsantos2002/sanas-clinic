@@ -72,6 +72,25 @@ export const qualityConfig: Record<Quality, { label: string; color: string; bar:
   bad:  { label: "Fraco", color: "text-red-500", bar: "bg-red-400" },
 };
 
+// ─── Benchmark-aware scoring ───
+
+import { classifyMetric, type BenchmarkMetrics } from "@/lib/benchmarks";
+
+export function scoreCtr(ctr: number, bench: BenchmarkMetrics | null): Quality {
+  if (bench) { const q = classifyMetric("ctr", ctr, bench); return q === "good" ? "good" : q === "average" ? "ok" : "bad"; }
+  return scoreCTR(ctr);
+}
+
+export function scoreCpm(cpm: number, bench: BenchmarkMetrics | null): Quality {
+  if (bench) { const q = classifyMetric("cpm", cpm, bench); return q === "good" ? "good" : q === "average" ? "ok" : "bad"; }
+  return scoreCPM(cpm);
+}
+
+export function scoreCpc(cpc: number, bench: BenchmarkMetrics | null): Quality {
+  if (bench) { const q = classifyMetric("cpc", cpc, bench); return q === "good" ? "good" : q === "average" ? "ok" : "bad"; }
+  return scoreCPC(cpc);
+}
+
 // ─── Creative Health ───
 
 export type CreativeHealth = "performing" | "saturating" | "declining" | "paused" | "new";
