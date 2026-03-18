@@ -638,27 +638,71 @@ const BILLING_MAP: Record<string, string> = {
   trafego: "IMPRESSIONS",
 };
 
+// ─── Geo Location Search ───
+
+export type GeoLocation = {
+  key: string;
+  name: string;
+  type: string; // city, region, zip, etc.
+  country_code: string;
+  country_name: string;
+  region: string;
+  latitude?: number;
+  longitude?: number;
+};
+
+export async function searchGeoLocations(query: string): Promise<GeoLocation[]> {
+  const config = await getMetaConfig();
+  if (!config || !query.trim()) return [];
+
+  try {
+    const qs = new URLSearchParams({
+      access_token: config.metaAdsToken,
+      q: query.trim(),
+      type: "adgeolocation",
+      location_types: '["city","subcity","neighborhood","zip"]',
+      country_code: "BR",
+      limit: "8",
+    });
+    const res = await fetch(`${GRAPH_URL}/search?${qs}`, { cache: "no-store" });
+    const json = await res.json();
+    if (!json.data) return [];
+
+    return json.data.map((item: Record<string, unknown>) => ({
+      key: String(item.key ?? ""),
+      name: String(item.name ?? ""),
+      type: String(item.type ?? ""),
+      country_code: String(item.country_code ?? "BR"),
+      country_name: String(item.country_name ?? "Brasil"),
+      region: String(item.region ?? ""),
+      latitude: typeof item.latitude === "number" ? item.latitude : undefined,
+      longitude: typeof item.longitude === "number" ? item.longitude : undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ─── Campaign Creation ───
+
 export type CreateCampaignInput = {
   name: string;
-  goal: string; // seguidores | mensagens | visualizacao | impulsionar | leads | vendas | trafego
-  dailyBudget: number; // in BRL
+  goal: string;
+  dailyBudget: number;
+  bidStrategy?: string;
+  bidValue?: number;
   adSetName?: string;
-  // For boosting
-  postId?: string; // Facebook/IG post ID to boost
-  // For new creative
+  postId?: string;
   imageBase64?: string;
   primaryText?: string;
   headline?: string;
   linkUrl?: string;
   callToAction?: string;
-  // Destination for messages
-  destination?: string; // WHATSAPP | MESSENGER | INSTAGRAM_DIRECT
-  // Targeting
+  destination?: string;
   ageMin?: number;
   ageMax?: number;
-  gender?: number; // undefined=all, 1=male, 2=female (Meta API format)
-  regions?: string[]; // BR state codes (e.g. ["SP", "RJ"])
-  locationPins?: Array<{ name: string; radius: number }>; // specific locations with radius in km
+  gender?: number;
+  geoLocations?: Array<{ key: string; name: string; type: string; latitude?: number; longitude?: number; radius?: number }>;
 };
 
 export async function createCampaign(input: CreateCampaignInput): Promise<{
@@ -715,23 +759,32 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
       age_max: input.ageMax ?? 65,
     };
 
-    // Geo: use location pins if provided, regions, or whole Brazil
-    if (input.locationPins && input.locationPins.length > 0) {
-      targeting.geo_locations = {
-        countries: ["BR"],
-        location_types: ["home", "recent"],
-        custom_locations: input.locationPins
-          .filter((p) => p.name.trim())
-          .map((p) => ({
-            address_string: p.name.trim(),
-            radius: p.radius,
-            distance_unit: "kilometer",
-          })),
-      };
-    } else if (input.regions && input.regions.length > 0) {
-      targeting.geo_locations = {
-        regions: input.regions.map((r) => ({ key: r, country: "BR" })),
-      };
+    // Geo: use searched locations (from Meta geo API) or whole Brazil
+    if (input.geoLocations && input.geoLocations.length > 0) {
+      // Group by type for proper Meta API format
+      const cities = input.geoLocations.filter((g) => g.type === "city" || g.type === "subcity" || g.type === "neighborhood");
+      const customLocs = input.geoLocations.filter((g) => g.latitude && g.longitude && g.radius);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const geo: any = { location_types: ["home", "recent"] };
+
+      if (cities.length > 0) {
+        geo.cities = cities.map((c) => ({ key: c.key }));
+      }
+      if (customLocs.length > 0) {
+        geo.custom_locations = customLocs.map((c) => ({
+          latitude: c.latitude,
+          longitude: c.longitude,
+          radius: c.radius,
+          distance_unit: "kilometer",
+        }));
+      }
+      // If no valid geo entries, fallback to Brazil
+      if (!geo.cities && !geo.custom_locations) {
+        geo.countries = ["BR"];
+      }
+
+      targeting.geo_locations = geo;
     } else {
       targeting.geo_locations = { countries: ["BR"] };
     }
@@ -748,7 +801,17 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
       daily_budget: Math.round(input.dailyBudget * 100),
       optimization_goal: optimizationGoal,
       billing_event: billingEvent,
-      bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+      bid_strategy: (() => {
+        switch (input.bidStrategy) {
+          case "COST_CAP": return "COST_CAP";
+          case "BID_CAP": return "LOWEST_COST_WITH_BID_CAP";
+          case "ROAS_MIN": return "LOWEST_COST_WITH_MIN_ROAS";
+          default: return "LOWEST_COST_WITHOUT_CAP";
+        }
+      })(),
+      ...(input.bidStrategy === "COST_CAP" && input.bidValue ? { bid_amount: Math.round(input.bidValue * 100) } : {}),
+      ...(input.bidStrategy === "BID_CAP" && input.bidValue ? { bid_amount: Math.round(input.bidValue * 100) } : {}),
+      ...(input.bidStrategy === "ROAS_MIN" && input.bidValue ? { roas_average_floor: Math.round(input.bidValue * 10000) } : {}),
       status: "PAUSED",
       targeting,
       // Advantage+ audience — Meta expands beyond the targeting suggestions

@@ -15,8 +15,10 @@ import {
   createCampaign,
   getFacebookPosts,
   getInstagramMedia,
+  searchGeoLocations,
   type SocialPost,
   type CreateCampaignInput,
+  type GeoLocation,
 } from "@/app/actions/meta";
 import { saveCampaignConfig } from "@/app/actions/pixel";
 import { CTA_OPTIONS } from "./shared";
@@ -130,28 +132,13 @@ const MSG_DESTINATIONS = [
   { id: "INSTAGRAM_DIRECT", label: "Instagram Direct", iconType: "instagram" as const },
 ];
 
-// ─── Location pin type ───
+// ─── Location pin type (from Meta geo search) ───
 
 type LocationPin = {
   id: string;
-  name: string;
+  geo: GeoLocation;
   radius: number; // km
 };
-
-// ─── Brazilian states for targeting ───
-
-const BR_STATES = [
-  { key: "AC", label: "Acre" }, { key: "AL", label: "Alagoas" }, { key: "AP", label: "Amapá" },
-  { key: "AM", label: "Amazonas" }, { key: "BA", label: "Bahia" }, { key: "CE", label: "Ceará" },
-  { key: "DF", label: "Distrito Federal" }, { key: "ES", label: "Espírito Santo" }, { key: "GO", label: "Goiás" },
-  { key: "MA", label: "Maranhão" }, { key: "MT", label: "Mato Grosso" }, { key: "MS", label: "Mato Grosso do Sul" },
-  { key: "MG", label: "Minas Gerais" }, { key: "PA", label: "Pará" }, { key: "PB", label: "Paraíba" },
-  { key: "PR", label: "Paraná" }, { key: "PE", label: "Pernambuco" }, { key: "PI", label: "Piauí" },
-  { key: "RJ", label: "Rio de Janeiro" }, { key: "RN", label: "Rio Grande do Norte" },
-  { key: "RS", label: "Rio Grande do Sul" }, { key: "RO", label: "Rondônia" }, { key: "RR", label: "Roraima" },
-  { key: "SC", label: "Santa Catarina" }, { key: "SP", label: "São Paulo" }, { key: "SE", label: "Sergipe" },
-  { key: "TO", label: "Tocantins" },
-];
 
 const GENDER_OPTIONS = [
   { id: "all", label: "Todos" },
@@ -175,8 +162,8 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
   const [ageMin, setAgeMin] = useState(18);
   const [ageMax, setAgeMax] = useState(65);
   const [gender, setGender] = useState("all");
-  const [regions, setRegions] = useState<string[]>([]);
   const [locationPins, setLocationPins] = useState<LocationPin[]>([]);
+  const [bidValue, setBidValue] = useState<string>("");
 
   // Step 3 - Boost
   const [posts, setPosts] = useState<SocialPost[]>([]);
@@ -248,6 +235,8 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
         name: campaignName.trim(),
         goal: selectedGoal,
         dailyBudget,
+        bidStrategy,
+        bidValue: bidValue ? parseFloat(bidValue) : undefined,
         destination: isMessages ? msgDestination : undefined,
         postId: isBoost && selectedPost ? selectedPost.id : undefined,
         imageBase64: !isBoost && imageBase64 ? imageBase64 : undefined,
@@ -258,8 +247,14 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
         ageMin,
         ageMax,
         gender: gender === "all" ? undefined : gender === "male" ? 1 : 2,
-        regions: regions.length > 0 ? regions : undefined,
-        locationPins: locationPins.length > 0 ? locationPins.map((p) => ({ name: p.name, radius: p.radius })) : undefined,
+        geoLocations: locationPins.length > 0 ? locationPins.map((p) => ({
+          key: p.geo.key,
+          name: p.geo.name,
+          type: p.geo.type,
+          latitude: p.geo.latitude,
+          longitude: p.geo.longitude,
+          radius: p.radius,
+        })) : undefined,
       };
 
       const result = await createCampaign(input);
@@ -336,8 +331,8 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
               ageMin={ageMin} onAgeMinChange={setAgeMin}
               ageMax={ageMax} onAgeMaxChange={setAgeMax}
               gender={gender} onGenderChange={setGender}
-              regions={regions} onRegionsChange={setRegions}
               locationPins={locationPins} onLocationPinsChange={setLocationPins}
+              bidValue={bidValue} onBidValueChange={setBidValue}
             />
           )}
           {step === 3 && (
@@ -377,8 +372,8 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
               ageMin={ageMin}
               ageMax={ageMax}
               gender={gender}
-              regions={regions}
               locationPins={locationPins}
+              bidValue={bidValue}
             />
           )}
         </div>
@@ -471,8 +466,9 @@ function Step2Config({
   strategy, onStrategyChange,
   isMessages, msgDestination, onMsgDestChange,
   ageMin, onAgeMinChange, ageMax, onAgeMaxChange,
-  gender, onGenderChange, regions, onRegionsChange,
+  gender, onGenderChange,
   locationPins, onLocationPinsChange,
+  bidValue, onBidValueChange,
 }: {
   name: string; onNameChange: (v: string) => void;
   budget: number; onBudgetChange: (v: number) => void;
@@ -482,20 +478,41 @@ function Step2Config({
   ageMin: number; onAgeMinChange: (v: number) => void;
   ageMax: number; onAgeMaxChange: (v: number) => void;
   gender: string; onGenderChange: (v: string) => void;
-  regions: string[]; onRegionsChange: (v: string[]) => void;
   locationPins: LocationPin[]; onLocationPinsChange: (v: LocationPin[]) => void;
+  bidValue: string; onBidValueChange: (v: string) => void;
 }) {
+  const [geoQuery, setGeoQuery] = useState("");
+  const [geoResults, setGeoResults] = useState<GeoLocation[]>([]);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleGeoSearch(query: string) {
+    setGeoQuery(query);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (query.trim().length < 3) { setGeoResults([]); return; }
+    setGeoLoading(true);
+    searchTimeout.current = setTimeout(async () => {
+      const results = await searchGeoLocations(query);
+      setGeoResults(results);
+      setGeoLoading(false);
+    }, 400);
+  }
+
+  function addGeoLocation(geo: GeoLocation) {
+    if (locationPins.some((p) => p.geo.key === geo.key)) return;
+    onLocationPinsChange([...locationPins, { id: crypto.randomUUID(), geo, radius: 16 }]);
+    setGeoQuery("");
+    setGeoResults([]);
+  }
+
   function handleBudgetInput(val: string) {
     const n = parseInt(val, 10);
     if (!isNaN(n) && n >= 1 && n <= 9999) onBudgetChange(n);
     else if (val === "") onBudgetChange(1);
   }
 
-  function toggleRegion(key: string) {
-    onRegionsChange(
-      regions.includes(key) ? regions.filter((r) => r !== key) : [...regions, key]
-    );
-  }
+  const needsBidValue = strategy === "COST_CAP" || strategy === "BID_CAP" || strategy === "ROAS_MIN";
+  const bidLabel = strategy === "BID_CAP" ? "Lance máximo (R$)" : strategy === "ROAS_MIN" ? "ROAS mínimo" : "Custo máx. por resultado (R$)";
 
   return (
     <div className="space-y-5">
@@ -629,66 +646,59 @@ function Step2Config({
           </div>
         </div>
 
-        {/* Regions */}
+        {/* Location Search — from Meta Geo API */}
         <div>
           <Label className="text-xs font-medium text-slate-700">
-            Região {regions.length > 0 ? `(${regions.length} selecionadas)` : "(todo o Brasil)"}
+            Localização {locationPins.length > 0 ? `(${locationPins.length} selecionada${locationPins.length > 1 ? "s" : ""})` : "(Brasil inteiro)"}
           </Label>
-          <div className="mt-1.5 max-h-32 overflow-y-auto border border-slate-200 rounded-xl p-2 grid grid-cols-3 sm:grid-cols-4 gap-1">
-            {BR_STATES.map((s) => {
-              const isSelected = regions.includes(s.key);
-              return (
-                <button
-                  key={s.key}
-                  onClick={() => toggleRegion(s.key)}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-medium transition-all ${
-                    isSelected
-                      ? "bg-indigo-100 text-indigo-700 border border-indigo-300"
-                      : "bg-slate-50 text-slate-500 border border-transparent hover:bg-slate-100"
-                  }`}
-                >
-                  {s.key}
-                </button>
-              );
-            })}
-          </div>
-          {regions.length === 0 && (
-            <p className="text-[10px] text-slate-400 mt-1">Nenhuma seleção = Brasil inteiro</p>
-          )}
-        </div>
-
-        {/* Location Pins — for local campaigns */}
-        <div>
-          <div className="flex items-center justify-between">
-            <Label className="text-xs font-medium text-slate-700">
-              Localizações específicas {locationPins.length > 0 && `(${locationPins.length})`}
-            </Label>
-            <button
-              type="button"
-              onClick={() => onLocationPinsChange([...locationPins, { id: crypto.randomUUID(), name: "", radius: 16 }])}
-              className="flex items-center gap-1 text-[10px] text-indigo-600 font-medium hover:text-indigo-800"
-            >
-              <Plus className="h-3 w-3" /> Adicionar pino
-            </button>
-          </div>
           <p className="text-[10px] text-slate-400 mt-0.5 mb-2">
-            Adicione cidades, bairros ou endereços com raio para campanhas locais.
+            Busque cidades, bairros ou regiões. Sem seleção = Brasil inteiro.
           </p>
+
+          {/* Search input */}
+          <div className="relative">
+            <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent">
+              <MapPin className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+              <input
+                value={geoQuery}
+                onChange={(e) => handleGeoSearch(e.target.value)}
+                placeholder="Buscar cidade, bairro ou região..."
+                className="flex-1 text-xs bg-transparent outline-none placeholder:text-slate-400"
+              />
+              {geoLoading && <Loader2 className="h-3 w-3 animate-spin text-slate-400" />}
+            </div>
+
+            {/* Search results dropdown */}
+            {geoResults.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg py-1 max-h-[200px] overflow-y-auto">
+                {geoResults.map((geo) => (
+                  <button
+                    key={geo.key}
+                    type="button"
+                    onClick={() => addGeoLocation(geo)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-50 transition-colors"
+                  >
+                    <MapPin className="h-3 w-3 text-indigo-500 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-slate-700 truncate">{geo.name}</p>
+                      <p className="text-[10px] text-slate-400">{geo.region} · {geo.type === "city" ? "Cidade" : geo.type === "subcity" ? "Sub-região" : geo.type === "neighborhood" ? "Bairro" : geo.type}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Selected locations */}
           {locationPins.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-2 mt-2">
               {locationPins.map((pin, idx) => (
-                <div key={pin.id} className="flex items-center gap-2 bg-slate-50 rounded-xl p-2">
+                <div key={pin.id} className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl p-2">
                   <MapPin className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
-                  <Input
-                    value={pin.name}
-                    onChange={(e) => {
-                      const updated = [...locationPins];
-                      updated[idx] = { ...pin, name: e.target.value };
-                      onLocationPinsChange(updated);
-                    }}
-                    placeholder="Ex: São José dos Campos, SP"
-                    className="flex-1 h-7 text-xs rounded-lg"
-                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-indigo-700 truncate">{pin.geo.name}</p>
+                    <p className="text-[9px] text-indigo-500">{pin.geo.region}</p>
+                  </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <Input
                       type="number"
@@ -745,6 +755,31 @@ function Step2Config({
             );
           })}
         </div>
+
+        {/* Bid value field — shown when strategy requires it */}
+        {needsBidValue && (
+          <div className="mt-3">
+            <Label className="text-xs font-medium text-slate-700">{bidLabel}</Label>
+            <div className="flex items-center gap-2 mt-1">
+              {strategy !== "ROAS_MIN" && <span className="text-xs text-slate-400">R$</span>}
+              <Input
+                type="number"
+                value={bidValue}
+                onChange={(e) => onBidValueChange(e.target.value)}
+                placeholder={strategy === "ROAS_MIN" ? "Ex: 3.0" : strategy === "BID_CAP" ? "Ex: 10" : "Ex: 25"}
+                min={0}
+                step={strategy === "ROAS_MIN" ? "0.1" : "1"}
+                className="w-32 text-sm rounded-xl"
+              />
+              {strategy === "ROAS_MIN" && <span className="text-[10px] text-slate-400">x retorno</span>}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">
+              {strategy === "COST_CAP" && "A Meta vai tentar manter o custo médio por resultado abaixo desse valor."}
+              {strategy === "BID_CAP" && "O lance máximo que a Meta pode dar por clique no leilão."}
+              {strategy === "ROAS_MIN" && "A Meta só vai gastar se o retorno estimado for acima desse múltiplo."}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -939,7 +974,7 @@ function Step3Creative({
 
 function Step4Review({
   goal, name, budget, strategy, isBoost, selectedPost, hasCreative, destination,
-  ageMin, ageMax, gender, regions, locationPins,
+  ageMin, ageMax, gender, locationPins, bidValue,
 }: {
   goal: GoalOption | undefined;
   name: string;
@@ -952,12 +987,12 @@ function Step4Review({
   ageMin: number;
   ageMax: number;
   gender: string;
-  regions: string[];
   locationPins: LocationPin[];
+  bidValue: string;
 }) {
   const RIcon = goal?.icon ?? Rocket;
   const genderLabel = gender === "male" ? "Masculino" : gender === "female" ? "Feminino" : "Todos";
-  const regionLabel = regions.length > 0 ? regions.join(", ") : locationPins.length > 0 ? "Localizações específicas" : "Brasil inteiro";
+  const regionLabel = locationPins.length > 0 ? locationPins.map((p) => p.geo.name).join(", ") : "Brasil inteiro";
 
   return (
     <div className="space-y-4">
@@ -983,12 +1018,13 @@ function Step4Review({
           <ReviewRow label="Gasto diário" value={`R$ ${budget.toLocaleString("pt-BR")},00`} />
           <ReviewRow label="Estimativa mensal" value={`R$ ${(budget * 30).toLocaleString("pt-BR")},00`} />
           <ReviewRow label="Estratégia" value={strategy} />
+          {bidValue && <ReviewRow label="Valor do lance" value={strategy.includes("ROAS") ? `${bidValue}x` : `R$ ${bidValue}`} />}
           {destination && <ReviewRow label="Destino" value={destination} />}
           <ReviewRow label="Idade" value={`${ageMin} - ${ageMax} anos`} />
           <ReviewRow label="Gênero" value={genderLabel} />
-          <ReviewRow label="Região" value={regionLabel} />
-          {locationPins.length > 0 && locationPins.filter((p) => p.name.trim()).map((pin, i) => (
-            <ReviewRow key={i} label={`📍 ${pin.name}`} value={`${pin.radius} km`} />
+          <ReviewRow label="Localização" value={regionLabel} />
+          {locationPins.map((pin, i) => (
+            <ReviewRow key={i} label={`📍 ${pin.geo.name}`} value={`${pin.radius} km`} />
           ))}
           {isBoost && selectedPost && (
             <ReviewRow label="Publicação" value={selectedPost.message?.substring(0, 60) || "Post selecionado"} />
