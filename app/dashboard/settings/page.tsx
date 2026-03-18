@@ -2,21 +2,17 @@ import { getPixel } from "@/app/actions/pixel";
 import { getStages } from "@/app/actions/stages";
 import { getAIConfig } from "@/app/actions/aiConfig";
 import { getWhatsAppConfig } from "@/app/actions/whatsapp";
-import { listCampaignsForSelector, getSelectedCampaignId } from "@/app/actions/meta";
 import { FacebookPixelForm } from "@/components/forms/FacebookPixelForm";
-import { CampaignSelector } from "@/components/forms/CampaignSelector";
 import { WhatsAppConfigForm } from "@/components/forms/WhatsAppConfigForm";
 import { ManageStagesSection } from "@/components/settings/ManageStagesSection";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
 
 export default async function SettingsPage() {
-  const [pixel, stages, aiConfig, whatsappConfig, campaigns, selectedCampaignId] = await Promise.all([
+  const [pixel, stages, aiConfig, whatsappConfig] = await Promise.all([
     getPixel(),
     getStages(),
     getAIConfig(),
     getWhatsAppConfig(),
-    listCampaignsForSelector(),
-    getSelectedCampaignId(),
   ]);
 
   return (
@@ -38,20 +34,6 @@ export default async function SettingsPage() {
             </p>
           </div>
           <FacebookPixelForm pixel={pixel} />
-        </div>
-
-        {/* Campaign Selector */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">Campanha Principal</h2>
-            <p className="text-sm text-slate-400 mt-0.5">
-              Selecione a campanha que será gerenciada na aba Meta e cujos insights aparecerão no Analytics.
-            </p>
-          </div>
-          <CampaignSelector
-            campaigns={campaigns}
-            selectedCampaignId={selectedCampaignId}
-          />
         </div>
 
         {/* WhatsApp Business */}

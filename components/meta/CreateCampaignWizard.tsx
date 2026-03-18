@@ -4,7 +4,7 @@ import { useState, useTransition, useRef, useEffect } from "react";
 import {
   X, ChevronLeft, ChevronRight, Users, MessageCircle, Eye, Rocket,
   ClipboardList, ShoppingCart, Globe, Upload, Info, Loader2,
-  Zap, DollarSign, Target, TrendingUp,
+  Zap, DollarSign, Target, TrendingUp, MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -129,6 +129,27 @@ const MSG_DESTINATIONS = [
   { id: "INSTAGRAM_DIRECT", label: "Instagram Direct", emoji: "📩" },
 ];
 
+// ─── Brazilian states for targeting ───
+
+const BR_STATES = [
+  { key: "AC", label: "Acre" }, { key: "AL", label: "Alagoas" }, { key: "AP", label: "Amapá" },
+  { key: "AM", label: "Amazonas" }, { key: "BA", label: "Bahia" }, { key: "CE", label: "Ceará" },
+  { key: "DF", label: "Distrito Federal" }, { key: "ES", label: "Espírito Santo" }, { key: "GO", label: "Goiás" },
+  { key: "MA", label: "Maranhão" }, { key: "MT", label: "Mato Grosso" }, { key: "MS", label: "Mato Grosso do Sul" },
+  { key: "MG", label: "Minas Gerais" }, { key: "PA", label: "Pará" }, { key: "PB", label: "Paraíba" },
+  { key: "PR", label: "Paraná" }, { key: "PE", label: "Pernambuco" }, { key: "PI", label: "Piauí" },
+  { key: "RJ", label: "Rio de Janeiro" }, { key: "RN", label: "Rio Grande do Norte" },
+  { key: "RS", label: "Rio Grande do Sul" }, { key: "RO", label: "Rondônia" }, { key: "RR", label: "Roraima" },
+  { key: "SC", label: "Santa Catarina" }, { key: "SP", label: "São Paulo" }, { key: "SE", label: "Sergipe" },
+  { key: "TO", label: "Tocantins" },
+];
+
+const GENDER_OPTIONS = [
+  { id: "all", label: "Todos" },
+  { id: "male", label: "Masculino" },
+  { id: "female", label: "Feminino" },
+];
+
 export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
   const [step, setStep] = useState(1);
   const [isPending, startTransition] = useTransition();
@@ -141,6 +162,11 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
   const [dailyBudget, setDailyBudget] = useState(20);
   const [bidStrategy, setBidStrategy] = useState("LOWEST_COST");
   const [msgDestination, setMsgDestination] = useState("WHATSAPP");
+  // Targeting
+  const [ageMin, setAgeMin] = useState(18);
+  const [ageMax, setAgeMax] = useState(65);
+  const [gender, setGender] = useState("all");
+  const [regions, setRegions] = useState<string[]>([]);
 
   // Step 3 - Boost
   const [posts, setPosts] = useState<SocialPost[]>([]);
@@ -219,6 +245,10 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
         headline: !isBoost ? headline.trim() || undefined : undefined,
         linkUrl: !isBoost ? linkUrl.trim() || undefined : undefined,
         callToAction: cta,
+        ageMin,
+        ageMax,
+        gender: gender === "all" ? undefined : gender === "male" ? 1 : 2,
+        regions: regions.length > 0 ? regions : undefined,
       };
 
       const result = await createCampaign(input);
@@ -292,6 +322,10 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
               strategy={bidStrategy} onStrategyChange={setBidStrategy}
               isMessages={isMessages}
               msgDestination={msgDestination} onMsgDestChange={setMsgDestination}
+              ageMin={ageMin} onAgeMinChange={setAgeMin}
+              ageMax={ageMax} onAgeMaxChange={setAgeMax}
+              gender={gender} onGenderChange={setGender}
+              regions={regions} onRegionsChange={setRegions}
             />
           )}
           {step === 3 && (
@@ -328,6 +362,10 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
               selectedPost={selectedPost}
               hasCreative={!!imageBase64}
               destination={isMessages ? MSG_DESTINATIONS.find((d) => d.id === msgDestination)?.label : undefined}
+              ageMin={ageMin}
+              ageMax={ageMax}
+              gender={gender}
+              regions={regions}
             />
           )}
         </div>
@@ -419,18 +457,36 @@ function Step2Config({
   name, onNameChange, budget, onBudgetChange,
   strategy, onStrategyChange,
   isMessages, msgDestination, onMsgDestChange,
+  ageMin, onAgeMinChange, ageMax, onAgeMaxChange,
+  gender, onGenderChange, regions, onRegionsChange,
 }: {
   name: string; onNameChange: (v: string) => void;
   budget: number; onBudgetChange: (v: number) => void;
   strategy: string; onStrategyChange: (v: string) => void;
   isMessages: boolean;
   msgDestination: string; onMsgDestChange: (v: string) => void;
+  ageMin: number; onAgeMinChange: (v: number) => void;
+  ageMax: number; onAgeMaxChange: (v: number) => void;
+  gender: string; onGenderChange: (v: string) => void;
+  regions: string[]; onRegionsChange: (v: string[]) => void;
 }) {
+  function handleBudgetInput(val: string) {
+    const n = parseInt(val, 10);
+    if (!isNaN(n) && n >= 1 && n <= 9999) onBudgetChange(n);
+    else if (val === "") onBudgetChange(1);
+  }
+
+  function toggleRegion(key: string) {
+    onRegionsChange(
+      regions.includes(key) ? regions.filter((r) => r !== key) : [...regions, key]
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div>
         <h4 className="text-sm font-bold text-slate-900">Configure sua campanha</h4>
-        <p className="text-xs text-slate-400 mt-0.5">Defina nome, orçamento e estratégia</p>
+        <p className="text-xs text-slate-400 mt-0.5">Defina nome, orçamento, público e estratégia</p>
       </div>
 
       {/* Name */}
@@ -467,24 +523,119 @@ function Step2Config({
         </div>
       )}
 
-      {/* Daily Budget */}
+      {/* Daily Budget — slider + manual input */}
       <div>
-        <Label className="text-xs font-medium text-slate-700">
-          Gasto diário: <span className="text-indigo-600 font-bold">R$ {budget},00</span>
-        </Label>
-        <input
-          type="range"
-          min={5}
-          max={500}
-          step={5}
-          value={budget}
-          onChange={(e) => onBudgetChange(Number(e.target.value))}
-          className="mt-2 w-full accent-indigo-500"
-        />
+        <Label className="text-xs font-medium text-slate-700">Gasto diário</Label>
+        <div className="flex items-center gap-3 mt-2">
+          <span className="text-xs text-slate-400">R$</span>
+          <Input
+            type="number"
+            min={1}
+            max={9999}
+            value={budget}
+            onChange={(e) => handleBudgetInput(e.target.value)}
+            className="w-24 text-sm rounded-xl text-center font-bold text-indigo-600"
+          />
+          <input
+            type="range"
+            min={5}
+            max={500}
+            step={1}
+            value={Math.min(budget, 500)}
+            onChange={(e) => onBudgetChange(Number(e.target.value))}
+            className="flex-1 accent-indigo-500"
+          />
+        </div>
         <div className="flex justify-between text-[10px] text-slate-400 mt-1">
           <span>R$ 5/dia</span>
           <span className="text-slate-600 font-medium">≈ R$ {(budget * 30).toLocaleString("pt-BR")}/mês</span>
-          <span>R$ 500/dia</span>
+          <span>R$ 500+/dia</span>
+        </div>
+      </div>
+
+      {/* ─── Targeting Section ─── */}
+      <div className="border-t border-slate-100 pt-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-slate-400" />
+          <Label className="text-xs font-bold text-slate-800">Público-alvo</Label>
+          <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">Advantage+</span>
+        </div>
+        <p className="text-[10px] text-slate-400 -mt-2">
+          Defina o público sugerido. O Advantage+ da Meta expande automaticamente para alcançar as melhores pessoas.
+        </p>
+
+        {/* Age */}
+        <div>
+          <Label className="text-xs font-medium text-slate-700">Idade</Label>
+          <div className="flex items-center gap-2 mt-1.5">
+            <select
+              value={ageMin}
+              onChange={(e) => onAgeMinChange(Number(e.target.value))}
+              className="text-xs rounded-xl border border-slate-200 px-2 py-1.5 bg-white"
+            >
+              {Array.from({ length: 48 }, (_, i) => i + 18).map((age) => (
+                <option key={age} value={age}>{age} anos</option>
+              ))}
+            </select>
+            <span className="text-xs text-slate-400">até</span>
+            <select
+              value={ageMax}
+              onChange={(e) => onAgeMaxChange(Number(e.target.value))}
+              className="text-xs rounded-xl border border-slate-200 px-2 py-1.5 bg-white"
+            >
+              {Array.from({ length: 48 }, (_, i) => i + 18).filter((a) => a >= ageMin).map((age) => (
+                <option key={age} value={age}>{age} anos</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Gender */}
+        <div>
+          <Label className="text-xs font-medium text-slate-700">Gênero</Label>
+          <div className="flex gap-2 mt-1.5">
+            {GENDER_OPTIONS.map((g) => (
+              <button
+                key={g.id}
+                onClick={() => onGenderChange(g.id)}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
+                  gender === g.id
+                    ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Regions */}
+        <div>
+          <Label className="text-xs font-medium text-slate-700">
+            Região {regions.length > 0 ? `(${regions.length} selecionadas)` : "(todo o Brasil)"}
+          </Label>
+          <div className="mt-1.5 max-h-32 overflow-y-auto border border-slate-200 rounded-xl p-2 grid grid-cols-3 sm:grid-cols-4 gap-1">
+            {BR_STATES.map((s) => {
+              const isSelected = regions.includes(s.key);
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => toggleRegion(s.key)}
+                  className={`px-2 py-1 rounded-lg text-[10px] font-medium transition-all ${
+                    isSelected
+                      ? "bg-indigo-100 text-indigo-700 border border-indigo-300"
+                      : "bg-slate-50 text-slate-500 border border-transparent hover:bg-slate-100"
+                  }`}
+                >
+                  {s.key}
+                </button>
+              );
+            })}
+          </div>
+          {regions.length === 0 && (
+            <p className="text-[10px] text-slate-400 mt-1">Nenhuma seleção = Brasil inteiro</p>
+          )}
         </div>
       </div>
 
@@ -493,7 +644,7 @@ function Step2Config({
         <Label className="text-xs font-medium text-slate-700">Estratégia de lance</Label>
         <div className="grid grid-cols-2 gap-2 mt-2">
           {STRATEGIES.map((s) => {
-            const Icon = s.icon;
+            const SIcon = s.icon;
             const isSelected = strategy === s.id;
             return (
               <button
@@ -505,7 +656,7 @@ function Step2Config({
                     : "border-slate-200 hover:bg-slate-50"
                 }`}
               >
-                <Icon className={`h-4 w-4 mb-1 ${isSelected ? "text-indigo-600" : "text-slate-400"}`} />
+                <SIcon className={`h-4 w-4 mb-1 ${isSelected ? "text-indigo-600" : "text-slate-400"}`} />
                 <p className="text-xs font-semibold text-slate-800">{s.label}</p>
                 <p className="text-[10px] text-slate-400">{s.description}</p>
                 {isSelected && (
@@ -709,6 +860,7 @@ function Step3Creative({
 
 function Step4Review({
   goal, name, budget, strategy, isBoost, selectedPost, hasCreative, destination,
+  ageMin, ageMax, gender, regions,
 }: {
   goal: GoalOption | undefined;
   name: string;
@@ -718,8 +870,15 @@ function Step4Review({
   selectedPost: SocialPost | null;
   hasCreative: boolean;
   destination?: string;
+  ageMin: number;
+  ageMax: number;
+  gender: string;
+  regions: string[];
 }) {
-  const Icon = goal?.icon ?? Rocket;
+  const RIcon = goal?.icon ?? Rocket;
+  const genderLabel = gender === "male" ? "Masculino" : gender === "female" ? "Feminino" : "Todos";
+  const regionLabel = regions.length > 0 ? regions.join(", ") : "Brasil inteiro";
+
   return (
     <div className="space-y-4">
       <div>
@@ -731,7 +890,7 @@ function Step4Review({
         {/* Goal */}
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${goal?.bg?.split(" ")[0] ?? "bg-slate-100"}`}>
-            <Icon className={`h-5 w-5 ${goal?.color ?? "text-slate-400"}`} />
+            <RIcon className={`h-5 w-5 ${goal?.color ?? "text-slate-400"}`} />
           </div>
           <div>
             <p className="text-xs font-bold text-slate-900">{goal?.label}</p>
@@ -741,10 +900,13 @@ function Step4Review({
 
         <div className="border-t border-slate-200 pt-3 space-y-2">
           <ReviewRow label="Nome" value={name} />
-          <ReviewRow label="Gasto diário" value={`R$ ${budget},00`} />
+          <ReviewRow label="Gasto diário" value={`R$ ${budget.toLocaleString("pt-BR")},00`} />
           <ReviewRow label="Estimativa mensal" value={`R$ ${(budget * 30).toLocaleString("pt-BR")},00`} />
           <ReviewRow label="Estratégia" value={strategy} />
           {destination && <ReviewRow label="Destino" value={destination} />}
+          <ReviewRow label="Idade" value={`${ageMin} - ${ageMax} anos`} />
+          <ReviewRow label="Gênero" value={genderLabel} />
+          <ReviewRow label="Região" value={regionLabel} />
           {isBoost && selectedPost && (
             <ReviewRow label="Publicação" value={selectedPost.message?.substring(0, 60) || "Post selecionado"} />
           )}
@@ -754,11 +916,18 @@ function Step4Review({
         </div>
       </div>
 
+      <div className="bg-emerald-50 rounded-xl p-3 flex items-start gap-2">
+        <Info className="h-3.5 w-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
+        <p className="text-[10px] text-emerald-700 leading-relaxed">
+          <span className="font-semibold">Advantage+ ativado</span> — A Meta vai expandir automaticamente o público para alcançar as melhores pessoas, usando seu público-alvo como sugestão inicial.
+        </p>
+      </div>
+
       <div className="bg-blue-50 rounded-xl p-3 flex items-start gap-2">
         <Info className="h-3.5 w-3.5 text-blue-500 mt-0.5 flex-shrink-0" />
         <p className="text-[10px] text-blue-700 leading-relaxed">
           A campanha será criada com status <span className="font-semibold">Pausada</span>.
-          Após criar, você pode ativá-la pelo botão na aba Meta. O público padrão será Brasil, 18-65 anos — você pode refinar depois no Gerenciador de Anúncios.
+          Após criar, você pode ativá-la pelo botão na aba Meta.
         </p>
       </div>
     </div>

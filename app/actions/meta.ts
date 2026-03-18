@@ -653,6 +653,11 @@ export type CreateCampaignInput = {
   callToAction?: string;
   // Destination for messages
   destination?: string; // WHATSAPP | MESSENGER | INSTAGRAM_DIRECT
+  // Targeting
+  ageMin?: number;
+  ageMax?: number;
+  gender?: number; // undefined=all, 1=male, 2=female (Meta API format)
+  regions?: string[]; // BR state codes (e.g. ["SP", "RJ"])
 };
 
 export async function createCampaign(input: CreateCampaignInput): Promise<{
@@ -668,7 +673,7 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
   if (!objective) return { success: false, error: "Objetivo inválido" };
 
   try {
-    // Step 1: Create campaign
+    // Step 1: Create campaign (Advantage+ enabled via smart_promotion_type)
     const campaignRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/campaigns?access_token=${config.metaAdsToken}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -677,6 +682,7 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
         objective,
         status: "PAUSED",
         special_ad_categories: [],
+        smart_promotion_type: "GUIDED_CREATION",
       }),
     });
     const campaignJson = await campaignRes.json();
@@ -701,6 +707,27 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
       if (config.pixelId) promotedObject.pixel_id = config.pixelId;
     }
 
+    // Build targeting from user input
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const targeting: any = {
+      age_min: input.ageMin ?? 18,
+      age_max: input.ageMax ?? 65,
+    };
+
+    // Geo: use regions if provided, otherwise whole Brazil
+    if (input.regions && input.regions.length > 0) {
+      targeting.geo_locations = {
+        regions: input.regions.map((r) => ({ key: r, country: "BR" })),
+      };
+    } else {
+      targeting.geo_locations = { countries: ["BR"] };
+    }
+
+    // Gender (Meta: 0=all, 1=male, 2=female)
+    if (input.gender) {
+      targeting.genders = [input.gender];
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adSetBody: any = {
       name: input.adSetName || `${input.name} - Conjunto`,
@@ -710,12 +737,9 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
       billing_event: billingEvent,
       bid_strategy: "LOWEST_COST_WITHOUT_CAP",
       status: "PAUSED",
-      // Default broad targeting (Brazil, 18-65)
-      targeting: {
-        geo_locations: { countries: ["BR"] },
-        age_min: 18,
-        age_max: 65,
-      },
+      targeting,
+      // Advantage+ audience — Meta expands beyond the targeting suggestions
+      targeting_optimization_types: ["ADVANTAGE_AUDIENCE"],
     };
 
     if (Object.keys(promotedObject).length > 0) {
