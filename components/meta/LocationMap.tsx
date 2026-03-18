@@ -1,38 +1,37 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-type LocationPin = {
+export type MapPin = {
   id: string;
-  geo: {
-    key: string;
-    name: string;
-    type: string;
-    region: string;
-    latitude?: number;
-    longitude?: number;
-  };
-  radius: number;
+  lat: number;
+  lng: number;
+  radius: number; // km
+  name: string;
 };
 
 type Props = {
-  pins: LocationPin[];
+  pins: MapPin[];
+  onAddPin: (lat: number, lng: number) => void;
+  height?: number;
 };
 
-export function LocationMap({ pins }: Props) {
+export function LocationMap({ pins, onAddPin, height = 260 }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const layersRef = useRef<L.LayerGroup | null>(null);
+  const onAddPinRef = useRef(onAddPin);
+  onAddPinRef.current = onAddPin;
 
   // Initialize map
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
     mapInstance.current = L.map(mapRef.current, {
-      center: [-15.78, -47.93], // Brazil center
-      zoom: 4,
+      center: [-23.18, -45.88], // São José dos Campos default
+      zoom: 12,
       zoomControl: true,
       attributionControl: false,
     });
@@ -42,6 +41,11 @@ export function LocationMap({ pins }: Props) {
     }).addTo(mapInstance.current);
 
     layersRef.current = L.layerGroup().addTo(mapInstance.current);
+
+    // Click to add pin
+    mapInstance.current.on("click", (e: L.LeafletMouseEvent) => {
+      onAddPinRef.current(e.latlng.lat, e.latlng.lng);
+    });
 
     return () => {
       mapInstance.current?.remove();
@@ -55,59 +59,63 @@ export function LocationMap({ pins }: Props) {
 
     layersRef.current.clearLayers();
 
-    const validPins = pins.filter((p) => p.geo.latitude && p.geo.longitude);
-
-    if (validPins.length === 0) {
-      mapInstance.current.setView([-15.78, -47.93], 4);
-      return;
-    }
+    if (pins.length === 0) return;
 
     const bounds = L.latLngBounds([]);
 
-    for (const pin of validPins) {
-      const lat = pin.geo.latitude!;
-      const lng = pin.geo.longitude!;
-      const latlng = L.latLng(lat, lng);
+    for (const pin of pins) {
+      const latlng = L.latLng(pin.lat, pin.lng);
 
       // Circle for radius
       const circle = L.circle(latlng, {
-        radius: pin.radius * 1000, // km to meters
+        radius: pin.radius * 1000,
         color: "#6366f1",
         fillColor: "#6366f1",
         fillOpacity: 0.12,
         weight: 2,
+        dashArray: "6 4",
       });
       circle.addTo(layersRef.current!);
 
-      // Marker
+      // Marker dot
       const marker = L.circleMarker(latlng, {
-        radius: 7,
-        color: "#4f46e5",
+        radius: 8,
+        color: "#ffffff",
         fillColor: "#4f46e5",
         fillOpacity: 1,
-        weight: 2,
+        weight: 3,
       });
-      marker.bindTooltip(`${pin.geo.name} — ${pin.radius} km`, {
-        permanent: false,
-        direction: "top",
-        offset: [0, -10],
-      });
+      marker.bindTooltip(
+        `<strong>${pin.name || "Pino"}</strong><br/>${pin.radius} km de raio`,
+        { direction: "top", offset: [0, -12] }
+      );
       marker.addTo(layersRef.current!);
 
-      // Extend bounds to include the circle
       bounds.extend(circle.getBounds());
     }
 
     if (bounds.isValid()) {
-      mapInstance.current.fitBounds(bounds, { padding: [30, 30], maxZoom: 13 });
+      mapInstance.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
     }
   }, [pins]);
+
+  // Pan to location
+  const panTo = useCallback((lat: number, lng: number, zoom?: number) => {
+    mapInstance.current?.setView([lat, lng], zoom ?? 13);
+  }, []);
+
+  // Expose panTo via ref-like pattern
+  useEffect(() => {
+    if (mapRef.current) {
+      (mapRef.current as unknown as { panTo: typeof panTo }).panTo = panTo;
+    }
+  }, [panTo]);
 
   return (
     <div
       ref={mapRef}
-      className="w-full h-[200px] rounded-xl overflow-hidden border border-slate-200"
-      style={{ zIndex: 0 }}
+      className="w-full rounded-xl overflow-hidden border border-slate-200"
+      style={{ height: `${height}px`, zIndex: 0 }}
     />
   );
 }

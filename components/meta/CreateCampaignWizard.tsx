@@ -4,7 +4,7 @@ import { useState, useTransition, useRef, useEffect, lazy, Suspense } from "reac
 import {
   X, ChevronLeft, ChevronRight, Users, MessageCircle, Eye, Rocket,
   ClipboardList, ShoppingCart, Globe, Upload, Info, Loader2,
-  Zap, DollarSign, Target, TrendingUp, MapPin, Plus, Trash2,
+  Zap, DollarSign, Target, TrendingUp, MapPin, Trash2, Navigation, LocateFixed,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,16 +15,15 @@ import {
   createCampaign,
   getFacebookPosts,
   getInstagramMedia,
-  searchGeoLocations,
   type SocialPost,
   type CreateCampaignInput,
-  type GeoLocation,
 } from "@/app/actions/meta";
 import { saveCampaignConfig } from "@/app/actions/pixel";
 import { CTA_OPTIONS } from "./shared";
 
 // Dynamic import for map (Leaflet doesn't support SSR)
 const LocationMap = lazy(() => import("./LocationMap").then((m) => ({ default: m.LocationMap })));
+import type { MapPin as LocationMapPin } from "./LocationMap";
 
 type Props = {
   onClose: () => void;
@@ -135,13 +134,9 @@ const MSG_DESTINATIONS = [
   { id: "INSTAGRAM_DIRECT", label: "Instagram Direct", iconType: "instagram" as const },
 ];
 
-// ─── Location pin type (from Meta geo search) ───
+// ─── Location pin type (lat/lng + radius) ───
 
-type LocationPin = {
-  id: string;
-  geo: GeoLocation;
-  radius: number; // km
-};
+type LocationPin = LocationMapPin; // { id, lat, lng, radius, name }
 
 const GENDER_OPTIONS = [
   { id: "all", label: "Todos" },
@@ -251,11 +246,11 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
         ageMax,
         gender: gender === "all" ? undefined : gender === "male" ? 1 : 2,
         geoLocations: locationPins.length > 0 ? locationPins.map((p) => ({
-          key: p.geo.key,
-          name: p.geo.name,
-          type: p.geo.type,
-          latitude: p.geo.latitude,
-          longitude: p.geo.longitude,
+          key: "",
+          name: p.name,
+          type: "custom_location",
+          latitude: p.lat,
+          longitude: p.lng,
           radius: p.radius,
         })) : undefined,
       };
@@ -484,32 +479,45 @@ function Step2Config({
   locationPins: LocationPin[]; onLocationPinsChange: (v: LocationPin[]) => void;
   bidValue: string; onBidValueChange: (v: string) => void;
 }) {
-  const [geoQuery, setGeoQuery] = useState("");
-  const [geoResults, setGeoResults] = useState<GeoLocation[]>([]);
   const [geoLoading, setGeoLoading] = useState(false);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function handleGeoSearch(query: string) {
-    setGeoQuery(query);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    if (query.trim().length < 3) { setGeoResults([]); setGeoLoading(false); return; }
-    setGeoLoading(true);
-    searchTimeout.current = setTimeout(async () => {
-      try {
-        const results = await searchGeoLocations(query);
-        setGeoResults(results);
-      } catch {
-        setGeoResults([]);
+  async function reverseGeocode(lat: number, lng: number): Promise<string> {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=pt-BR`);
+      const data = await res.json();
+      const addr = data.address;
+      if (addr) {
+        const parts = [addr.road, addr.suburb, addr.city || addr.town || addr.village].filter(Boolean);
+        return parts.length > 0 ? parts.join(", ") : data.display_name?.split(",").slice(0, 3).join(",") || "Local selecionado";
       }
-      setGeoLoading(false);
-    }, 500);
+      return data.display_name?.split(",").slice(0, 3).join(",") || "Local selecionado";
+    } catch {
+      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
   }
 
-  function addGeoLocation(geo: GeoLocation) {
-    if (locationPins.some((p) => p.geo.key === geo.key)) return;
-    onLocationPinsChange([...locationPins, { id: crypto.randomUUID(), geo, radius: 16 }]);
-    setGeoQuery("");
-    setGeoResults([]);
+  async function handleAddPin(lat: number, lng: number) {
+    const name = await reverseGeocode(lat, lng);
+    onLocationPinsChange([...locationPins, { id: crypto.randomUUID(), lat, lng, radius: 10, name }]);
+  }
+
+  function handleUseMyLocation() {
+    if (!navigator.geolocation) {
+      alert("Geolocalização não suportada neste navegador.");
+      return;
+    }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        await handleAddPin(pos.coords.latitude, pos.coords.longitude);
+        setGeoLoading(false);
+      },
+      () => {
+        alert("Não foi possível obter sua localização. Verifique as permissões do navegador.");
+        setGeoLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   }
 
   function handleBudgetInput(val: string) {
@@ -653,65 +661,49 @@ function Step2Config({
           </div>
         </div>
 
-        {/* Location Search — from Meta Geo API */}
+        {/* Location — Interactive Map */}
         <div>
           <Label className="text-xs font-medium text-slate-700">
-            Localização {locationPins.length > 0 ? `(${locationPins.length} selecionada${locationPins.length > 1 ? "s" : ""})` : "(Brasil inteiro)"}
+            Localização {locationPins.length > 0 ? `(${locationPins.length} pino${locationPins.length > 1 ? "s" : ""})` : "(Brasil inteiro)"}
           </Label>
           <p className="text-[10px] text-slate-400 mt-0.5 mb-2">
-            Busque cidades, bairros ou regiões. Sem seleção = Brasil inteiro.
+            Clique no mapa ou use sua localização para adicionar pinos com raio. Sem pinos = Brasil inteiro.
           </p>
 
-          {/* Search input */}
-          <div className="relative">
-            <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent">
-              <MapPin className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-              <input
-                value={geoQuery}
-                onChange={(e) => handleGeoSearch(e.target.value)}
-                placeholder="Buscar cidade, bairro ou região..."
-                className="flex-1 text-xs bg-transparent outline-none placeholder:text-slate-400"
-              />
-              {geoLoading && <Loader2 className="h-3 w-3 animate-spin text-slate-400" />}
-            </div>
-
-            {/* No results */}
-            {geoQuery.trim().length >= 3 && !geoLoading && geoResults.length === 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg p-3 text-center">
-                <p className="text-[10px] text-slate-400">Nenhuma localização encontrada para &quot;{geoQuery}&quot;</p>
-              </div>
-            )}
-
-            {/* Search results dropdown */}
-            {geoResults.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg py-1 max-h-[200px] overflow-y-auto">
-                {geoResults.map((geo) => (
-                  <button
-                    key={geo.key}
-                    type="button"
-                    onClick={() => addGeoLocation(geo)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-50 transition-colors"
-                  >
-                    <MapPin className="h-3 w-3 text-indigo-500 flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-slate-700 truncate">{geo.name}</p>
-                      <p className="text-[10px] text-slate-400">{geo.region} · {geo.type === "city" ? "Cidade" : geo.type === "subcity" ? "Sub-região" : geo.type === "neighborhood" ? "Bairro" : geo.type}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+          {/* Actions */}
+          <div className="flex gap-2 mb-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleUseMyLocation}
+              disabled={geoLoading}
+              className="rounded-xl text-xs gap-1.5"
+            >
+              {geoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <LocateFixed className="h-3 w-3" />}
+              Usar minha localização
+            </Button>
+            <span className="text-[10px] text-slate-400 self-center">ou clique no mapa</span>
           </div>
 
-          {/* Selected locations */}
+          {/* Map — always visible */}
+          <Suspense fallback={<div className="w-full h-[220px] rounded-xl bg-slate-100 flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-slate-400" /></div>}>
+            <LocationMap
+              pins={locationPins}
+              onAddPin={handleAddPin}
+              height={220}
+            />
+          </Suspense>
+
+          {/* Pin list with editable radius */}
           {locationPins.length > 0 && (
-            <div className="space-y-2 mt-2">
+            <div className="space-y-2 mt-3">
               {locationPins.map((pin, idx) => (
                 <div key={pin.id} className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl p-2">
-                  <MapPin className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
+                  <Navigation className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-indigo-700 truncate">{pin.geo.name}</p>
-                    <p className="text-[9px] text-indigo-500">{pin.geo.region}</p>
+                    <p className="text-xs font-medium text-indigo-700 truncate">{pin.name}</p>
+                    <p className="text-[9px] text-indigo-500">{pin.lat.toFixed(4)}, {pin.lng.toFixed(4)}</p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <Input
@@ -737,15 +729,6 @@ function Step2Config({
                   </button>
                 </div>
               ))}
-            </div>
-          )}
-
-          {/* Map preview */}
-          {locationPins.length > 0 && locationPins.some((p) => p.geo.latitude && p.geo.longitude) && (
-            <div className="mt-2">
-              <Suspense fallback={<div className="w-full h-[200px] rounded-xl bg-slate-100 flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-slate-400" /></div>}>
-                <LocationMap pins={locationPins} />
-              </Suspense>
             </div>
           )}
         </div>
@@ -1015,7 +998,7 @@ function Step4Review({
 }) {
   const RIcon = goal?.icon ?? Rocket;
   const genderLabel = gender === "male" ? "Masculino" : gender === "female" ? "Feminino" : "Todos";
-  const regionLabel = locationPins.length > 0 ? locationPins.map((p) => p.geo.name).join(", ") : "Brasil inteiro";
+  const regionLabel = locationPins.length > 0 ? locationPins.map((p) => p.name).join(", ") : "Brasil inteiro";
 
   return (
     <div className="space-y-4">
@@ -1047,7 +1030,7 @@ function Step4Review({
           <ReviewRow label="Gênero" value={genderLabel} />
           <ReviewRow label="Localização" value={regionLabel} />
           {locationPins.map((pin, i) => (
-            <ReviewRow key={i} label={`📍 ${pin.geo.name}`} value={`${pin.radius} km`} />
+            <ReviewRow key={i} label={`📍 ${pin.name}`} value={`${pin.radius} km`} />
           ))}
           {isBoost && selectedPost && (
             <ReviewRow label="Publicação" value={selectedPost.message?.substring(0, 60) || "Post selecionado"} />
