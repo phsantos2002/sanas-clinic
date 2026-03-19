@@ -47,10 +47,32 @@ export async function createEvolutionInstance(
   }
 }
 
+export async function restartEvolutionInstance(
+  config: EvolutionConfig,
+): Promise<{ success: boolean }> {
+  try {
+    const res = await fetch(
+      `${config.serverUrl}/instance/restart/${config.instanceName}`,
+      {
+        method: "PUT",
+        headers: { apikey: config.apiKey },
+      },
+    );
+    return { success: res.ok };
+  } catch {
+    return { success: false };
+  }
+}
+
 export async function getEvolutionQRCode(
   config: EvolutionConfig,
 ): Promise<{ success: boolean; qrcode?: string; error?: string }> {
   try {
+    // Restart instance to force a fresh QR code generation
+    await restartEvolutionInstance(config);
+    // Small delay to let the instance restart
+    await new Promise((r) => setTimeout(r, 2000));
+
     const res = await fetch(
       `${config.serverUrl}/instance/connect/${config.instanceName}`,
       {
@@ -66,7 +88,7 @@ export async function getEvolutionQRCode(
     }
 
     const data = await res.json();
-    console.log("[Evolution] QR response keys:", JSON.stringify(Object.keys(data)));
+    console.log("[Evolution] QR full response:", JSON.stringify(data).slice(0, 500));
 
     // Evolution v2 pode retornar em diferentes formatos
     const qrcode =
