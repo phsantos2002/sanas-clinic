@@ -68,11 +68,12 @@ export async function saveEvolutionConfig(): Promise<ActionResult<{ instanceId?:
     // Gera nome da instância automaticamente: "lux-<userId_curto>"
     const instanceName = `lux-${dbUser.id.slice(0, 8)}`;
 
-    // Create instance on Evolution server
+    // Create instance on Evolution server (or reuse if already exists)
     const { createEvolutionInstance, setEvolutionWebhook } = await import("@/services/whatsappEvolution");
 
     const createResult = await createEvolutionInstance(serverUrl, apiKey, instanceName);
-    if (!createResult.success) {
+    // If instance already exists, that's fine — just proceed
+    if (!createResult.success && !createResult.error?.includes("already in use")) {
       return { success: false, error: createResult.error ?? "Erro ao criar instância" };
     }
 
