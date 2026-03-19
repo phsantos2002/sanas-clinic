@@ -89,11 +89,12 @@ export function WhatsAppConfigForm({ config }: Props) {
     setLoading(true);
     const result = await saveEvolutionConfig();
     if (result.success) {
-      toast.success("Instância criada! Escaneie o QR Code para conectar.");
-      // Buscar QR Code automaticamente
-      const qrResult = await getEvolutionQR();
-      if (qrResult.success && qrResult.data) {
-        setQrCode(qrResult.data.qrcode);
+      // Usa QR Code retornado da criação da instância
+      if (result.data?.qrcode) {
+        setQrCode(result.data.qrcode);
+        toast.success("Escaneie o QR Code para conectar.");
+      } else {
+        toast.success("Instância criada! Clique em 'QR Code' para conectar.");
       }
     } else {
       toast.error(result.error);

@@ -15,7 +15,7 @@ export async function createEvolutionInstance(
   serverUrl: string,
   apiKey: string,
   instanceName: string,
-): Promise<{ success: boolean; instanceId?: string; error?: string }> {
+): Promise<{ success: boolean; instanceId?: string; qrcode?: string; error?: string }> {
   try {
     const res = await fetch(`${serverUrl}/instance/create`, {
       method: "POST",
@@ -37,9 +37,20 @@ export async function createEvolutionInstance(
     }
 
     const data = await res.json();
+    console.log("[Evolution] Create response keys:", JSON.stringify(Object.keys(data)));
+
+    // Evolution v2 retorna o QR Code na resposta de criação
+    const qrcode =
+      data?.qrcode?.base64 ??
+      data?.qrcode ??
+      data?.base64 ??
+      null;
+    const qrString = typeof qrcode === "string" ? qrcode : undefined;
+
     return {
       success: true,
       instanceId: data?.instance?.instanceId ?? data?.instanceId ?? instanceName,
+      qrcode: qrString,
     };
   } catch (err) {
     console.error("[Evolution] Falha ao criar instância:", err);

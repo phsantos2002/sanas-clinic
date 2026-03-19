@@ -53,7 +53,7 @@ export async function saveWhatsAppConfig(
 // O nome da instância é gerado automaticamente a partir do ID do usuário.
 // O usuário final só precisa clicar "Conectar" e escanear o QR Code.
 
-export async function saveEvolutionConfig(): Promise<ActionResult<{ instanceId?: string }>> {
+export async function saveEvolutionConfig(): Promise<ActionResult<{ instanceId?: string; qrcode?: string }>> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
@@ -68,12 +68,17 @@ export async function saveEvolutionConfig(): Promise<ActionResult<{ instanceId?:
     // Gera nome da instância automaticamente: "lux-<userId_curto>"
     const instanceName = `lux-${dbUser.id.slice(0, 8)}`;
 
-    // Create instance on Evolution server (or reuse if already exists)
-    const { createEvolutionInstance, setEvolutionWebhook } = await import("@/services/whatsappEvolution");
+    const { createEvolutionInstance, deleteEvolutionInstance, setEvolutionWebhook } = await import("@/services/whatsappEvolution");
 
-    const createResult = await createEvolutionInstance(serverUrl, apiKey, instanceName);
-    // If instance already exists, that's fine — just proceed
-    if (!createResult.success && !createResult.error?.includes("already in use")) {
+    // Se a instância já existe, deletar e recriar para obter QR fresco
+    let createResult = await createEvolutionInstance(serverUrl, apiKey, instanceName);
+    if (!createResult.success && createResult.error?.includes("already in use")) {
+      await deleteEvolutionInstance({ serverUrl, apiKey, instanceName });
+      await new Promise((r) => setTimeout(r, 1000));
+      createResult = await createEvolutionInstance(serverUrl, apiKey, instanceName);
+    }
+
+    if (!createResult.success) {
       return { success: false, error: createResult.error ?? "Erro ao criar instância" };
     }
 
@@ -106,7 +111,7 @@ export async function saveEvolutionConfig(): Promise<ActionResult<{ instanceId?:
       },
     });
 
-    return { success: true, data: { instanceId: createResult.instanceId } };
+    return { success: true, data: { instanceId: createResult.instanceId, qrcode: createResult.qrcode } };
   } catch {
     return { success: false, error: "Erro ao salvar configuração Evolution" };
   }
