@@ -142,9 +142,16 @@ model WhatsAppConfig {
   id            String   @id @default(cuid())
   userId        String   @unique
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  phoneNumberId String
-  accessToken   String
-  verifyToken   String
+  provider      String   @default("official") // "official" | "evolution"
+  // --- Official API fields (mantidos) ---
+  phoneNumberId String   @default("")
+  accessToken   String   @default("")
+  verifyToken   String   @default("")
+  // --- Evolution API fields ---
+  evolutionServerUrl    String?  // URL da instância Evolution (ex: https://evo.meudominio.com)
+  evolutionApiKey       String?  // API Key global da Evolution
+  evolutionInstanceName String?  // Nome da instância criada
+  evolutionInstanceId   String?  // ID retornado ao criar instância
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -222,5 +229,21 @@ model CampaignAction {
   createdAt   DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+model AdTrackingCode {
+  id             String   @id @default(cuid())
+  code           String   // ex: "REF-A1B2C3"
+  userId         String
+  campaignId     String?  // Meta campaign ID
+  campaignName   String?
+  adSetId        String?
+  adSetName      String?
+  adId           String?
+  adName         String?
+  createdAt      DateTime @default(now())
+
+  @@unique([code, userId])
+  @@index([userId])
 }
 

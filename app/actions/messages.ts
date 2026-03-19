@@ -53,19 +53,14 @@ export async function sendManualMessage(
     data: { leadId, role: "assistant", content },
   });
 
-  // Send via WhatsApp Cloud API
+  // Send via WhatsApp (official or evolution)
   const whatsappConfig = await prisma.whatsAppConfig.findUnique({
     where: { userId: user.id },
   });
 
   if (whatsappConfig) {
-    const { sendWhatsAppMessage } = await import("@/services/whatsappCloud");
-    await sendWhatsAppMessage(
-      whatsappConfig.phoneNumberId,
-      whatsappConfig.accessToken,
-      lead.phone,
-      content
-    );
+    const { sendMessage } = await import("@/services/whatsappService");
+    await sendMessage(whatsappConfig, lead.phone, content);
   }
 
   revalidatePath("/dashboard/chat");

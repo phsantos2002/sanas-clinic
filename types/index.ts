@@ -138,6 +138,34 @@ export type AnalyticsData = {
   conversionRate: number;
 };
 
+export type WhatsAppConfig = {
+  id: string;
+  userId: string;
+  provider: string; // "official" | "evolution"
+  phoneNumberId: string;
+  accessToken: string;
+  verifyToken: string;
+  evolutionServerUrl: string | null;
+  evolutionApiKey: string | null;
+  evolutionInstanceName: string | null;
+  evolutionInstanceId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type AdTrackingCode = {
+  id: string;
+  code: string;
+  userId: string;
+  campaignId: string | null;
+  campaignName: string | null;
+  adSetId: string | null;
+  adSetName: string | null;
+  adId: string | null;
+  adName: string | null;
+  createdAt: Date;
+};
+
 export type ActionResult<T = void> =
   | { success: true; data?: T }
   | { success: false; error: string };

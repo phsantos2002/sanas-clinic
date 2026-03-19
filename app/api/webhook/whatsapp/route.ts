@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateAIReply } from "@/services/aiChat";
-import { sendWhatsAppMessage } from "@/services/whatsappCloud";
+import { sendMessage } from "@/services/whatsappService";
 import { sendFacebookEvent } from "@/services/facebookEvents";
 import { getAIConfigByUserId } from "@/app/actions/aiConfig";
 
@@ -84,7 +84,6 @@ export async function POST(req: NextRequest) {
         // Find which user owns this phone number
         const whatsappConfig = await prisma.whatsAppConfig.findFirst({
           where: { phoneNumberId },
-          include: { user: true },
         });
         if (!whatsappConfig) continue;
 
@@ -99,7 +98,8 @@ export async function POST(req: NextRequest) {
           const referral = msg.referral ?? undefined;
 
           try {
-            await processMessage(whatsappConfig, msg.id, phone, text, pushName, referral);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await processMessage(whatsappConfig as any, msg.id, phone, text, pushName, referral);
           } catch (err) {
             console.error(`[webhook] Erro processando msg ${msg.id}:`, err);
             // Continue processing other messages even if one fails
@@ -131,8 +131,16 @@ type ReferralData = {
 };
 
 async function processMessage(
-  whatsappConfig: { userId: string; phoneNumberId: string; accessToken: string },
-  metaMsgId: string,
+  whatsappConfig: {
+    userId: string;
+    provider: string;
+    phoneNumberId: string;
+    accessToken: string;
+    evolutionServerUrl: string | null;
+    evolutionApiKey: string | null;
+    evolutionInstanceName: string | null;
+  },
+  _metaMsgId: string,
   phone: string,
   text: string,
   pushName: string,
@@ -276,13 +284,8 @@ async function processMessage(
     data: { leadId: lead.id, role: "assistant", content: reply },
   });
 
-  // Send reply via WhatsApp Cloud API
-  const sendResult = await sendWhatsAppMessage(
-    whatsappConfig.phoneNumberId,
-    whatsappConfig.accessToken,
-    phone,
-    reply
-  );
+  // Send reply via WhatsApp (official or evolution)
+  const sendResult = await sendMessage(whatsappConfig, phone, reply);
 
   if (!sendResult.success) {
     console.error(`[webhook] Falha ao enviar msg para ${phone}:`, sendResult.error);
