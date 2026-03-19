@@ -61,14 +61,28 @@ export async function getEvolutionQRCode(
 
     if (!res.ok) {
       const err = await res.text();
+      console.error("[Evolution] QR response error:", res.status, err);
       return { success: false, error: `HTTP ${res.status}: ${err}` };
     }
 
     const data = await res.json();
-    // Evolution returns base64 QR or pairingCode
+    console.log("[Evolution] QR response keys:", JSON.stringify(Object.keys(data)));
+
+    // Evolution v2 pode retornar em diferentes formatos
+    const qrcode =
+      data?.base64 ??
+      data?.qrcode?.base64 ??
+      data?.qrcode ??
+      data?.code ??
+      data?.pairingCode ??
+      null;
+
+    // Se o qrcode for um objeto, tenta extrair base64 dele
+    const qrString = typeof qrcode === "string" ? qrcode : null;
+
     return {
       success: true,
-      qrcode: data?.base64 ?? data?.qrcode?.base64 ?? null,
+      qrcode: qrString ?? undefined,
     };
   } catch (err) {
     console.error("[Evolution] Falha ao obter QR Code:", err);
