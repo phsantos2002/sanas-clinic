@@ -49,15 +49,24 @@ export async function saveWhatsAppConfig(
 }
 
 // ─── Save Evolution API config ───
+// Server URL e API Key vêm de variáveis de ambiente (configuradas pelo admin).
+// O nome da instância é gerado automaticamente a partir do ID do usuário.
+// O usuário final só precisa clicar "Conectar" e escanear o QR Code.
 
-export async function saveEvolutionConfig(
-  serverUrl: string,
-  apiKey: string,
-  instanceName: string,
-): Promise<ActionResult<{ instanceId?: string }>> {
+export async function saveEvolutionConfig(): Promise<ActionResult<{ instanceId?: string }>> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
+
+    const serverUrl = process.env.EVOLUTION_SERVER_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+
+    if (!serverUrl || !apiKey) {
+      return { success: false, error: "Evolution API não configurada no servidor. Contate o administrador." };
+    }
+
+    // Gera nome da instância automaticamente: "lux-<userId_curto>"
+    const instanceName = `lux-${dbUser.id.slice(0, 8)}`;
 
     // Create instance on Evolution server
     const { createEvolutionInstance, setEvolutionWebhook } = await import("@/services/whatsappEvolution");
@@ -68,9 +77,8 @@ export async function saveEvolutionConfig(
     }
 
     // Set webhook URL pointing to our Evolution webhook endpoint
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+      ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
     await setEvolutionWebhook(
       { serverUrl, apiKey, instanceName },

@@ -39,11 +39,6 @@ export function WhatsAppConfigForm({ config }: Props) {
   const [accessToken, setAccessToken] = useState(config?.accessToken ?? "");
   const [verifyToken, setVerifyToken] = useState(config?.verifyToken ?? "");
 
-  // Evolution fields
-  const [evoServerUrl, setEvoServerUrl] = useState(config?.evolutionServerUrl ?? "");
-  const [evoApiKey, setEvoApiKey] = useState(config?.evolutionApiKey ?? "");
-  const [evoInstanceName, setEvoInstanceName] = useState(config?.evolutionInstanceName ?? "");
-
   // State
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -89,23 +84,21 @@ export function WhatsAppConfigForm({ config }: Props) {
     }
   }
 
-  // ─── Evolution API submit ───
-  async function handleEvolutionSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!evoServerUrl.trim() || !evoApiKey.trim() || !evoInstanceName.trim()) return;
+  // ─── Evolution: criar instância e obter QR ───
+  async function handleEvolutionConnect() {
     setLoading(true);
-    const result = await saveEvolutionConfig(
-      evoServerUrl.replace(/\/+$/, ""),
-      evoApiKey,
-      evoInstanceName,
-    );
-    setLoading(false);
+    const result = await saveEvolutionConfig();
     if (result.success) {
-      toast.success("Instância Evolution criada! Escaneie o QR Code para conectar.");
-      handleGetQR();
+      toast.success("Instância criada! Escaneie o QR Code para conectar.");
+      // Buscar QR Code automaticamente
+      const qrResult = await getEvolutionQR();
+      if (qrResult.success && qrResult.data) {
+        setQrCode(qrResult.data.qrcode);
+      }
     } else {
       toast.error(result.error);
     }
+    setLoading(false);
   }
 
   // ─── Get QR Code ───
@@ -126,11 +119,10 @@ export function WhatsAppConfigForm({ config }: Props) {
     const result = await disconnectEvolution();
     setLoading(false);
     if (result.success) {
-      toast.success("Instância desconectada");
+      toast.success("WhatsApp desconectado");
       setEvoConnected(false);
       setQrCode(null);
       setEvoState(null);
-      setEvoInstanceName("");
     } else {
       toast.error(result.error);
     }
@@ -245,17 +237,17 @@ export function WhatsAppConfigForm({ config }: Props) {
         </form>
       )}
 
-      {/* ─── Evolution API Form ─── */}
+      {/* ─── Evolution API ─── */}
       {provider === "evolution" && (
         <div className="space-y-4">
-          {/* Connection Status */}
+          {/* Connection Status (quando já configurado) */}
           {isEvolutionConfigured && (
-            <div className={`flex items-center gap-3 p-3 rounded-xl border ${
+            <div className={`flex items-center gap-3 p-4 rounded-xl border ${
               evoConnected
                 ? "bg-green-50 border-green-200"
                 : "bg-amber-50 border-amber-200"
             }`}>
-              <div className={`w-2.5 h-2.5 rounded-full ${
+              <div className={`w-3 h-3 rounded-full shrink-0 ${
                 evoConnected ? "bg-green-500" : "bg-amber-500 animate-pulse"
               }`} />
               <div className="flex-1">
@@ -263,17 +255,12 @@ export function WhatsAppConfigForm({ config }: Props) {
                   evoConnected ? "text-green-700" : "text-amber-700"
                 }`}>
                   {evoConnected
-                    ? "Conectado ao WhatsApp"
+                    ? "WhatsApp conectado"
                     : checkingStatus
-                      ? "Verificando..."
+                      ? "Verificando conexão..."
                       : `Desconectado${evoState ? ` (${evoState})` : ""}`
                   }
                 </p>
-                {config?.evolutionInstanceName && (
-                  <p className="text-xs text-slate-500">
-                    Instância: {config.evolutionInstanceName}
-                  </p>
-                )}
               </div>
               <div className="flex gap-1.5">
                 <Button
@@ -302,7 +289,7 @@ export function WhatsAppConfigForm({ config }: Props) {
 
           {/* QR Code Display */}
           {qrCode && !evoConnected && (
-            <div className="flex flex-col items-center gap-3 p-4 bg-white border border-slate-200 rounded-xl">
+            <div className="flex flex-col items-center gap-3 p-5 bg-white border border-slate-200 rounded-xl">
               <p className="text-sm font-medium text-slate-700">
                 Escaneie o QR Code com seu WhatsApp
               </p>
@@ -329,56 +316,23 @@ export function WhatsAppConfigForm({ config }: Props) {
             </div>
           )}
 
-          {/* Config Form */}
-          {!isEvolutionConfigured && (
-            <form onSubmit={handleEvolutionSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="evoServerUrl">URL do Servidor Evolution</Label>
-                <Input
-                  id="evoServerUrl"
-                  placeholder="https://evo.meudominio.com"
-                  value={evoServerUrl}
-                  onChange={(e) => setEvoServerUrl(e.target.value)}
-                  required
-                />
-                <p className="text-xs text-zinc-400">
-                  URL da sua instância Evolution API (self-hosted ou cloud).
+          {/* Botão de conectar (quando ainda não configurado) */}
+          {!isEvolutionConfigured && !qrCode && (
+            <div className="space-y-3">
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                <p className="text-sm text-slate-600">
+                  Clique no botão abaixo para gerar um QR Code. Depois, escaneie com seu WhatsApp para conectar.
                 </p>
               </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="evoApiKey">API Key</Label>
-                <Input
-                  id="evoApiKey"
-                  type="password"
-                  placeholder="Chave de API global da Evolution"
-                  value={evoApiKey}
-                  onChange={(e) => setEvoApiKey(e.target.value)}
-                  required
-                />
-                <p className="text-xs text-zinc-400">
-                  Encontre no arquivo .env da sua Evolution ou no painel de administração.
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="evoInstanceName">Nome da Instância</Label>
-                <Input
-                  id="evoInstanceName"
-                  placeholder="minha-clinica"
-                  value={evoInstanceName}
-                  onChange={(e) => setEvoInstanceName(e.target.value.replace(/\s/g, "-").toLowerCase())}
-                  required
-                />
-                <p className="text-xs text-zinc-400">
-                  Nome único para identificar esta conexão. Use letras minúsculas e hífens.
-                </p>
-              </div>
-
-              <Button type="submit" disabled={loading} className="bg-green-600 hover:bg-green-700">
-                {loading ? "Criando instância..." : "Conectar via QR Code"}
+              <Button
+                type="button"
+                disabled={loading}
+                onClick={handleEvolutionConnect}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                {loading ? "Criando conexão..." : "Conectar via QR Code"}
               </Button>
-            </form>
+            </div>
           )}
 
           {/* Disconnect button */}
@@ -390,7 +344,7 @@ export function WhatsAppConfigForm({ config }: Props) {
               disabled={loading}
               onClick={handleDisconnect}
             >
-              {loading ? "Desconectando..." : "Desconectar instância"}
+              {loading ? "Desconectando..." : "Desconectar WhatsApp"}
             </Button>
           )}
         </div>
