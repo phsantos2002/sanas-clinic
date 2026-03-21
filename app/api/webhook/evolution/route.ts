@@ -1,41 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateAIReply } from "@/services/aiChat";
-import { sendEvolutionMessage } from "@/services/whatsappEvolution";
+import { sendWahaMessage } from "@/services/whatsappEvolution";
 import { sendFacebookEvent } from "@/services/facebookEvents";
 import { getAIConfigByUserId } from "@/app/actions/aiConfig";
 
 /**
- * Evolution API Webhook — receives messages from Evolution instances.
+ * WAHA Webhook — receives messages from WAHA sessions.
  *
- * Payload format (MESSAGES_UPSERT event):
+ * Payload format ("message" event):
  * {
- *   event: "messages.upsert",
- *   instance: "instance-name",
- *   data: {
- *     key: { remoteJid: "5511999999999@s.whatsapp.net", fromMe: false, id: "..." },
- *     pushName: "João",
- *     message: { conversation: "Olá!" } | { extendedTextMessage: { text: "Olá!" } },
- *     messageTimestamp: 1234567890,
+ *   event: "message",
+ *   session: "lux-abc12345",
+ *   payload: {
+ *     id: "...",
+ *     from: "5511999999999@c.us",
+ *     fromMe: false,
+ *     body: "Olá!",
+ *     timestamp: 1234567890,
+ *     hasMedia: false,
+ *     _data: { notifyName: "João" }
  *   }
  * }
  */
 
-type EvolutionPayload = {
+type WahaPayload = {
   event: string;
-  instance: string;
-  data: {
-    key: {
-      remoteJid: string;
-      fromMe: boolean;
-      id: string;
+  session: string;
+  payload: {
+    id: string;
+    from: string;
+    fromMe: boolean;
+    body: string;
+    timestamp: number;
+    hasMedia: boolean;
+    _data?: {
+      notifyName?: string;
     };
-    pushName?: string;
-    message?: {
-      conversation?: string;
-      extendedTextMessage?: { text?: string };
-    };
-    messageTimestamp?: number | string;
   };
 };
 
@@ -47,69 +48,61 @@ function extractRefCode(text: string): string | null {
   return match ? match[0].toUpperCase() : null;
 }
 
-function extractPhoneFromJid(jid: string): string {
-  // "5511999999999@s.whatsapp.net" → "5511999999999"
-  return jid.split("@")[0].replace(/\D/g, "");
-}
-
-function extractMessageText(data: EvolutionPayload["data"]): string | null {
-  return (
-    data.message?.conversation?.trim() ??
-    data.message?.extendedTextMessage?.text?.trim() ??
-    null
-  );
+function extractPhoneFromChatId(chatId: string): string {
+  // "5511999999999@c.us" → "5511999999999"
+  return chatId.split("@")[0].replace(/\D/g, "");
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as EvolutionPayload;
+    const body = (await req.json()) as WahaPayload;
 
     // Only process incoming messages (not sent by us)
-    if (body.event !== "messages.upsert" || body.data?.key?.fromMe) {
+    if (body.event !== "message" || body.payload?.fromMe) {
       return NextResponse.json({ ok: true });
     }
 
-    const instanceName = body.instance;
-    const text = extractMessageText(body.data);
+    const sessionName = body.session;
+    const text = body.payload?.body?.trim();
     if (!text) return NextResponse.json({ ok: true });
 
-    const phone = extractPhoneFromJid(body.data.key.remoteJid);
+    const phone = extractPhoneFromChatId(body.payload.from);
     if (!phone) return NextResponse.json({ ok: true });
 
-    // Find which user owns this Evolution instance
+    // Find which user owns this WAHA session
     const whatsappConfig = await prisma.whatsAppConfig.findFirst({
       where: {
-        provider: "evolution",
-        evolutionInstanceName: instanceName,
+        provider: "waha",
+        wahaSessionName: sessionName,
       },
     });
     if (!whatsappConfig) {
-      console.error(`[evolution webhook] Instância não encontrada: ${instanceName}`);
+      console.error(`[waha webhook] Sessão não encontrada: ${sessionName}`);
       return NextResponse.json({ ok: true });
     }
 
-    const pushName = body.data.pushName ?? "";
-    const metaMsgId = body.data.key.id;
+    const pushName = body.payload._data?.notifyName ?? "";
+    const msgId = body.payload.id;
 
     try {
-      await processEvolutionMessage(whatsappConfig, metaMsgId, phone, text, pushName);
+      await processWahaMessage(whatsappConfig, msgId, phone, text, pushName);
     } catch (err) {
-      console.error(`[evolution webhook] Erro processando msg ${metaMsgId}:`, err);
+      console.error(`[waha webhook] Erro processando msg ${msgId}:`, err);
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("[evolution webhook] Erro no parse:", err);
+    console.error("[waha webhook] Erro no parse:", err);
     return NextResponse.json({ ok: true });
   }
 }
 
-async function processEvolutionMessage(
+async function processWahaMessage(
   whatsappConfig: {
     userId: string;
-    evolutionServerUrl: string | null;
-    evolutionApiKey: string | null;
-    evolutionInstanceName: string | null;
+    wahaServerUrl: string | null;
+    wahaApiKey: string | null;
+    wahaSessionName: string | null;
   },
   msgId: string,
   phone: string,
@@ -277,20 +270,20 @@ async function processEvolutionMessage(
     data: { leadId: lead.id, role: "assistant", content: reply },
   });
 
-  // Send reply via Evolution API
-  if (whatsappConfig.evolutionServerUrl && whatsappConfig.evolutionApiKey && whatsappConfig.evolutionInstanceName) {
-    const sendResult = await sendEvolutionMessage(
+  // Send reply via WAHA
+  if (whatsappConfig.wahaServerUrl && whatsappConfig.wahaApiKey && whatsappConfig.wahaSessionName) {
+    const sendResult = await sendWahaMessage(
       {
-        serverUrl: whatsappConfig.evolutionServerUrl,
-        apiKey: whatsappConfig.evolutionApiKey,
-        instanceName: whatsappConfig.evolutionInstanceName,
+        serverUrl: whatsappConfig.wahaServerUrl,
+        apiKey: whatsappConfig.wahaApiKey,
+        sessionName: whatsappConfig.wahaSessionName,
       },
       phone,
       reply,
     );
 
     if (!sendResult.success) {
-      console.error(`[evolution webhook] Falha ao enviar msg para ${phone}:`, sendResult.error);
+      console.error(`[waha webhook] Falha ao enviar msg para ${phone}:`, sendResult.error);
     }
   }
 

@@ -48,96 +48,86 @@ export async function saveWhatsAppConfig(
   }
 }
 
-// ─── Save Evolution API config ───
+// ─── Save WAHA config ───
 // Server URL e API Key vêm de variáveis de ambiente (configuradas pelo admin).
-// O nome da instância é gerado automaticamente a partir do ID do usuário.
+// O nome da sessão é gerado automaticamente a partir do ID do usuário.
 // O usuário final só precisa clicar "Conectar" e escanear o QR Code.
 
-export async function saveEvolutionConfig(): Promise<ActionResult<{ instanceId?: string; qrcode?: string }>> {
+export async function saveWahaConfig(): Promise<ActionResult<{ qrcode?: string }>> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
-    const serverUrl = process.env.EVOLUTION_SERVER_URL;
-    const apiKey = process.env.EVOLUTION_API_KEY;
+    const serverUrl = process.env.WAHA_SERVER_URL;
+    const apiKey = process.env.WAHA_API_KEY;
 
     if (!serverUrl || !apiKey) {
-      return { success: false, error: "Evolution API não configurada no servidor. Contate o administrador." };
+      return { success: false, error: "WAHA não configurado no servidor. Contate o administrador." };
     }
 
-    // Gera nome da instância automaticamente: "lux-<userId_curto>"
-    const instanceName = `lux-${dbUser.id.slice(0, 8)}`;
+    // Gera nome da sessão automaticamente: "lux-<userId_curto>"
+    const sessionName = `lux-${dbUser.id.slice(0, 8)}`;
 
-    const { createEvolutionInstance, deleteEvolutionInstance, setEvolutionWebhook } = await import("@/services/whatsappEvolution");
+    const { createWahaSession } = await import("@/services/whatsappEvolution");
 
-    // Se a instância já existe, deletar e recriar para obter QR fresco
-    let createResult = await createEvolutionInstance(serverUrl, apiKey, instanceName);
-    if (!createResult.success && createResult.error?.includes("already in use")) {
-      await deleteEvolutionInstance({ serverUrl, apiKey, instanceName });
-      await new Promise((r) => setTimeout(r, 1000));
-      createResult = await createEvolutionInstance(serverUrl, apiKey, instanceName);
-    }
-
-    if (!createResult.success) {
-      return { success: false, error: createResult.error ?? "Erro ao criar instância" };
-    }
-
-    // Set webhook URL pointing to our Evolution webhook endpoint
+    // Build webhook URL
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL
       ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
-    await setEvolutionWebhook(
-      { serverUrl, apiKey, instanceName },
-      `${baseUrl}/api/webhook/evolution`,
-    );
+    const webhookUrl = `${baseUrl}/api/webhook/evolution`;
+
+    // Create session (handles "already exists" internally)
+    const createResult = await createWahaSession(serverUrl, apiKey, sessionName, webhookUrl);
+
+    if (!createResult.success) {
+      return { success: false, error: createResult.error ?? "Erro ao criar sessão" };
+    }
 
     // Save config
     await prisma.whatsAppConfig.upsert({
       where: { userId: dbUser.id },
       update: {
-        provider: "evolution",
-        evolutionServerUrl: serverUrl,
-        evolutionApiKey: apiKey,
-        evolutionInstanceName: instanceName,
-        evolutionInstanceId: createResult.instanceId ?? null,
+        provider: "waha",
+        wahaServerUrl: serverUrl,
+        wahaApiKey: apiKey,
+        wahaSessionName: sessionName,
       },
       create: {
         userId: dbUser.id,
-        provider: "evolution",
-        evolutionServerUrl: serverUrl,
-        evolutionApiKey: apiKey,
-        evolutionInstanceName: instanceName,
-        evolutionInstanceId: createResult.instanceId ?? null,
+        provider: "waha",
+        wahaServerUrl: serverUrl,
+        wahaApiKey: apiKey,
+        wahaSessionName: sessionName,
       },
     });
 
-    return { success: true, data: { instanceId: createResult.instanceId, qrcode: createResult.qrcode } };
+    return { success: true, data: { qrcode: createResult.qrcode } };
   } catch {
-    return { success: false, error: "Erro ao salvar configuração Evolution" };
+    return { success: false, error: "Erro ao salvar configuração WAHA" };
   }
 }
 
-// ─── Get QR Code (Evolution) ───
+// ─── Get QR Code (WAHA) ───
 
-export async function getEvolutionQR(): Promise<ActionResult<{ qrcode: string }>> {
+export async function getWahaQR(): Promise<ActionResult<{ qrcode: string }>> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "evolution") {
-      return { success: false, error: "Evolution API não configurada" };
+    if (!config || config.provider !== "waha") {
+      return { success: false, error: "WAHA não configurado" };
     }
 
-    if (!config.evolutionServerUrl || !config.evolutionApiKey || !config.evolutionInstanceName) {
+    if (!config.wahaServerUrl || !config.wahaApiKey || !config.wahaSessionName) {
       return { success: false, error: "Configuração incompleta" };
     }
 
-    const { getEvolutionQRCode } = await import("@/services/whatsappEvolution");
-    const result = await getEvolutionQRCode({
-      serverUrl: config.evolutionServerUrl,
-      apiKey: config.evolutionApiKey,
-      instanceName: config.evolutionInstanceName,
+    const { getWahaQRCode } = await import("@/services/whatsappEvolution");
+    const result = await getWahaQRCode({
+      serverUrl: config.wahaServerUrl,
+      apiKey: config.wahaApiKey,
+      sessionName: config.wahaSessionName,
     });
 
     if (!result.success || !result.qrcode) {
@@ -150,27 +140,27 @@ export async function getEvolutionQR(): Promise<ActionResult<{ qrcode: string }>
   }
 }
 
-// ─── Connection status (Evolution) ───
+// ─── Connection status (WAHA) ───
 
-export async function getEvolutionStatus(): Promise<ActionResult<{ connected: boolean; state?: string }>> {
+export async function getWahaStatus(): Promise<ActionResult<{ connected: boolean; state?: string }>> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "evolution") {
-      return { success: false, error: "Evolution API não configurada" };
+    if (!config || config.provider !== "waha") {
+      return { success: false, error: "WAHA não configurado" };
     }
 
-    if (!config.evolutionServerUrl || !config.evolutionApiKey || !config.evolutionInstanceName) {
+    if (!config.wahaServerUrl || !config.wahaApiKey || !config.wahaSessionName) {
       return { success: false, error: "Configuração incompleta" };
     }
 
-    const { getEvolutionConnectionStatus } = await import("@/services/whatsappEvolution");
-    const result = await getEvolutionConnectionStatus({
-      serverUrl: config.evolutionServerUrl,
-      apiKey: config.evolutionApiKey,
-      instanceName: config.evolutionInstanceName,
+    const { getWahaConnectionStatus } = await import("@/services/whatsappEvolution");
+    const result = await getWahaConnectionStatus({
+      serverUrl: config.wahaServerUrl,
+      apiKey: config.wahaApiKey,
+      sessionName: config.wahaSessionName,
     });
 
     return { success: true, data: { connected: result.connected, state: result.state } };
@@ -189,9 +179,8 @@ export async function testWhatsAppConnection(): Promise<ActionResult> {
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
     if (!config) return { success: false, error: "WhatsApp não configurado" };
 
-    if (config.provider === "evolution") {
-      // Test Evolution connection
-      const status = await getEvolutionStatus();
+    if (config.provider === "waha") {
+      const status = await getWahaStatus();
       if (!status.success) return status;
       if (status.data?.connected) {
         return { success: true };
@@ -215,33 +204,32 @@ export async function testWhatsAppConnection(): Promise<ActionResult> {
   }
 }
 
-// ─── Disconnect Evolution instance ───
+// ─── Disconnect WAHA session ───
 
-export async function disconnectEvolution(): Promise<ActionResult> {
+export async function disconnectWaha(): Promise<ActionResult> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "evolution") {
-      return { success: false, error: "Evolution API não configurada" };
+    if (!config || config.provider !== "waha") {
+      return { success: false, error: "WAHA não configurado" };
     }
 
-    if (config.evolutionServerUrl && config.evolutionApiKey && config.evolutionInstanceName) {
-      const { deleteEvolutionInstance } = await import("@/services/whatsappEvolution");
-      await deleteEvolutionInstance({
-        serverUrl: config.evolutionServerUrl,
-        apiKey: config.evolutionApiKey,
-        instanceName: config.evolutionInstanceName,
+    if (config.wahaServerUrl && config.wahaApiKey && config.wahaSessionName) {
+      const { deleteWahaSession } = await import("@/services/whatsappEvolution");
+      await deleteWahaSession({
+        serverUrl: config.wahaServerUrl,
+        apiKey: config.wahaApiKey,
+        sessionName: config.wahaSessionName,
       });
     }
 
-    // Remove evolution fields but keep record
+    // Remove WAHA fields but keep record
     await prisma.whatsAppConfig.update({
       where: { userId: dbUser.id },
       data: {
-        evolutionInstanceName: null,
-        evolutionInstanceId: null,
+        wahaSessionName: null,
       },
     });
 

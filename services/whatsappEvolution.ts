@@ -1,72 +1,83 @@
 /**
- * Evolution API v2 — WhatsApp connection via QR Code
- * Docs: https://doc.evolution-api.com
+ * WAHA (WhatsApp HTTP API) — WhatsApp connection via QR Code
+ * Docs: https://waha.devlike.pro/docs/overview/introduction/
+ *
+ * Free CORE tier: sessions, QR code, send/receive messages, webhooks.
  */
 
-type EvolutionConfig = {
-  serverUrl: string;   // ex: https://evo.meudominio.com
-  apiKey: string;      // API Key global
-  instanceName: string;
+export type WahaConfig = {
+  serverUrl: string;   // ex: http://localhost:3008
+  apiKey: string;      // WHATSAPP_API_KEY do WAHA
+  sessionName: string;
 };
 
-// ─── Instance management ───
+function headers(apiKey: string) {
+  return {
+    "Content-Type": "application/json",
+    "X-Api-Key": apiKey,
+  };
+}
 
-export async function createEvolutionInstance(
+// ─── Session management ───
+
+export async function createWahaSession(
   serverUrl: string,
   apiKey: string,
-  instanceName: string,
-): Promise<{ success: boolean; instanceId?: string; qrcode?: string; error?: string }> {
+  sessionName: string,
+  webhookUrl?: string,
+): Promise<{ success: boolean; qrcode?: string; error?: string }> {
   try {
-    const res = await fetch(`${serverUrl}/instance/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: apiKey,
+    // Create + start session in one call
+    const body: Record<string, unknown> = {
+      name: sessionName,
+      start: true,
+      config: {
+        webhooks: webhookUrl
+          ? [{ url: webhookUrl, events: ["message"] }]
+          : [],
       },
-      body: JSON.stringify({
-        instanceName,
-        integration: "WHATSAPP-BAILEYS",
-        qrcode: true,
-      }),
+    };
+
+    const res = await fetch(`${serverUrl}/api/sessions`, {
+      method: "POST",
+      headers: headers(apiKey),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("[Evolution] Erro ao criar instância:", res.status, err);
+      // Session already exists — just start it
+      if (res.status === 422 || err.includes("already exists")) {
+        await startWahaSession({ serverUrl, apiKey, sessionName });
+        // Fetch QR after starting
+        const qr = await getWahaQRCode({ serverUrl, apiKey, sessionName });
+        return { success: true, qrcode: qr.qrcode };
+      }
+      console.error("[WAHA] Erro ao criar sessão:", res.status, err);
       return { success: false, error: `HTTP ${res.status}: ${err}` };
     }
 
-    const data = await res.json();
-    console.log("[Evolution] Create response keys:", JSON.stringify(Object.keys(data)));
+    // Give WAHA a moment to initialize the session
+    await new Promise((r) => setTimeout(r, 2000));
 
-    // Evolution v2 retorna o QR Code na resposta de criação
-    const qrcode =
-      data?.qrcode?.base64 ??
-      data?.qrcode ??
-      data?.base64 ??
-      null;
-    const qrString = typeof qrcode === "string" ? qrcode : undefined;
-
-    return {
-      success: true,
-      instanceId: data?.instance?.instanceId ?? data?.instanceId ?? instanceName,
-      qrcode: qrString,
-    };
+    // Fetch QR code
+    const qr = await getWahaQRCode({ serverUrl, apiKey, sessionName });
+    return { success: true, qrcode: qr.qrcode };
   } catch (err) {
-    console.error("[Evolution] Falha ao criar instância:", err);
-    return { success: false, error: "Erro de conexão com o servidor Evolution" };
+    console.error("[WAHA] Falha ao criar sessão:", err);
+    return { success: false, error: "Erro de conexão com o servidor WAHA" };
   }
 }
 
-export async function restartEvolutionInstance(
-  config: EvolutionConfig,
+export async function startWahaSession(
+  config: WahaConfig,
 ): Promise<{ success: boolean }> {
   try {
     const res = await fetch(
-      `${config.serverUrl}/instance/restart/${config.instanceName}`,
+      `${config.serverUrl}/api/sessions/${config.sessionName}/start`,
       {
-        method: "PUT",
-        headers: { apikey: config.apiKey },
+        method: "POST",
+        headers: headers(config.apiKey),
       },
     );
     return { success: res.ok };
@@ -75,63 +86,45 @@ export async function restartEvolutionInstance(
   }
 }
 
-export async function getEvolutionQRCode(
-  config: EvolutionConfig,
+export async function getWahaQRCode(
+  config: WahaConfig,
 ): Promise<{ success: boolean; qrcode?: string; error?: string }> {
   try {
-    // Restart instance to force a fresh QR code generation
-    await restartEvolutionInstance(config);
-    // Small delay to let the instance restart
-    await new Promise((r) => setTimeout(r, 2000));
-
     const res = await fetch(
-      `${config.serverUrl}/instance/connect/${config.instanceName}`,
+      `${config.serverUrl}/api/${config.sessionName}/auth/qr?format=image`,
       {
         method: "GET",
-        headers: { apikey: config.apiKey },
+        headers: { "X-Api-Key": config.apiKey },
       },
     );
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("[Evolution] QR response error:", res.status, err);
+      console.error("[WAHA] QR response error:", res.status, err);
       return { success: false, error: `HTTP ${res.status}: ${err}` };
     }
 
-    const data = await res.json();
-    console.log("[Evolution] QR full response:", JSON.stringify(data).slice(0, 500));
+    // format=image returns a PNG image — convert to base64 data URI
+    const buffer = await res.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    const dataUri = `data:image/png;base64,${base64}`;
 
-    // Evolution v2 pode retornar em diferentes formatos
-    const qrcode =
-      data?.base64 ??
-      data?.qrcode?.base64 ??
-      data?.qrcode ??
-      data?.code ??
-      data?.pairingCode ??
-      null;
-
-    // Se o qrcode for um objeto, tenta extrair base64 dele
-    const qrString = typeof qrcode === "string" ? qrcode : null;
-
-    return {
-      success: true,
-      qrcode: qrString ?? undefined,
-    };
+    return { success: true, qrcode: dataUri };
   } catch (err) {
-    console.error("[Evolution] Falha ao obter QR Code:", err);
+    console.error("[WAHA] Falha ao obter QR Code:", err);
     return { success: false, error: "Erro ao obter QR Code" };
   }
 }
 
-export async function getEvolutionConnectionStatus(
-  config: EvolutionConfig,
+export async function getWahaConnectionStatus(
+  config: WahaConfig,
 ): Promise<{ connected: boolean; state?: string; error?: string }> {
   try {
     const res = await fetch(
-      `${config.serverUrl}/instance/connectionState/${config.instanceName}`,
+      `${config.serverUrl}/api/sessions/${config.sessionName}`,
       {
         method: "GET",
-        headers: { apikey: config.apiKey },
+        headers: headers(config.apiKey),
       },
     );
 
@@ -140,53 +133,51 @@ export async function getEvolutionConnectionStatus(
     }
 
     const data = await res.json();
-    const state = data?.instance?.state ?? data?.state ?? "close";
-    return { connected: state === "open", state };
+    // WAHA session statuses: WORKING, SCAN_QR_CODE, STARTING, STOPPED, FAILED
+    const status = data?.status ?? "STOPPED";
+    return { connected: status === "WORKING", state: status };
   } catch {
     return { connected: false, error: "Erro de conexão" };
   }
 }
 
-export async function deleteEvolutionInstance(
-  config: EvolutionConfig,
+export async function deleteWahaSession(
+  config: WahaConfig,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch(
-      `${config.serverUrl}/instance/delete/${config.instanceName}`,
+      `${config.serverUrl}/api/sessions/${config.sessionName}`,
       {
         method: "DELETE",
-        headers: { apikey: config.apiKey },
+        headers: headers(config.apiKey),
       },
     );
 
     return { success: res.ok };
   } catch {
-    return { success: false, error: "Erro ao deletar instância" };
+    return { success: false, error: "Erro ao deletar sessão" };
   }
 }
 
-// ─── Set webhook URL on the instance ───
+// ─── Set webhook on existing session ───
 
-export async function setEvolutionWebhook(
-  config: EvolutionConfig,
+export async function setWahaWebhook(
+  config: WahaConfig,
   webhookUrl: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch(
-      `${config.serverUrl}/webhook/set/${config.instanceName}`,
+      `${config.serverUrl}/api/sessions/${config.sessionName}`,
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: config.apiKey,
-        },
+        method: "PUT",
+        headers: headers(config.apiKey),
         body: JSON.stringify({
-          webhook: {
-            enabled: true,
-            url: webhookUrl,
-            webhookByEvents: false,
-            events: [
-              "MESSAGES_UPSERT",
+          config: {
+            webhooks: [
+              {
+                url: webhookUrl,
+                events: ["message"],
+              },
             ],
           },
         }),
@@ -206,8 +197,8 @@ export async function setEvolutionWebhook(
 
 // ─── Send message ───
 
-export async function sendEvolutionMessage(
-  config: EvolutionConfig,
+export async function sendWahaMessage(
+  config: WahaConfig,
   to: string,
   text: string,
 ): Promise<{ success: boolean; error?: string }> {
@@ -215,15 +206,13 @@ export async function sendEvolutionMessage(
 
   try {
     const res = await fetch(
-      `${config.serverUrl}/message/sendText/${config.instanceName}`,
+      `${config.serverUrl}/api/sendText`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: config.apiKey,
-        },
+        headers: headers(config.apiKey),
         body: JSON.stringify({
-          number: phone,
+          session: config.sessionName,
+          chatId: `${phone}@c.us`,
           text,
         }),
       },
@@ -231,13 +220,13 @@ export async function sendEvolutionMessage(
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("[Evolution] Erro ao enviar mensagem:", res.status, err);
+      console.error("[WAHA] Erro ao enviar mensagem:", res.status, err);
       return { success: false, error: `HTTP ${res.status}` };
     }
 
     return { success: true };
   } catch (err) {
-    console.error("[Evolution] Falha na requisição:", err);
+    console.error("[WAHA] Falha na requisição:", err);
     return { success: false, error: "Network error" };
   }
 }

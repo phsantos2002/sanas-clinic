@@ -141,14 +141,13 @@ export type AnalyticsData = {
 export type WhatsAppConfig = {
   id: string;
   userId: string;
-  provider: string; // "official" | "evolution"
+  provider: string; // "official" | "waha"
   phoneNumberId: string;
   accessToken: string;
   verifyToken: string;
-  evolutionServerUrl: string | null;
-  evolutionApiKey: string | null;
-  evolutionInstanceName: string | null;
-  evolutionInstanceId: string | null;
+  wahaServerUrl: string | null;
+  wahaApiKey: string | null;
+  wahaSessionName: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

@@ -142,16 +142,15 @@ model WhatsAppConfig {
   id            String   @id @default(cuid())
   userId        String   @unique
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider      String   @default("official") // "official" | "evolution"
+  provider      String   @default("official") // "official" | "waha"
   // --- Official API fields (mantidos) ---
   phoneNumberId String   @default("")
   accessToken   String   @default("")
   verifyToken   String   @default("")
-  // --- Evolution API fields ---
-  evolutionServerUrl    String?  // URL da instância Evolution (ex: https://evo.meudominio.com)
-  evolutionApiKey       String?  // API Key global da Evolution
-  evolutionInstanceName String?  // Nome da instância criada
-  evolutionInstanceId   String?  // ID retornado ao criar instância
+  // --- WAHA fields ---
+  wahaServerUrl     String?  // URL do servidor WAHA (ex: http://localhost:3008)
+  wahaApiKey        String?  // API Key do WAHA (env WHATSAPP_API_KEY)
+  wahaSessionName   String?  // Nome da sessão criada
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   saveWhatsAppConfig,
-  saveEvolutionConfig,
+  saveWahaConfig,
   testWhatsAppConnection,
-  getEvolutionQR,
-  getEvolutionStatus,
-  disconnectEvolution,
+  getWahaQR,
+  getWahaStatus,
+  disconnectWaha,
 } from "@/app/actions/whatsapp";
 import { toast } from "sonner";
 
@@ -19,10 +19,9 @@ type WhatsAppConfig = {
   phoneNumberId: string;
   accessToken: string;
   verifyToken: string;
-  evolutionServerUrl: string | null;
-  evolutionApiKey: string | null;
-  evolutionInstanceName: string | null;
-  evolutionInstanceId: string | null;
+  wahaServerUrl: string | null;
+  wahaApiKey: string | null;
+  wahaSessionName: string | null;
 } | null;
 
 type Props = {
@@ -30,8 +29,8 @@ type Props = {
 };
 
 export function WhatsAppConfigForm({ config }: Props) {
-  const [provider, setProvider] = useState<"official" | "evolution">(
-    (config?.provider as "official" | "evolution") ?? "official"
+  const [provider, setProvider] = useState<"official" | "waha">(
+    (config?.provider as "official" | "waha") ?? "official"
   );
 
   // Official fields
@@ -43,32 +42,32 @@ export function WhatsAppConfigForm({ config }: Props) {
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
 
-  // Evolution-specific state
+  // WAHA-specific state
   const [qrCode, setQrCode] = useState<string | null>(null);
-  const [evoConnected, setEvoConnected] = useState(false);
-  const [evoState, setEvoState] = useState<string | null>(null);
+  const [wahaConnected, setWahaConnected] = useState(false);
+  const [wahaState, setWahaState] = useState<string | null>(null);
   const [loadingQR, setLoadingQR] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
 
-  const isEvolutionConfigured = !!(config?.provider === "evolution" && config?.evolutionInstanceName);
+  const isWahaConfigured = !!(config?.provider === "waha" && config?.wahaSessionName);
 
-  // Check Evolution connection status
+  // Check WAHA connection status
   const checkStatus = useCallback(async () => {
-    if (!isEvolutionConfigured) return;
+    if (!isWahaConfigured) return;
     setCheckingStatus(true);
-    const result = await getEvolutionStatus();
+    const result = await getWahaStatus();
     setCheckingStatus(false);
     if (result.success && result.data) {
-      setEvoConnected(result.data.connected);
-      setEvoState(result.data.state ?? null);
+      setWahaConnected(result.data.connected);
+      setWahaState(result.data.state ?? null);
     }
-  }, [isEvolutionConfigured]);
+  }, [isWahaConfigured]);
 
   useEffect(() => {
-    if (isEvolutionConfigured) {
+    if (isWahaConfigured) {
       checkStatus();
     }
-  }, [isEvolutionConfigured, checkStatus]);
+  }, [isWahaConfigured, checkStatus]);
 
   // ─── Official API submit ───
   async function handleOfficialSubmit(e: React.FormEvent) {
@@ -84,17 +83,16 @@ export function WhatsAppConfigForm({ config }: Props) {
     }
   }
 
-  // ─── Evolution: criar instância e obter QR ───
-  async function handleEvolutionConnect() {
+  // ─── WAHA: criar sessão e obter QR ───
+  async function handleWahaConnect() {
     setLoading(true);
-    const result = await saveEvolutionConfig();
+    const result = await saveWahaConfig();
     if (result.success) {
-      // Usa QR Code retornado da criação da instância
       if (result.data?.qrcode) {
         setQrCode(result.data.qrcode);
         toast.success("Escaneie o QR Code para conectar.");
       } else {
-        toast.success("Instância criada! Clique em 'QR Code' para conectar.");
+        toast.success("Sessão criada! Clique em 'QR Code' para conectar.");
       }
     } else {
       toast.error(result.error);
@@ -105,7 +103,7 @@ export function WhatsAppConfigForm({ config }: Props) {
   // ─── Get QR Code ───
   async function handleGetQR() {
     setLoadingQR(true);
-    const result = await getEvolutionQR();
+    const result = await getWahaQR();
     setLoadingQR(false);
     if (result.success && result.data) {
       setQrCode(result.data.qrcode);
@@ -114,16 +112,16 @@ export function WhatsAppConfigForm({ config }: Props) {
     }
   }
 
-  // ─── Disconnect Evolution ───
+  // ─── Disconnect WAHA ───
   async function handleDisconnect() {
     setLoading(true);
-    const result = await disconnectEvolution();
+    const result = await disconnectWaha();
     setLoading(false);
     if (result.success) {
       toast.success("WhatsApp desconectado");
-      setEvoConnected(false);
+      setWahaConnected(false);
       setQrCode(null);
-      setEvoState(null);
+      setWahaState(null);
     } else {
       toast.error(result.error);
     }
@@ -148,24 +146,24 @@ export function WhatsAppConfigForm({ config }: Props) {
           </button>
           <button
             type="button"
-            onClick={() => setProvider("evolution")}
+            onClick={() => setProvider("waha")}
             className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-              provider === "evolution"
+              provider === "waha"
                 ? "bg-green-600 text-white border-green-600"
                 : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
             }`}
           >
-            Evolution API
+            WAHA (QR Code)
           </button>
         </div>
         <p className="text-xs text-slate-400">
           {provider === "official"
             ? "Requer conta Meta Business verificada. Ideal para empresas com acesso à API oficial."
-            : "Conecte via QR Code usando seu WhatsApp pessoal ou Business. Mantém o histórico de conversas."}
+            : "Conecte via QR Code usando seu WhatsApp pessoal ou Business. Gratuito e sem burocracia."}
         </p>
       </div>
 
-      {/* ─── Official API Form (mantido intacto) ─── */}
+      {/* ─── Official API Form ─── */}
       {provider === "official" && (
         <form onSubmit={handleOfficialSubmit} className="space-y-4">
           <div className="space-y-1.5">
@@ -238,28 +236,28 @@ export function WhatsAppConfigForm({ config }: Props) {
         </form>
       )}
 
-      {/* ─── Evolution API ─── */}
-      {provider === "evolution" && (
+      {/* ─── WAHA ─── */}
+      {provider === "waha" && (
         <div className="space-y-4">
           {/* Connection Status (quando já configurado) */}
-          {isEvolutionConfigured && (
+          {isWahaConfigured && (
             <div className={`flex items-center gap-3 p-4 rounded-xl border ${
-              evoConnected
+              wahaConnected
                 ? "bg-green-50 border-green-200"
                 : "bg-amber-50 border-amber-200"
             }`}>
               <div className={`w-3 h-3 rounded-full shrink-0 ${
-                evoConnected ? "bg-green-500" : "bg-amber-500 animate-pulse"
+                wahaConnected ? "bg-green-500" : "bg-amber-500 animate-pulse"
               }`} />
               <div className="flex-1">
                 <p className={`text-sm font-medium ${
-                  evoConnected ? "text-green-700" : "text-amber-700"
+                  wahaConnected ? "text-green-700" : "text-amber-700"
                 }`}>
-                  {evoConnected
+                  {wahaConnected
                     ? "WhatsApp conectado"
                     : checkingStatus
                       ? "Verificando conexão..."
-                      : `Desconectado${evoState ? ` (${evoState})` : ""}`
+                      : `Desconectado${wahaState ? ` (${wahaState})` : ""}`
                   }
                 </p>
               </div>
@@ -273,7 +271,7 @@ export function WhatsAppConfigForm({ config }: Props) {
                 >
                   {checkingStatus ? "..." : "Atualizar"}
                 </Button>
-                {!evoConnected && (
+                {!wahaConnected && (
                   <Button
                     type="button"
                     variant="outline"
@@ -289,7 +287,7 @@ export function WhatsAppConfigForm({ config }: Props) {
           )}
 
           {/* QR Code Display */}
-          {qrCode && !evoConnected && (
+          {qrCode && !wahaConnected && (
             <div className="flex flex-col items-center gap-3 p-5 bg-white border border-slate-200 rounded-xl">
               <p className="text-sm font-medium text-slate-700">
                 Escaneie o QR Code com seu WhatsApp
@@ -318,7 +316,7 @@ export function WhatsAppConfigForm({ config }: Props) {
           )}
 
           {/* Botão de conectar (quando ainda não configurado) */}
-          {!isEvolutionConfigured && !qrCode && (
+          {!isWahaConfigured && !qrCode && (
             <div className="space-y-3">
               <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
                 <p className="text-sm text-slate-600">
@@ -328,7 +326,7 @@ export function WhatsAppConfigForm({ config }: Props) {
               <Button
                 type="button"
                 disabled={loading}
-                onClick={handleEvolutionConnect}
+                onClick={handleWahaConnect}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
                 {loading ? "Criando conexão..." : "Conectar via QR Code"}
@@ -337,7 +335,7 @@ export function WhatsAppConfigForm({ config }: Props) {
           )}
 
           {/* Disconnect button */}
-          {isEvolutionConfigured && (
+          {isWahaConfigured && (
             <Button
               type="button"
               variant="outline"

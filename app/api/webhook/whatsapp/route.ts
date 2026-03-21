@@ -136,9 +136,9 @@ async function processMessage(
     provider: string;
     phoneNumberId: string;
     accessToken: string;
-    evolutionServerUrl: string | null;
-    evolutionApiKey: string | null;
-    evolutionInstanceName: string | null;
+    wahaServerUrl: string | null;
+    wahaApiKey: string | null;
+    wahaSessionName: string | null;
   },
   _metaMsgId: string,
   phone: string,
@@ -284,7 +284,7 @@ async function processMessage(
     data: { leadId: lead.id, role: "assistant", content: reply },
   });
 
-  // Send reply via WhatsApp (official or evolution)
+  // Send reply via WhatsApp (official or WAHA)
   const sendResult = await sendMessage(whatsappConfig, phone, reply);
 
   if (!sendResult.success) {

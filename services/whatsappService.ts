@@ -1,21 +1,21 @@
 /**
  * Abstração unificada para envio de mensagens WhatsApp.
- * Roteia automaticamente entre API Oficial e Evolution API
+ * Roteia automaticamente entre API Oficial e WAHA
  * baseado no provider configurado no WhatsAppConfig.
  */
 
 import { sendWhatsAppMessage } from "./whatsappCloud";
-import { sendEvolutionMessage } from "./whatsappEvolution";
+import { sendWahaMessage } from "./whatsappEvolution";
 
 type WhatsAppConfig = {
   provider: string;
   // Official
   phoneNumberId: string;
   accessToken: string;
-  // Evolution
-  evolutionServerUrl: string | null;
-  evolutionApiKey: string | null;
-  evolutionInstanceName: string | null;
+  // WAHA
+  wahaServerUrl: string | null;
+  wahaApiKey: string | null;
+  wahaSessionName: string | null;
 };
 
 export async function sendMessage(
@@ -23,15 +23,15 @@ export async function sendMessage(
   to: string,
   text: string,
 ): Promise<{ success: boolean; error?: string }> {
-  if (config.provider === "evolution") {
-    if (!config.evolutionServerUrl || !config.evolutionApiKey || !config.evolutionInstanceName) {
-      return { success: false, error: "Evolution API não configurada" };
+  if (config.provider === "waha") {
+    if (!config.wahaServerUrl || !config.wahaApiKey || !config.wahaSessionName) {
+      return { success: false, error: "WAHA não configurado" };
     }
-    return sendEvolutionMessage(
+    return sendWahaMessage(
       {
-        serverUrl: config.evolutionServerUrl,
-        apiKey: config.evolutionApiKey,
-        instanceName: config.evolutionInstanceName,
+        serverUrl: config.wahaServerUrl,
+        apiKey: config.wahaApiKey,
+        sessionName: config.wahaSessionName,
       },
       to,
       text,
