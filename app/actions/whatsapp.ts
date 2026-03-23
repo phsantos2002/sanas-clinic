@@ -270,10 +270,11 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
       return { success: false, error: chatsResult.error ?? "Erro ao buscar chats" };
     }
 
-    // Filter: only personal chats (not groups), with a name
-    const personalChats = chatsResult.chats.filter(
-      (c) => !c.isGroup && c.name && c.timestamp > 0
-    );
+    // Filter: only personal chats (not groups), with a name, sorted by most recent
+    const personalChats = chatsResult.chats
+      .filter((c) => !c.isGroup && c.name && c.timestamp > 0)
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 80); // Limit to avoid Vercel timeout
 
     // Get first stage for new leads
     const firstStage = await prisma.stage.findFirst({
@@ -285,29 +286,24 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
     let messagesImported = 0;
 
     for (const chat of personalChats) {
-      // Extract phone from chat ID (works for @c.us format)
       const chatId = chat.id._serialized;
-      let phone = "";
 
+      // Extract phone: @c.us has the number, @lid uses the lid ID
+      let phone: string;
       if (chat.id.server === "c.us") {
-        phone = chat.id.user; // e.g. "5512988241486"
+        phone = chat.id.user;
       } else {
-        // @lid format — try to extract phone from name if it looks like a number
+        // @lid format: try to get phone from name, otherwise use lid ID as identifier
         const nameDigits = chat.name.replace(/[^\d]/g, "");
-        if (nameDigits.length >= 10) {
-          phone = nameDigits;
-        } else {
-          // No phone available — skip this chat
-          continue;
-        }
+        phone = nameDigits.length >= 10 ? nameDigits : `lid-${chat.id.user}`;
       }
 
-      // Check if lead already exists
-      const phoneSuffix = phone.slice(-9);
+      // Check if lead already exists (by phone suffix or exact lid match)
+      const isLid = phone.startsWith("lid-");
       const existingLead = await prisma.lead.findFirst({
         where: {
           userId: dbUser.id,
-          phone: { endsWith: phoneSuffix },
+          phone: isLid ? phone : { endsWith: phone.slice(-9) },
         },
       });
 
@@ -315,6 +311,13 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
 
       if (existingLead) {
         leadId = existingLead.id;
+        // Update name if current name is just a phone number
+        if (/^[\d\s\-+()]+$/.test(existingLead.name) && !/^[\d\s\-+()]+$/.test(chat.name)) {
+          await prisma.lead.update({
+            where: { id: existingLead.id },
+            data: { name: chat.name },
+          });
+        }
       } else {
         // Create new lead
         const newLead = await prisma.lead.create({
@@ -339,30 +342,25 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
         imported++;
       }
 
-      // 2. Fetch messages for this chat
+      // 2. Fetch messages for this chat (only if lead has none yet)
+      const existingMsgCount = await prisma.message.count({ where: { leadId } });
+      if (existingMsgCount > 0) continue;
+
       const msgsResult = await getWahaChatMessages(wahaConfig, chatId, 50);
       if (!msgsResult.success || !msgsResult.messages) continue;
 
-      // Check existing message count to avoid duplicates
-      const existingMsgCount = await prisma.message.count({
-        where: { leadId },
-      });
+      const messagesToCreate = msgsResult.messages
+        .filter((m) => m.body && m.body.trim())
+        .map((m) => ({
+          leadId,
+          role: m.fromMe ? "assistant" : "user",
+          content: m.body,
+          createdAt: new Date(m.timestamp * 1000),
+        }));
 
-      // Only import if lead has no messages yet
-      if (existingMsgCount === 0 && msgsResult.messages.length > 0) {
-        const messagesToCreate = msgsResult.messages
-          .filter((m) => m.body && m.body.trim())
-          .map((m) => ({
-            leadId,
-            role: m.fromMe ? "assistant" : "user",
-            content: m.body,
-            createdAt: new Date(m.timestamp * 1000),
-          }));
-
-        if (messagesToCreate.length > 0) {
-          await prisma.message.createMany({ data: messagesToCreate });
-          messagesImported += messagesToCreate.length;
-        }
+      if (messagesToCreate.length > 0) {
+        await prisma.message.createMany({ data: messagesToCreate });
+        messagesImported += messagesToCreate.length;
       }
     }
 
