@@ -9,6 +9,7 @@ type Chat = {
   id: string;
   wa_chatid: string;
   wa_contactName: string;
+  wa_groupSubject?: string;
   wa_isGroup: boolean;
   wa_lastMsgTimestamp: number;
   wa_unreadCount: number;
@@ -205,7 +206,7 @@ export function ChatPageClient() {
           )}
           {chats.map((chat) => {
             const isSelected = selectedChat?.wa_chatid === chat.wa_chatid;
-            const name = chat.wa_contactName || chat.phone || "Desconhecido";
+            const name = chat.wa_contactName || chat.wa_groupSubject || chat.phone || "Sem nome";
             const lastMsg = chat.wa_lastMessageTextVote || "";
             const time = formatTime(chat.wa_lastMsgTimestamp);
             const pic = chat.imagePreview || chat.image;

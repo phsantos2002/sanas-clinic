@@ -263,14 +263,16 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
 
     for (const chat of chatsResult.chats) {
       if (chat.wa_isGroup) continue;
+      if (!chat.wa_chatid) continue;
 
-      // Extract phone from chat ID ("5511999999999@s.whatsapp.net")
-      const phone = chat.id?.split("@")[0]?.replace(/\D/g, "");
+      // Extract phone from wa_chatid ("5511999999999@s.whatsapp.net")
+      const phone = chat.wa_chatid.split("@")[0]?.replace(/\D/g, "");
       if (!phone || phone.length < 10) continue;
 
-      const name = chat.wa_contactName || phone;
+      const name = chat.wa_contactName || chat.phone || phone;
+      // Uazapi timestamps are in milliseconds
       const chatDate = chat.wa_lastMsgTimestamp
-        ? new Date(chat.wa_lastMsgTimestamp * 1000)
+        ? new Date(chat.wa_lastMsgTimestamp)
         : new Date();
 
       // Check if lead already exists
@@ -369,12 +371,12 @@ export async function syncWhatsAppMessages(): Promise<ActionResult<{ messagesImp
       if (!msgsResult.success || !msgsResult.messages) continue;
 
       const messagesToCreate = msgsResult.messages
-        .filter((m) => m.body && m.body.trim().length > 0)
+        .filter((m) => m.text && m.text.trim().length > 0)
         .map((m) => ({
           leadId: lead.id,
           role: m.fromMe ? "assistant" : "user",
-          content: m.body,
-          createdAt: new Date(m.timestamp * 1000),
+          content: m.text,
+          createdAt: new Date(m.messageTimestamp),
         }));
 
       if (messagesToCreate.length > 0) {

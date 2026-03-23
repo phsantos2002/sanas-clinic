@@ -182,21 +182,26 @@ export async function sendUazapiMessage(
 
 export type UazapiChat = {
   id: string;
+  wa_chatid: string;
   wa_contactName: string;
+  wa_groupSubject?: string;
   wa_isGroup: boolean;
   wa_lastMsgTimestamp: number;
   wa_unreadCount: number;
+  phone?: string;
   image?: string;
   imagePreview?: string;
 };
 
 export type UazapiMessage = {
   id: string;
+  messageid: string;
   chatid: string;
   fromMe: boolean;
-  body: string;
-  timestamp: number;
-  type: string;
+  text: string;
+  messageTimestamp: number;
+  messageType: string;
+  sender: string;
 };
 
 export async function getUazapiChats(
