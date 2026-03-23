@@ -92,7 +92,15 @@ export function WhatsAppConfigForm({ config }: Props) {
         setQrCode(result.data.qrcode);
         toast.success("Escaneie o QR Code para conectar.");
       } else {
-        toast.success("Sessão criada! Clique em 'QR Code' para conectar.");
+        // Session created but QR didn't come — fetch it
+        toast.info("Sessão criada, buscando QR Code...");
+        const qr = await getWahaQR();
+        if (qr.success && qr.data?.qrcode) {
+          setQrCode(qr.data.qrcode);
+          toast.success("Escaneie o QR Code para conectar.");
+        } else {
+          toast.error("QR Code não disponível. Tente clicar em 'QR Code'.");
+        }
       }
     } else {
       toast.error(result.error);

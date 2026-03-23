@@ -57,12 +57,18 @@ export async function createWahaSession(
       return { success: false, error: `HTTP ${res.status}: ${err}` };
     }
 
-    // Give WAHA a moment to initialize the session
-    await new Promise((r) => setTimeout(r, 2000));
-
-    // Fetch QR code
-    const qr = await getWahaQRCode({ serverUrl, apiKey, sessionName });
-    return { success: true, qrcode: qr.qrcode };
+    // Give WAHA time to initialize and generate QR
+    // Retry up to 5 times with 3s intervals
+    const config = { serverUrl, apiKey, sessionName };
+    for (let i = 0; i < 5; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const qr = await getWahaQRCode(config);
+      if (qr.success && qr.qrcode) {
+        return { success: true, qrcode: qr.qrcode };
+      }
+    }
+    // Session created but QR not ready yet
+    return { success: true };
   } catch (err) {
     console.error("[WAHA] Falha ao criar sessão:", err);
     return { success: false, error: "Erro de conexão com o servidor WAHA" };
