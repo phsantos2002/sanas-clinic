@@ -256,3 +256,62 @@ export async function sendWahaMessage(
     return { success: false, error: "Network error" };
   }
 }
+
+// ─── Sync: fetch chats and messages ───
+
+export type WahaChat = {
+  id: { server: string; user: string; _serialized: string };
+  name: string;
+  isGroup: boolean;
+  timestamp: number;
+};
+
+export type WahaChatMessage = {
+  id: string;
+  from: string;
+  fromMe: boolean;
+  body: string;
+  timestamp: number;
+};
+
+export async function getWahaChats(
+  config: WahaConfig,
+): Promise<{ success: boolean; chats?: WahaChat[]; error?: string }> {
+  try {
+    const res = await fetch(
+      `${config.serverUrl}/api/${config.sessionName}/chats`,
+      { headers: headers(config.apiKey) },
+    );
+
+    if (!res.ok) {
+      return { success: false, error: `HTTP ${res.status}` };
+    }
+
+    const data = await res.json();
+    return { success: true, chats: data };
+  } catch {
+    return { success: false, error: "Erro ao buscar chats" };
+  }
+}
+
+export async function getWahaChatMessages(
+  config: WahaConfig,
+  chatId: string,
+  limit: number = 50,
+): Promise<{ success: boolean; messages?: WahaChatMessage[]; error?: string }> {
+  try {
+    const res = await fetch(
+      `${config.serverUrl}/api/${config.sessionName}/chats/${chatId}/messages?limit=${limit}`,
+      { headers: headers(config.apiKey) },
+    );
+
+    if (!res.ok) {
+      return { success: false, error: `HTTP ${res.status}` };
+    }
+
+    const data = await res.json();
+    return { success: true, messages: data };
+  } catch {
+    return { success: false, error: "Erro ao buscar mensagens" };
+  }
+}

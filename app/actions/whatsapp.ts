@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/types";
@@ -240,5 +241,138 @@ export async function disconnectWaha(): Promise<ActionResult> {
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao desconectar" };
+  }
+}
+
+// ─── Sync WhatsApp chats → leads + messages ───
+
+export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: number; messagesImported: number }>> {
+  try {
+    const dbUser = await getAuthenticatedUser();
+    if (!dbUser) return { success: false, error: "Não autenticado" };
+
+    const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
+    if (!config || config.provider !== "waha" || !config.wahaServerUrl || !config.wahaApiKey || !config.wahaSessionName) {
+      return { success: false, error: "WAHA não configurado" };
+    }
+
+    const { getWahaChats, getWahaChatMessages } = await import("@/services/whatsappEvolution");
+
+    const wahaConfig = {
+      serverUrl: config.wahaServerUrl,
+      apiKey: config.wahaApiKey,
+      sessionName: config.wahaSessionName,
+    };
+
+    // 1. Fetch all chats
+    const chatsResult = await getWahaChats(wahaConfig);
+    if (!chatsResult.success || !chatsResult.chats) {
+      return { success: false, error: chatsResult.error ?? "Erro ao buscar chats" };
+    }
+
+    // Filter: only personal chats (not groups), with a name
+    const personalChats = chatsResult.chats.filter(
+      (c) => !c.isGroup && c.name && c.timestamp > 0
+    );
+
+    // Get first stage for new leads
+    const firstStage = await prisma.stage.findFirst({
+      where: { userId: dbUser.id },
+      orderBy: { order: "asc" },
+    });
+
+    let imported = 0;
+    let messagesImported = 0;
+
+    for (const chat of personalChats) {
+      // Extract phone from chat ID (works for @c.us format)
+      const chatId = chat.id._serialized;
+      let phone = "";
+
+      if (chat.id.server === "c.us") {
+        phone = chat.id.user; // e.g. "5512988241486"
+      } else {
+        // @lid format — try to extract phone from name if it looks like a number
+        const nameDigits = chat.name.replace(/[^\d]/g, "");
+        if (nameDigits.length >= 10) {
+          phone = nameDigits;
+        } else {
+          // No phone available — skip this chat
+          continue;
+        }
+      }
+
+      // Check if lead already exists
+      const phoneSuffix = phone.slice(-9);
+      const existingLead = await prisma.lead.findFirst({
+        where: {
+          userId: dbUser.id,
+          phone: { endsWith: phoneSuffix },
+        },
+      });
+
+      let leadId: string;
+
+      if (existingLead) {
+        leadId = existingLead.id;
+      } else {
+        // Create new lead
+        const newLead = await prisma.lead.create({
+          data: {
+            name: chat.name,
+            phone,
+            userId: dbUser.id,
+            stageId: firstStage?.id ?? null,
+            source: "whatsapp",
+            platform: "whatsapp",
+            medium: "organic",
+          },
+        });
+
+        if (firstStage) {
+          await prisma.leadStageHistory.create({
+            data: { leadId: newLead.id, stageId: firstStage.id },
+          });
+        }
+
+        leadId = newLead.id;
+        imported++;
+      }
+
+      // 2. Fetch messages for this chat
+      const msgsResult = await getWahaChatMessages(wahaConfig, chatId, 50);
+      if (!msgsResult.success || !msgsResult.messages) continue;
+
+      // Check existing message count to avoid duplicates
+      const existingMsgCount = await prisma.message.count({
+        where: { leadId },
+      });
+
+      // Only import if lead has no messages yet
+      if (existingMsgCount === 0 && msgsResult.messages.length > 0) {
+        const messagesToCreate = msgsResult.messages
+          .filter((m) => m.body && m.body.trim())
+          .map((m) => ({
+            leadId,
+            role: m.fromMe ? "assistant" : "user",
+            content: m.body,
+            createdAt: new Date(m.timestamp * 1000),
+          }));
+
+        if (messagesToCreate.length > 0) {
+          await prisma.message.createMany({ data: messagesToCreate });
+          messagesImported += messagesToCreate.length;
+        }
+      }
+    }
+
+    revalidatePath("/dashboard/chat");
+    revalidatePath("/dashboard/pipeline");
+    revalidatePath("/dashboard/overview");
+
+    return { success: true, data: { imported, messagesImported } };
+  } catch (err) {
+    console.error("[syncWhatsAppChats] Erro:", err);
+    return { success: false, error: "Erro ao sincronizar chats" };
   }
 }

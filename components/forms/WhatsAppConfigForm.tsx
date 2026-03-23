@@ -11,6 +11,7 @@ import {
   getWahaQR,
   getWahaStatus,
   disconnectWaha,
+  syncWhatsAppChats,
 } from "@/app/actions/whatsapp";
 import { toast } from "sonner";
 
@@ -48,6 +49,7 @@ export function WhatsAppConfigForm({ config }: Props) {
   const [wahaState, setWahaState] = useState<string | null>(null);
   const [loadingQR, setLoadingQR] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const isWahaConfigured = !!(config?.provider === "waha" && config?.wahaSessionName);
 
@@ -340,6 +342,29 @@ export function WhatsAppConfigForm({ config }: Props) {
                 {loading ? "Criando conexão..." : "Conectar via QR Code"}
               </Button>
             </div>
+          )}
+
+          {/* Sync button (quando conectado) */}
+          {isWahaConfigured && wahaConnected && (
+            <Button
+              type="button"
+              disabled={syncing}
+              onClick={async () => {
+                setSyncing(true);
+                const result = await syncWhatsAppChats();
+                setSyncing(false);
+                if (result.success && result.data) {
+                  toast.success(
+                    `Sincronizado: ${result.data.imported} contatos, ${result.data.messagesImported} mensagens`
+                  );
+                } else if (!result.success) {
+                  toast.error(result.error);
+                }
+              }}
+              className="w-full bg-indigo-600 hover:bg-indigo-700"
+            >
+              {syncing ? "Sincronizando conversas..." : "Sincronizar Conversas do WhatsApp"}
+            </Button>
           )}
 
           {/* Disconnect button */}
