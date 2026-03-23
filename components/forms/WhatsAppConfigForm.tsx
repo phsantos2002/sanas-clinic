@@ -368,7 +368,7 @@ export function WhatsAppConfigForm({ config }: Props) {
                   let totalMsgs = 0;
                   let remaining = 999;
                   let rounds = 0;
-                  while (remaining > 0 && rounds < 10) {
+                  while (remaining > 0 && rounds < 50) {
                     toast.info(`Importando mensagens... (${totalMsgs} até agora)`);
                     const msgResult = await syncWhatsAppMessages();
                     if (!msgResult.success) break;

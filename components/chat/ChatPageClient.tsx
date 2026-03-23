@@ -21,6 +21,7 @@ type Lead = {
   phone: string;
   aiEnabled: boolean;
   source: string | null;
+  updatedAt: Date;
   stage: { name: string } | null;
   messages: Message[];
 };
@@ -101,12 +102,9 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
       return true;
     })
     .sort((a, b) => {
-      const aLast = a.messages.at(-1)?.createdAt;
-      const bLast = b.messages.at(-1)?.createdAt;
-      if (!aLast && !bLast) return 0;
-      if (!aLast) return 1;
-      if (!bLast) return -1;
-      return new Date(bLast).getTime() - new Date(aLast).getTime();
+      const aTime = a.messages.at(-1)?.createdAt ?? a.updatedAt;
+      const bTime = b.messages.at(-1)?.createdAt ?? b.updatedAt;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
     });
 
   function clearFilters() {
@@ -308,6 +306,7 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
         )}
         {filteredLeads.map((lead) => {
           const last = lead.messages.at(-1);
+          const timeRef = last?.createdAt ?? lead.updatedAt;
           const isSelected = lead.id === selectedId;
           const stageColor = lead.stage ? getStageColor(lead.stage.name) : null;
           return (
@@ -331,11 +330,9 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
                     {lead.name}
                   </p>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    {last && (
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        {formatMessageTime(last.createdAt)}
-                      </span>
-                    )}
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {formatMessageTime(timeRef)}
+                    </span>
                     {!lead.aiEnabled && (
                       <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
                         IA off

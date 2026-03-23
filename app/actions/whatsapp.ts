@@ -320,7 +320,8 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
           });
         }
       } else {
-        // Create new lead
+        // Create new lead with chat timestamp for correct ordering
+        const chatDate = chat.timestamp > 0 ? new Date(chat.timestamp * 1000) : new Date();
         const newLead = await prisma.lead.create({
           data: {
             name: chat.name,
@@ -330,6 +331,7 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
             source: "whatsapp",
             platform: "whatsapp",
             medium: "organic",
+            updatedAt: chatDate,
           },
         });
 
