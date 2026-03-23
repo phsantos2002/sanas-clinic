@@ -257,6 +257,7 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
     }
 
     const { getWahaChats, getWahaChatMessages } = await import("@/services/whatsappEvolution");
+    const { sendFacebookEvent } = await import("@/services/facebookEvents");
 
     const wahaConfig = {
       serverUrl: config.wahaServerUrl,
@@ -336,6 +337,15 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
           await prisma.leadStageHistory.create({
             data: { leadId: newLead.id, stageId: firstStage.id },
           });
+
+          // Fire Pixel event for new lead
+          await sendFacebookEvent({
+            userId: dbUser.id,
+            phone,
+            eventName: firstStage.eventName,
+            leadId: newLead.id,
+            stageName: firstStage.name,
+          });
         }
 
         leadId = newLead.id;
@@ -394,5 +404,107 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
   } catch (err) {
     console.error("[syncWhatsAppChats] Erro:", err);
     return { success: false, error: "Erro ao sincronizar chats" };
+  }
+}
+
+// ─── Sync messages in batches (for leads without messages) ───
+
+export async function syncWhatsAppMessages(): Promise<ActionResult<{ messagesImported: number; remaining: number }>> {
+  try {
+    const dbUser = await getAuthenticatedUser();
+    if (!dbUser) return { success: false, error: "Não autenticado" };
+
+    const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
+    if (!config || config.provider !== "waha" || !config.wahaServerUrl || !config.wahaApiKey || !config.wahaSessionName) {
+      return { success: false, error: "WAHA não configurado" };
+    }
+
+    const { getWahaChats, getWahaChatMessages } = await import("@/services/whatsappEvolution");
+    const wahaConfig = {
+      serverUrl: config.wahaServerUrl,
+      apiKey: config.wahaApiKey,
+      sessionName: config.wahaSessionName,
+    };
+
+    // Find leads without messages (batch of 15)
+    const leadsWithoutMessages = await prisma.lead.findMany({
+      where: {
+        userId: dbUser.id,
+        messages: { none: {} },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 15,
+    });
+
+    if (leadsWithoutMessages.length === 0) {
+      return { success: true, data: { messagesImported: 0, remaining: 0 } };
+    }
+
+    // Fetch all chats once for mapping
+    const chatsResult = await getWahaChats(wahaConfig);
+    if (!chatsResult.success || !chatsResult.chats) {
+      return { success: false, error: "Erro ao buscar chats do WAHA" };
+    }
+
+    // Build phone→chatId map
+    const chatMap = new Map<string, string>();
+    for (const chat of chatsResult.chats) {
+      if (chat.isGroup) continue;
+      if (chat.id.server === "c.us") {
+        chatMap.set(chat.id.user, chat.id._serialized);
+      } else {
+        // lid format
+        const nameDigits = (chat.name || "").replace(/[^\d]/g, "");
+        if (nameDigits.length >= 10) {
+          chatMap.set(nameDigits, chat.id._serialized);
+        }
+        chatMap.set(`lid-${chat.id.user}`, chat.id._serialized);
+      }
+    }
+
+    let messagesImported = 0;
+
+    for (const lead of leadsWithoutMessages) {
+      // Find matching chat
+      const chatId = chatMap.get(lead.phone) || chatMap.get(lead.phone.slice(-9));
+      if (!chatId) continue;
+
+      const msgsResult = await getWahaChatMessages(wahaConfig, chatId, 30);
+      if (!msgsResult.success || !msgsResult.messages) continue;
+
+      const messagesToCreate = msgsResult.messages
+        .filter((m) => m.body && m.body.trim().length > 0)
+        .map((m) => ({
+          leadId: lead.id,
+          role: m.fromMe ? "assistant" : "user",
+          content: m.body,
+          createdAt: new Date(m.timestamp * 1000),
+        }));
+
+      if (messagesToCreate.length > 0) {
+        await prisma.message.createMany({ data: messagesToCreate });
+        messagesImported += messagesToCreate.length;
+
+        // Update lead timestamp
+        const lastTs = messagesToCreate[messagesToCreate.length - 1].createdAt;
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: { updatedAt: lastTs },
+        });
+      }
+    }
+
+    // Count remaining
+    const remaining = await prisma.lead.count({
+      where: { userId: dbUser.id, messages: { none: {} } },
+    });
+
+    revalidatePath("/dashboard/chat");
+    revalidatePath("/dashboard/pipeline");
+
+    return { success: true, data: { messagesImported, remaining } };
+  } catch (err) {
+    console.error("[syncWhatsAppMessages] Erro:", err);
+    return { success: false, error: "Erro ao sincronizar mensagens" };
   }
 }

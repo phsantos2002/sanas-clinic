@@ -12,6 +12,7 @@ import {
   getWahaStatus,
   disconnectWaha,
   syncWhatsAppChats,
+  syncWhatsAppMessages,
 } from "@/app/actions/whatsapp";
 import { toast } from "sonner";
 
@@ -344,27 +345,47 @@ export function WhatsAppConfigForm({ config }: Props) {
             </div>
           )}
 
-          {/* Sync button (quando conectado) */}
+          {/* Sync buttons (quando conectado) */}
           {isWahaConfigured && wahaConnected && (
-            <Button
-              type="button"
-              disabled={syncing}
-              onClick={async () => {
-                setSyncing(true);
-                const result = await syncWhatsAppChats();
-                setSyncing(false);
-                if (result.success && result.data) {
-                  toast.success(
-                    `Sincronizado: ${result.data.imported} contatos, ${result.data.messagesImported} mensagens`
-                  );
-                } else if (!result.success) {
-                  toast.error(result.error);
-                }
-              }}
-              className="w-full bg-indigo-600 hover:bg-indigo-700"
-            >
-              {syncing ? "Sincronizando conversas..." : "Sincronizar Conversas do WhatsApp"}
-            </Button>
+            <div className="space-y-2">
+              <Button
+                type="button"
+                disabled={syncing}
+                onClick={async () => {
+                  setSyncing(true);
+                  // 1. Sync contacts
+                  toast.info("Importando contatos...");
+                  const result = await syncWhatsAppChats();
+                  if (result.success && result.data) {
+                    toast.success(`${result.data.imported} contatos importados`);
+                  } else if (!result.success) {
+                    toast.error(result.error);
+                    setSyncing(false);
+                    return;
+                  }
+
+                  // 2. Sync messages in batches
+                  let totalMsgs = 0;
+                  let remaining = 999;
+                  let rounds = 0;
+                  while (remaining > 0 && rounds < 10) {
+                    toast.info(`Importando mensagens... (${totalMsgs} até agora)`);
+                    const msgResult = await syncWhatsAppMessages();
+                    if (!msgResult.success) break;
+                    totalMsgs += msgResult.data?.messagesImported ?? 0;
+                    remaining = msgResult.data?.remaining ?? 0;
+                    rounds++;
+                    if ((msgResult.data?.messagesImported ?? 0) === 0) break;
+                  }
+
+                  setSyncing(false);
+                  toast.success(`Sincronização completa: ${totalMsgs} mensagens importadas`);
+                }}
+                className="w-full bg-indigo-600 hover:bg-indigo-700"
+              >
+                {syncing ? "Sincronizando..." : "Sincronizar Conversas do WhatsApp"}
+              </Button>
+            </div>
           )}
 
           {/* Disconnect button */}
