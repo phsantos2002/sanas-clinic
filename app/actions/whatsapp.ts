@@ -217,19 +217,23 @@ export async function disconnectWaha(): Promise<ActionResult> {
     }
 
     if (config.wahaServerUrl && config.wahaApiKey && config.wahaSessionName) {
-      const { deleteWahaSession } = await import("@/services/whatsappEvolution");
-      await deleteWahaSession({
+      // WAHA Core não permite deletar "default", apenas parar
+      const { stopWahaSession } = await import("@/services/whatsappEvolution");
+      await stopWahaSession({
         serverUrl: config.wahaServerUrl,
         apiKey: config.wahaApiKey,
         sessionName: config.wahaSessionName,
       });
     }
 
-    // Remove WAHA fields but keep record
+    // Limpar config WAHA do banco
     await prisma.whatsAppConfig.update({
       where: { userId: dbUser.id },
       data: {
+        provider: "official",
         wahaSessionName: null,
+        wahaServerUrl: null,
+        wahaApiKey: null,
       },
     });
 

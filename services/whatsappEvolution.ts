@@ -78,6 +78,23 @@ export async function createWahaSession(
   }
 }
 
+export async function stopWahaSession(
+  config: WahaConfig,
+): Promise<{ success: boolean }> {
+  try {
+    const res = await fetch(
+      `${config.serverUrl}/api/sessions/${config.sessionName}/stop`,
+      {
+        method: "POST",
+        headers: headers(config.apiKey),
+      },
+    );
+    return { success: res.ok };
+  } catch {
+    return { success: false };
+  }
+}
+
 export async function startWahaSession(
   config: WahaConfig,
 ): Promise<{ success: boolean }> {
