@@ -273,8 +273,7 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
     // Filter: only personal chats (not groups), with a name, sorted by most recent
     const personalChats = chatsResult.chats
       .filter((c) => !c.isGroup && c.name && c.timestamp > 0)
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, 80); // Limit to avoid Vercel timeout
+      .sort((a, b) => b.timestamp - a.timestamp);
 
     // Get first stage for new leads
     const firstStage = await prisma.stage.findFirst({
@@ -284,6 +283,7 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
 
     let imported = 0;
     let messagesImported = 0;
+    const chatsForMessages: { chatId: string; leadId: string }[] = [];
 
     for (const chat of personalChats) {
       const chatId = chat.id._serialized;
@@ -342,11 +342,18 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
         imported++;
       }
 
-      // 2. Fetch messages for this chat (only if lead has none yet)
+      // Track for message import (only first 30 chats)
+      if (chatsForMessages.length < 30) {
+        chatsForMessages.push({ chatId, leadId });
+      }
+    }
+
+    // 2. Fetch messages for recent chats (only if lead has none yet)
+    for (const { chatId, leadId } of chatsForMessages) {
       const existingMsgCount = await prisma.message.count({ where: { leadId } });
       if (existingMsgCount > 0) continue;
 
-      const msgsResult = await getWahaChatMessages(wahaConfig, chatId, 50);
+      const msgsResult = await getWahaChatMessages(wahaConfig, chatId, 30);
       if (!msgsResult.success || !msgsResult.messages) continue;
 
       const messagesToCreate = msgsResult.messages
