@@ -164,14 +164,32 @@ export function WhatsAppConfigForm({ config }: Props) {
                 : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
             }`}
           >
-            Uazapi (QR Code)
+            API Não Oficial (QR Code)
           </button>
         </div>
         <p className="text-xs text-slate-400">
           {provider === "official"
             ? "Requer conta Meta Business verificada. Ideal para empresas com acesso à API oficial."
-            : "Conecte via QR Code usando seu WhatsApp pessoal ou Business. Estável e sem burocracia."}
+            : "Conecte via QR Code usando seu WhatsApp pessoal ou Business."}
         </p>
+
+        {provider === "uazapi" && (
+          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+            <p className="text-xs font-semibold text-amber-800">Aviso sobre API não oficial</p>
+            <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside">
+              <li>Esta conexão usa uma API não oficial do WhatsApp e pode violar os Termos de Serviço.</li>
+              <li>O WhatsApp pode <strong>banir temporária ou permanentemente</strong> o número conectado.</li>
+              <li>Não recomendado para o número pessoal principal.</li>
+            </ul>
+            <p className="text-xs font-medium text-amber-800 pt-1">Boas práticas para reduzir riscos:</p>
+            <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside">
+              <li>Use um número <strong>WhatsApp Business</strong> dedicado ao atendimento.</li>
+              <li>Evite envio em massa — responda apenas conversas iniciadas pelo cliente.</li>
+              <li>Mantenha intervalos naturais entre mensagens (não envie muitas de uma vez).</li>
+              <li>Não use para spam, disparo de listas ou mensagens não solicitadas.</li>
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* ─── Official API Form ─── */}
