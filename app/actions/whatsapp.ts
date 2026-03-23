@@ -65,8 +65,8 @@ export async function saveWahaConfig(): Promise<ActionResult<{ qrcode?: string }
       return { success: false, error: "WAHA não configurado no servidor. Contate o administrador." };
     }
 
-    // Gera nome da sessão automaticamente: "lux-<userId_curto>"
-    const sessionName = `lux-${dbUser.id.slice(0, 8)}`;
+    // WAHA Core (free) só suporta sessão "default"
+    const sessionName = "default";
 
     const { createWahaSession } = await import("@/services/whatsappEvolution");
 

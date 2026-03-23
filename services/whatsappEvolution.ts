@@ -27,7 +27,9 @@ export async function createWahaSession(
   webhookUrl?: string,
 ): Promise<{ success: boolean; qrcode?: string; error?: string }> {
   try {
-    // Create + start session in one call
+    const config = { serverUrl, apiKey, sessionName };
+
+    // Try to create session
     const body: Record<string, unknown> = {
       name: sessionName,
       start: true,
@@ -46,28 +48,29 @@ export async function createWahaSession(
 
     if (!res.ok) {
       const err = await res.text();
-      // Session already exists — just start it
+      // Session already exists (WAHA Core always has "default") — start it
       if (res.status === 422 || err.includes("already exists")) {
-        await startWahaSession({ serverUrl, apiKey, sessionName });
-        // Fetch QR after starting
-        const qr = await getWahaQRCode({ serverUrl, apiKey, sessionName });
-        return { success: true, qrcode: qr.qrcode };
+        // Configure webhook via PUT
+        if (webhookUrl) {
+          await setWahaWebhook(config, webhookUrl);
+        }
+        await startWahaSession(config);
+      } else {
+        console.error("[WAHA] Erro ao criar sessão:", res.status, err);
+        return { success: false, error: `HTTP ${res.status}: ${err}` };
       }
-      console.error("[WAHA] Erro ao criar sessão:", res.status, err);
-      return { success: false, error: `HTTP ${res.status}: ${err}` };
     }
 
-    // Give WAHA time to initialize and generate QR
-    // Retry up to 5 times with 3s intervals
-    const config = { serverUrl, apiKey, sessionName };
-    for (let i = 0; i < 5; i++) {
-      await new Promise((r) => setTimeout(r, 3000));
+    // Wait for session to be ready, then fetch QR
+    // Retry up to 8 times with 2s intervals
+    for (let i = 0; i < 8; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
       const qr = await getWahaQRCode(config);
       if (qr.success && qr.qrcode) {
         return { success: true, qrcode: qr.qrcode };
       }
     }
-    // Session created but QR not ready yet
+    // Session started but QR not ready
     return { success: true };
   } catch (err) {
     console.error("[WAHA] Falha ao criar sessão:", err);
