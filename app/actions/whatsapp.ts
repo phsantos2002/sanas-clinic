@@ -348,7 +348,7 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
       }
     }
 
-    // 2. Fetch messages for recent chats (only if lead has none yet)
+    // 2. Fetch messages for recent chats
     for (const { chatId, leadId } of chatsForMessages) {
       const existingMsgCount = await prisma.message.count({ where: { leadId } });
       if (existingMsgCount > 0) continue;
@@ -356,8 +356,9 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
       const msgsResult = await getWahaChatMessages(wahaConfig, chatId, 30);
       if (!msgsResult.success || !msgsResult.messages) continue;
 
+      // Filter out empty messages and system notifications
       const messagesToCreate = msgsResult.messages
-        .filter((m) => m.body && m.body.trim())
+        .filter((m) => m.body && m.body.trim().length > 0)
         .map((m) => ({
           leadId,
           role: m.fromMe ? "assistant" : "user",
@@ -368,6 +369,20 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
       if (messagesToCreate.length > 0) {
         await prisma.message.createMany({ data: messagesToCreate });
         messagesImported += messagesToCreate.length;
+      }
+    }
+
+    // 3. Update lead timestamps so order reflects latest activity
+    for (const { leadId } of chatsForMessages) {
+      const lastMsg = await prisma.message.findFirst({
+        where: { leadId },
+        orderBy: { createdAt: "desc" },
+      });
+      if (lastMsg) {
+        await prisma.lead.update({
+          where: { id: leadId },
+          data: { updatedAt: lastMsg.createdAt },
+        });
       }
     }
 

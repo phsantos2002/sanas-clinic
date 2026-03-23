@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Eye, Search, MessageCircle, Filter, X, ArrowLeft, Bot, BotOff } from "lucide-react";
+import { Eye, Search, MessageCircle, Filter, X, ArrowLeft, Bot, BotOff, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ChatPanel } from "@/components/chat/ChatPanel";
@@ -32,6 +32,21 @@ type Props = {
 
 const ALL_SOURCES = ["meta", "whatsapp", "manual", "unknown"] as const;
 const ALL_STAGES = ["Novo Lead", "Atendido", "Qualificado", "Agendado", "Cliente"] as const;
+
+function formatMessageTime(date: Date): string {
+  const now = new Date();
+  const d = new Date(date);
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "agora";
+  if (diffMins < 60) return `${diffMins}min`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays < 7) return `${diffDays}d`;
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
 
 type AiFilter = "all" | "on" | "off";
 
@@ -69,21 +84,30 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
     (sourceFilter !== "all" ? 1 : 0) +
     (aiFilter !== "all" ? 1 : 0);
 
-  const filteredLeads = leads.filter((l) => {
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      if (!l.name.toLowerCase().includes(q) && !l.phone.includes(search)) return false;
-    }
-    if (stageFilter !== "all" && l.stage?.name !== stageFilter) return false;
-    if (sourceFilter !== "all") {
-      if (sourceFilter === "unknown") {
-        if (l.source && l.source !== "unknown") return false;
-      } else if (l.source !== sourceFilter) return false;
-    }
-    if (aiFilter === "on" && !l.aiEnabled) return false;
-    if (aiFilter === "off" && l.aiEnabled) return false;
-    return true;
-  });
+  const filteredLeads = leads
+    .filter((l) => {
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        if (!l.name.toLowerCase().includes(q) && !l.phone.includes(search)) return false;
+      }
+      if (stageFilter !== "all" && l.stage?.name !== stageFilter) return false;
+      if (sourceFilter !== "all") {
+        if (sourceFilter === "unknown") {
+          if (l.source && l.source !== "unknown") return false;
+        } else if (l.source !== sourceFilter) return false;
+      }
+      if (aiFilter === "on" && !l.aiEnabled) return false;
+      if (aiFilter === "off" && l.aiEnabled) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const aLast = a.messages.at(-1)?.createdAt;
+      const bLast = b.messages.at(-1)?.createdAt;
+      if (!aLast && !bLast) return 0;
+      if (!aLast) return 1;
+      if (!bLast) return -1;
+      return new Date(bLast).getTime() - new Date(aLast).getTime();
+    });
 
   function clearFilters() {
     setStageFilter("all");
@@ -307,6 +331,11 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
                     {lead.name}
                   </p>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {last && (
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {formatMessageTime(last.createdAt)}
+                      </span>
+                    )}
                     {!lead.aiEnabled && (
                       <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
                         IA off
@@ -325,7 +354,9 @@ export function ChatPageClient({ leads, initialSelectedId }: Props) {
                   </div>
                 </div>
                 <p className="text-xs text-slate-400 truncate mt-0.5">
-                  {last ? last.content : lead.phone}
+                  {last
+                    ? `${last.role === "assistant" ? "Você: " : ""}${last.content}`
+                    : lead.phone}
                 </p>
                 <div className="flex items-center gap-1.5 mt-1">
                   {lead.stage && stageColor && (
