@@ -26,7 +26,7 @@ export async function getWhatsAppConfigByUserId(userId: string) {
   return prisma.whatsAppConfig.findUnique({ where: { userId } });
 }
 
-// ─── Save Official API config (mantido) ───
+// ─── Save Official API config ───
 
 export async function saveWhatsAppConfig(
   phoneNumberId: string,
@@ -49,87 +49,87 @@ export async function saveWhatsAppConfig(
   }
 }
 
-// ─── Save WAHA config ───
-// Server URL e API Key vêm de variáveis de ambiente (configuradas pelo admin).
-// O nome da sessão é gerado automaticamente a partir do ID do usuário.
-// O usuário final só precisa clicar "Conectar" e escanear o QR Code.
+// ─── Save Uazapi config ───
 
-export async function saveWahaConfig(): Promise<ActionResult<{ qrcode?: string }>> {
+export async function saveUazapiConfig(): Promise<ActionResult<{ qrcode?: string }>> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
-    const serverUrl = process.env.WAHA_SERVER_URL;
-    const apiKey = process.env.WAHA_API_KEY;
+    const serverUrl = process.env.UAZAPI_SERVER_URL;
+    const adminToken = process.env.UAZAPI_ADMIN_TOKEN;
 
-    if (!serverUrl || !apiKey) {
-      return { success: false, error: "WAHA não configurado no servidor. Contate o administrador." };
+    if (!serverUrl || !adminToken) {
+      return { success: false, error: "Uazapi não configurado no servidor. Contate o administrador." };
     }
 
-    // WAHA Core (free) só suporta sessão "default"
-    const sessionName = "default";
+    const { createUazapiInstance, connectUazapiInstance, setUazapiWebhook } =
+      await import("@/services/whatsappUazapi");
 
-    const { createWahaSession } = await import("@/services/whatsappEvolution");
+    const instanceName = `lux-${dbUser.id.slice(0, 8)}`;
 
-    // Build webhook URL
+    // Check if user already has a config with instance token
+    const existing = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
+    let instanceToken = existing?.uazapiInstanceToken;
+
+    if (!instanceToken) {
+      // Create new instance
+      const createResult = await createUazapiInstance(serverUrl, adminToken, instanceName);
+      if (!createResult.success || !createResult.token) {
+        return { success: false, error: createResult.error ?? "Erro ao criar instância" };
+      }
+      instanceToken = createResult.token;
+    }
+
+    // Configure webhook
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL
       ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
-    const webhookUrl = `${baseUrl}/api/webhook/evolution`;
+    await setUazapiWebhook(serverUrl, instanceToken, `${baseUrl}/api/webhook/evolution`);
 
-    // Create session (handles "already exists" internally)
-    const createResult = await createWahaSession(serverUrl, apiKey, sessionName, webhookUrl);
-
-    if (!createResult.success) {
-      return { success: false, error: createResult.error ?? "Erro ao criar sessão" };
-    }
+    // Connect and get QR code
+    const connectResult = await connectUazapiInstance(serverUrl, instanceToken);
 
     // Save config
     await prisma.whatsAppConfig.upsert({
       where: { userId: dbUser.id },
       update: {
-        provider: "waha",
-        wahaServerUrl: serverUrl,
-        wahaApiKey: apiKey,
-        wahaSessionName: sessionName,
+        provider: "uazapi",
+        uazapiServerUrl: serverUrl,
+        uazapiAdminToken: adminToken,
+        uazapiInstanceToken: instanceToken,
+        uazapiInstanceName: instanceName,
       },
       create: {
         userId: dbUser.id,
-        provider: "waha",
-        wahaServerUrl: serverUrl,
-        wahaApiKey: apiKey,
-        wahaSessionName: sessionName,
+        provider: "uazapi",
+        uazapiServerUrl: serverUrl,
+        uazapiAdminToken: adminToken,
+        uazapiInstanceToken: instanceToken,
+        uazapiInstanceName: instanceName,
       },
     });
 
-    return { success: true, data: { qrcode: createResult.qrcode } };
+    return { success: true, data: { qrcode: connectResult.qrcode } };
   } catch {
-    return { success: false, error: "Erro ao salvar configuração WAHA" };
+    return { success: false, error: "Erro ao salvar configuração Uazapi" };
   }
 }
 
-// ─── Get QR Code (WAHA) ───
+// ─── Get QR Code (Uazapi) ───
 
-export async function getWahaQR(): Promise<ActionResult<{ qrcode: string }>> {
+export async function getUazapiQR(): Promise<ActionResult<{ qrcode: string }>> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "waha") {
-      return { success: false, error: "WAHA não configurado" };
+    if (!config || config.provider !== "uazapi" || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+      return { success: false, error: "Uazapi não configurado" };
     }
 
-    if (!config.wahaServerUrl || !config.wahaApiKey || !config.wahaSessionName) {
-      return { success: false, error: "Configuração incompleta" };
-    }
-
-    const { getWahaQRCode } = await import("@/services/whatsappEvolution");
-    const result = await getWahaQRCode({
-      serverUrl: config.wahaServerUrl,
-      apiKey: config.wahaApiKey,
-      sessionName: config.wahaSessionName,
-    });
+    const { connectUazapiInstance } = await import("@/services/whatsappUazapi");
+    const result = await connectUazapiInstance(config.uazapiServerUrl, config.uazapiInstanceToken);
 
     if (!result.success || !result.qrcode) {
       return { success: false, error: result.error ?? "QR Code não disponível" };
@@ -141,36 +141,28 @@ export async function getWahaQR(): Promise<ActionResult<{ qrcode: string }>> {
   }
 }
 
-// ─── Connection status (WAHA) ───
+// ─── Connection status (Uazapi) ───
 
-export async function getWahaStatus(): Promise<ActionResult<{ connected: boolean; state?: string }>> {
+export async function getUazapiStatus(): Promise<ActionResult<{ connected: boolean; state?: string }>> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "waha") {
-      return { success: false, error: "WAHA não configurado" };
+    if (!config || config.provider !== "uazapi" || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+      return { success: false, error: "Uazapi não configurado" };
     }
 
-    if (!config.wahaServerUrl || !config.wahaApiKey || !config.wahaSessionName) {
-      return { success: false, error: "Configuração incompleta" };
-    }
+    const { getUazapiStatus: getStatus } = await import("@/services/whatsappUazapi");
+    const result = await getStatus(config.uazapiServerUrl, config.uazapiInstanceToken);
 
-    const { getWahaConnectionStatus } = await import("@/services/whatsappEvolution");
-    const result = await getWahaConnectionStatus({
-      serverUrl: config.wahaServerUrl,
-      apiKey: config.wahaApiKey,
-      sessionName: config.wahaSessionName,
-    });
-
-    return { success: true, data: { connected: result.connected, state: result.state } };
+    return { success: true, data: { connected: result.connected, state: result.status } };
   } catch {
     return { success: false, error: "Erro ao verificar status" };
   }
 }
 
-// ─── Test Official API connection (mantido) ───
+// ─── Test connection ───
 
 export async function testWhatsAppConnection(): Promise<ActionResult> {
   try {
@@ -180,12 +172,10 @@ export async function testWhatsAppConnection(): Promise<ActionResult> {
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
     if (!config) return { success: false, error: "WhatsApp não configurado" };
 
-    if (config.provider === "waha") {
-      const status = await getWahaStatus();
+    if (config.provider === "uazapi") {
+      const status = await getUazapiStatus();
       if (!status.success) return status;
-      if (status.data?.connected) {
-        return { success: true };
-      }
+      if (status.data?.connected) return { success: true };
       return { success: false, error: `Não conectado (estado: ${status.data?.state ?? "desconhecido"})` };
     }
 
@@ -205,36 +195,31 @@ export async function testWhatsAppConnection(): Promise<ActionResult> {
   }
 }
 
-// ─── Disconnect WAHA session ───
+// ─── Disconnect Uazapi ───
 
-export async function disconnectWaha(): Promise<ActionResult> {
+export async function disconnectUazapi(): Promise<ActionResult> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "waha") {
-      return { success: false, error: "WAHA não configurado" };
+    if (!config || config.provider !== "uazapi") {
+      return { success: false, error: "Uazapi não configurado" };
     }
 
-    if (config.wahaServerUrl && config.wahaApiKey && config.wahaSessionName) {
-      // WAHA Core não permite deletar "default", apenas parar
-      const { stopWahaSession } = await import("@/services/whatsappEvolution");
-      await stopWahaSession({
-        serverUrl: config.wahaServerUrl,
-        apiKey: config.wahaApiKey,
-        sessionName: config.wahaSessionName,
-      });
+    if (config.uazapiServerUrl && config.uazapiInstanceToken) {
+      const { disconnectUazapiInstance } = await import("@/services/whatsappUazapi");
+      await disconnectUazapiInstance(config.uazapiServerUrl, config.uazapiInstanceToken);
     }
 
-    // Limpar config WAHA do banco
     await prisma.whatsAppConfig.update({
       where: { userId: dbUser.id },
       data: {
         provider: "official",
-        wahaSessionName: null,
-        wahaServerUrl: null,
-        wahaApiKey: null,
+        uazapiInstanceToken: null,
+        uazapiInstanceName: null,
+        uazapiServerUrl: null,
+        uazapiAdminToken: null,
       },
     });
 
@@ -252,31 +237,22 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "waha" || !config.wahaServerUrl || !config.wahaApiKey || !config.wahaSessionName) {
-      return { success: false, error: "WAHA não configurado" };
+    if (!config || config.provider !== "uazapi" || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+      return { success: false, error: "Uazapi não configurado" };
     }
 
-    const { getWahaChats, getWahaChatMessages } = await import("@/services/whatsappEvolution");
+    const { getUazapiChats } = await import("@/services/whatsappUazapi");
     const { sendFacebookEvent } = await import("@/services/facebookEvents");
 
-    const wahaConfig = {
-      serverUrl: config.wahaServerUrl,
-      apiKey: config.wahaApiKey,
-      sessionName: config.wahaSessionName,
-    };
+    const serverUrl = config.uazapiServerUrl;
+    const token = config.uazapiInstanceToken;
 
-    // 1. Fetch all chats
-    const chatsResult = await getWahaChats(wahaConfig);
+    // Fetch chats (sorted by most recent)
+    const chatsResult = await getUazapiChats(serverUrl, token, 200);
     if (!chatsResult.success || !chatsResult.chats) {
       return { success: false, error: chatsResult.error ?? "Erro ao buscar chats" };
     }
 
-    // Filter: only personal chats (not groups), with a name, sorted by most recent
-    const personalChats = chatsResult.chats
-      .filter((c) => !c.isGroup && c.name && c.timestamp > 0)
-      .sort((a, b) => b.timestamp - a.timestamp);
-
-    // Get first stage for new leads
     const firstStage = await prisma.stage.findFirst({
       where: { userId: dbUser.id },
       orderBy: { order: "asc" },
@@ -284,118 +260,64 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
 
     let imported = 0;
     let messagesImported = 0;
-    const chatsForMessages: { chatId: string; leadId: string }[] = [];
 
-    for (const chat of personalChats) {
-      const chatId = chat.id._serialized;
+    for (const chat of chatsResult.chats) {
+      if (chat.wa_isGroup) continue;
 
-      // Extract phone: @c.us has the number, @lid uses the lid ID
-      let phone: string;
-      if (chat.id.server === "c.us") {
-        phone = chat.id.user;
-      } else {
-        // @lid format: try to get phone from name, otherwise use lid ID as identifier
-        const nameDigits = chat.name.replace(/[^\d]/g, "");
-        phone = nameDigits.length >= 10 ? nameDigits : `lid-${chat.id.user}`;
+      // Extract phone from chat ID ("5511999999999@s.whatsapp.net")
+      const phone = chat.id?.split("@")[0]?.replace(/\D/g, "");
+      if (!phone || phone.length < 10) continue;
+
+      const name = chat.wa_contactName || phone;
+      const chatDate = chat.wa_lastMsgTimestamp
+        ? new Date(chat.wa_lastMsgTimestamp * 1000)
+        : new Date();
+
+      // Check if lead already exists
+      const phoneSuffix = phone.slice(-9);
+      const existingLead = await prisma.lead.findFirst({
+        where: { userId: dbUser.id, phone: { endsWith: phoneSuffix } },
+      });
+
+      if (existingLead) {
+        // Update name if needed
+        if (/^[\d\s\-+()]+$/.test(existingLead.name) && !/^[\d\s\-+()]+$/.test(name)) {
+          await prisma.lead.update({
+            where: { id: existingLead.id },
+            data: { name, updatedAt: chatDate },
+          });
+        }
+        continue;
       }
 
-      // Check if lead already exists (by phone suffix or exact lid match)
-      const isLid = phone.startsWith("lid-");
-      const existingLead = await prisma.lead.findFirst({
-        where: {
+      // Create new lead
+      const newLead = await prisma.lead.create({
+        data: {
+          name,
+          phone,
           userId: dbUser.id,
-          phone: isLid ? phone : { endsWith: phone.slice(-9) },
+          stageId: firstStage?.id ?? null,
+          source: "whatsapp",
+          platform: "whatsapp",
+          medium: "organic",
+          updatedAt: chatDate,
         },
       });
 
-      let leadId: string;
-
-      if (existingLead) {
-        leadId = existingLead.id;
-        // Update name if current name is just a phone number
-        if (/^[\d\s\-+()]+$/.test(existingLead.name) && !/^[\d\s\-+()]+$/.test(chat.name)) {
-          await prisma.lead.update({
-            where: { id: existingLead.id },
-            data: { name: chat.name },
-          });
-        }
-      } else {
-        // Create new lead with chat timestamp for correct ordering
-        const chatDate = chat.timestamp > 0 ? new Date(chat.timestamp * 1000) : new Date();
-        const newLead = await prisma.lead.create({
-          data: {
-            name: chat.name,
-            phone,
-            userId: dbUser.id,
-            stageId: firstStage?.id ?? null,
-            source: "whatsapp",
-            platform: "whatsapp",
-            medium: "organic",
-            updatedAt: chatDate,
-          },
+      if (firstStage) {
+        await prisma.leadStageHistory.create({
+          data: { leadId: newLead.id, stageId: firstStage.id },
         });
-
-        if (firstStage) {
-          await prisma.leadStageHistory.create({
-            data: { leadId: newLead.id, stageId: firstStage.id },
-          });
-
-          // Fire Pixel event for new lead
-          await sendFacebookEvent({
-            userId: dbUser.id,
-            phone,
-            eventName: firstStage.eventName,
-            leadId: newLead.id,
-            stageName: firstStage.name,
-          });
-        }
-
-        leadId = newLead.id;
-        imported++;
-      }
-
-      // Track for message import (only first 30 chats)
-      if (chatsForMessages.length < 30) {
-        chatsForMessages.push({ chatId, leadId });
-      }
-    }
-
-    // 2. Fetch messages for recent chats
-    for (const { chatId, leadId } of chatsForMessages) {
-      const existingMsgCount = await prisma.message.count({ where: { leadId } });
-      if (existingMsgCount > 0) continue;
-
-      const msgsResult = await getWahaChatMessages(wahaConfig, chatId, 30);
-      if (!msgsResult.success || !msgsResult.messages) continue;
-
-      // Filter out empty messages and system notifications
-      const messagesToCreate = msgsResult.messages
-        .filter((m) => m.body && m.body.trim().length > 0)
-        .map((m) => ({
-          leadId,
-          role: m.fromMe ? "assistant" : "user",
-          content: m.body,
-          createdAt: new Date(m.timestamp * 1000),
-        }));
-
-      if (messagesToCreate.length > 0) {
-        await prisma.message.createMany({ data: messagesToCreate });
-        messagesImported += messagesToCreate.length;
-      }
-    }
-
-    // 3. Update lead timestamps so order reflects latest activity
-    for (const { leadId } of chatsForMessages) {
-      const lastMsg = await prisma.message.findFirst({
-        where: { leadId },
-        orderBy: { createdAt: "desc" },
-      });
-      if (lastMsg) {
-        await prisma.lead.update({
-          where: { id: leadId },
-          data: { updatedAt: lastMsg.createdAt },
+        await sendFacebookEvent({
+          userId: dbUser.id,
+          phone,
+          eventName: firstStage.eventName,
+          leadId: newLead.id,
+          stageName: firstStage.name,
         });
       }
+
+      imported++;
     }
 
     revalidatePath("/dashboard/chat");
@@ -409,7 +331,7 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
   }
 }
 
-// ─── Sync messages in batches (for leads without messages) ───
+// ─── Sync messages in batches ───
 
 export async function syncWhatsAppMessages(): Promise<ActionResult<{ messagesImported: number; remaining: number }>> {
   try {
@@ -417,61 +339,33 @@ export async function syncWhatsAppMessages(): Promise<ActionResult<{ messagesImp
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "waha" || !config.wahaServerUrl || !config.wahaApiKey || !config.wahaSessionName) {
-      return { success: false, error: "WAHA não configurado" };
+    if (!config || config.provider !== "uazapi" || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+      return { success: false, error: "Uazapi não configurado" };
     }
 
-    const { getWahaChats, getWahaChatMessages } = await import("@/services/whatsappEvolution");
-    const wahaConfig = {
-      serverUrl: config.wahaServerUrl,
-      apiKey: config.wahaApiKey,
-      sessionName: config.wahaSessionName,
-    };
+    const { getUazapiMessages } = await import("@/services/whatsappUazapi");
+    const serverUrl = config.uazapiServerUrl;
+    const token = config.uazapiInstanceToken;
 
-    // Find leads without messages (batch of 5 to stay under Vercel 60s timeout)
+    // Find leads without messages (batch of 10)
     const leadsWithoutMessages = await prisma.lead.findMany({
-      where: {
-        userId: dbUser.id,
-        messages: { none: {} },
-      },
+      where: { userId: dbUser.id, messages: { none: {} } },
       orderBy: { updatedAt: "desc" },
-      take: 5,
+      take: 10,
     });
 
     if (leadsWithoutMessages.length === 0) {
       return { success: true, data: { messagesImported: 0, remaining: 0 } };
     }
 
-    // Fetch all chats once for mapping
-    const chatsResult = await getWahaChats(wahaConfig);
-    if (!chatsResult.success || !chatsResult.chats) {
-      return { success: false, error: "Erro ao buscar chats do WAHA" };
-    }
-
-    // Build phone→chatId map
-    const chatMap = new Map<string, string>();
-    for (const chat of chatsResult.chats) {
-      if (chat.isGroup) continue;
-      if (chat.id.server === "c.us") {
-        chatMap.set(chat.id.user, chat.id._serialized);
-      } else {
-        // lid format
-        const nameDigits = (chat.name || "").replace(/[^\d]/g, "");
-        if (nameDigits.length >= 10) {
-          chatMap.set(nameDigits, chat.id._serialized);
-        }
-        chatMap.set(`lid-${chat.id.user}`, chat.id._serialized);
-      }
-    }
-
     let messagesImported = 0;
 
     for (const lead of leadsWithoutMessages) {
-      // Find matching chat
-      const chatId = chatMap.get(lead.phone) || chatMap.get(lead.phone.slice(-9));
-      if (!chatId) continue;
+      // Skip leads with lid- phone (old WAHA format, can't match in Uazapi)
+      if (lead.phone.startsWith("lid-")) continue;
 
-      const msgsResult = await getWahaChatMessages(wahaConfig, chatId, 30);
+      const chatId = `${lead.phone}@s.whatsapp.net`;
+      const msgsResult = await getUazapiMessages(serverUrl, token, chatId, 30);
       if (!msgsResult.success || !msgsResult.messages) continue;
 
       const messagesToCreate = msgsResult.messages
@@ -487,7 +381,6 @@ export async function syncWhatsAppMessages(): Promise<ActionResult<{ messagesImp
         await prisma.message.createMany({ data: messagesToCreate });
         messagesImported += messagesToCreate.length;
 
-        // Update lead timestamp
         const lastTs = messagesToCreate[messagesToCreate.length - 1].createdAt;
         await prisma.lead.update({
           where: { id: lead.id },
@@ -496,7 +389,6 @@ export async function syncWhatsAppMessages(): Promise<ActionResult<{ messagesImp
       }
     }
 
-    // Count remaining
     const remaining = await prisma.lead.count({
       where: { userId: dbUser.id, messages: { none: {} } },
     });

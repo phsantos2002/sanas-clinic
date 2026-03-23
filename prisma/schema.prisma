@@ -142,15 +142,16 @@ model WhatsAppConfig {
   id            String   @id @default(cuid())
   userId        String   @unique
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider      String   @default("official") // "official" | "waha"
+  provider      String   @default("official") // "official" | "uazapi"
   // --- Official API fields (mantidos) ---
   phoneNumberId String   @default("")
   accessToken   String   @default("")
   verifyToken   String   @default("")
-  // --- WAHA fields ---
-  wahaServerUrl     String?  // URL do servidor WAHA (ex: http://localhost:3008)
-  wahaApiKey        String?  // API Key do WAHA (env WHATSAPP_API_KEY)
-  wahaSessionName   String?  // Nome da sessão criada
+  // --- Uazapi fields ---
+  uazapiServerUrl    String?  // URL do servidor Uazapi (ex: https://sanas.uazapi.com)
+  uazapiAdminToken   String?  // Admin token do Uazapi
+  uazapiInstanceToken String? // Token da instância
+  uazapiInstanceName  String? // Nome da instância
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

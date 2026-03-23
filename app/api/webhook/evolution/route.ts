@@ -1,43 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateAIReply } from "@/services/aiChat";
-import { sendWahaMessage } from "@/services/whatsappEvolution";
+import { sendUazapiMessage } from "@/services/whatsappUazapi";
 import { sendFacebookEvent } from "@/services/facebookEvents";
 import { getAIConfigByUserId } from "@/app/actions/aiConfig";
 
 /**
- * WAHA Webhook — receives messages from WAHA sessions.
+ * Uazapi Webhook — receives messages from Uazapi instances.
  *
- * Payload format ("message" event):
+ * With addUrlEvents: true, Uazapi appends the event to the URL:
+ *   POST /api/webhook/evolution/messages
+ *   POST /api/webhook/evolution/connection
+ *
+ * But we also handle the base URL for compatibility.
+ *
+ * Message payload format:
  * {
- *   event: "message",
- *   session: "lux-abc12345",
- *   payload: {
- *     id: "...",
- *     from: "5511999999999@c.us",
- *     fromMe: false,
- *     body: "Olá!",
- *     timestamp: 1234567890,
- *     hasMedia: false,
- *     _data: { notifyName: "João" }
- *   }
+ *   "event": "messages",
+ *   "instancetoken": "...",
+ *   "id": "3EB0...",
+ *   "fromMe": false,
+ *   "chatid": "5511999999999@s.whatsapp.net",
+ *   "senderName": "João",
+ *   "body": "Olá!",
+ *   "type": "conversation",
+ *   "timestamp": 1234567890
  * }
  */
 
-type WahaPayload = {
-  event: string;
-  session: string;
-  payload: {
-    id: string;
-    from: string;
-    fromMe: boolean;
-    body: string;
-    timestamp: number;
-    hasMedia: boolean;
-    _data?: {
-      notifyName?: string;
-    };
-  };
+type UazapiPayload = {
+  event?: string;
+  instancetoken?: string;
+  id?: string;
+  fromMe?: boolean;
+  chatid?: string;
+  senderName?: string;
+  body?: string;
+  type?: string;
+  timestamp?: number;
 };
 
 // Extract REF-XXXXX tracking code from message text
@@ -49,60 +49,62 @@ function extractRefCode(text: string): string | null {
 }
 
 function extractPhoneFromChatId(chatId: string): string {
-  // "5511999999999@c.us" → "5511999999999"
+  // "5511999999999@s.whatsapp.net" → "5511999999999"
   return chatId.split("@")[0].replace(/\D/g, "");
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as WahaPayload;
+    const body = (await req.json()) as UazapiPayload;
 
     // Only process incoming messages (not sent by us)
-    if (body.event !== "message" || body.payload?.fromMe) {
+    if (body.fromMe || !body.body?.trim() || !body.chatid) {
       return NextResponse.json({ ok: true });
     }
 
-    const sessionName = body.session;
-    const text = body.payload?.body?.trim();
-    if (!text) return NextResponse.json({ ok: true });
+    // Skip group messages
+    if (body.chatid.includes("@g.us")) {
+      return NextResponse.json({ ok: true });
+    }
 
-    const phone = extractPhoneFromChatId(body.payload.from);
+    const instanceToken = body.instancetoken;
+    const text = body.body.trim();
+    const phone = extractPhoneFromChatId(body.chatid);
     if (!phone) return NextResponse.json({ ok: true });
 
-    // Find which user owns this WAHA session
+    // Find which user owns this Uazapi instance
     const whatsappConfig = await prisma.whatsAppConfig.findFirst({
       where: {
-        provider: "waha",
-        wahaSessionName: sessionName,
+        provider: "uazapi",
+        uazapiInstanceToken: instanceToken,
       },
     });
     if (!whatsappConfig) {
-      console.error(`[waha webhook] Sessão não encontrada: ${sessionName}`);
+      console.error(`[uazapi webhook] Instance not found for token: ${instanceToken?.slice(0, 8)}...`);
       return NextResponse.json({ ok: true });
     }
 
-    const pushName = body.payload._data?.notifyName ?? "";
-    const msgId = body.payload.id;
+    const pushName = body.senderName ?? "";
+    const msgId = body.id ?? "";
 
     try {
-      await processWahaMessage(whatsappConfig, msgId, phone, text, pushName);
+      await processUazapiMessage(whatsappConfig, msgId, phone, text, pushName);
     } catch (err) {
-      console.error(`[waha webhook] Erro processando msg ${msgId}:`, err);
+      console.error(`[uazapi webhook] Erro processando msg ${msgId}:`, err);
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("[waha webhook] Erro no parse:", err);
+    console.error("[uazapi webhook] Erro no parse:", err);
     return NextResponse.json({ ok: true });
   }
 }
 
-async function processWahaMessage(
+async function processUazapiMessage(
   whatsappConfig: {
     userId: string;
-    wahaServerUrl: string | null;
-    wahaApiKey: string | null;
-    wahaSessionName: string | null;
+    uazapiServerUrl: string | null;
+    uazapiInstanceToken: string | null;
   },
   msgId: string,
   phone: string,
@@ -270,20 +272,17 @@ async function processWahaMessage(
     data: { leadId: lead.id, role: "assistant", content: reply },
   });
 
-  // Send reply via WAHA
-  if (whatsappConfig.wahaServerUrl && whatsappConfig.wahaApiKey && whatsappConfig.wahaSessionName) {
-    const sendResult = await sendWahaMessage(
-      {
-        serverUrl: whatsappConfig.wahaServerUrl,
-        apiKey: whatsappConfig.wahaApiKey,
-        sessionName: whatsappConfig.wahaSessionName,
-      },
+  // Send reply via Uazapi
+  if (whatsappConfig.uazapiServerUrl && whatsappConfig.uazapiInstanceToken) {
+    const sendResult = await sendUazapiMessage(
+      whatsappConfig.uazapiServerUrl,
+      whatsappConfig.uazapiInstanceToken,
       phone,
       reply,
     );
 
     if (!sendResult.success) {
-      console.error(`[waha webhook] Falha ao enviar msg para ${phone}:`, sendResult.error);
+      console.error(`[uazapi webhook] Falha ao enviar msg para ${phone}:`, sendResult.error);
     }
   }
 

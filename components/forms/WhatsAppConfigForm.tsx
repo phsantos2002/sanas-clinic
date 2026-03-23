@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   saveWhatsAppConfig,
-  saveWahaConfig,
+  saveUazapiConfig,
   testWhatsAppConnection,
-  getWahaQR,
-  getWahaStatus,
-  disconnectWaha,
+  getUazapiQR,
+  getUazapiStatus,
+  disconnectUazapi,
   syncWhatsAppChats,
   syncWhatsAppMessages,
 } from "@/app/actions/whatsapp";
@@ -21,9 +21,10 @@ type WhatsAppConfig = {
   phoneNumberId: string;
   accessToken: string;
   verifyToken: string;
-  wahaServerUrl: string | null;
-  wahaApiKey: string | null;
-  wahaSessionName: string | null;
+  uazapiServerUrl: string | null;
+  uazapiAdminToken: string | null;
+  uazapiInstanceToken: string | null;
+  uazapiInstanceName: string | null;
 } | null;
 
 type Props = {
@@ -31,8 +32,8 @@ type Props = {
 };
 
 export function WhatsAppConfigForm({ config }: Props) {
-  const [provider, setProvider] = useState<"official" | "waha">(
-    (config?.provider as "official" | "waha") ?? "official"
+  const [provider, setProvider] = useState<"official" | "uazapi">(
+    (config?.provider as "official" | "uazapi") ?? "official"
   );
 
   // Official fields
@@ -44,33 +45,33 @@ export function WhatsAppConfigForm({ config }: Props) {
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
 
-  // WAHA-specific state
+  // Uazapi state
   const [qrCode, setQrCode] = useState<string | null>(null);
-  const [wahaConnected, setWahaConnected] = useState(false);
-  const [wahaState, setWahaState] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [connState, setConnState] = useState<string | null>(null);
   const [loadingQR, setLoadingQR] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  const isWahaConfigured = !!(config?.provider === "waha" && config?.wahaSessionName);
+  const isUazapiConfigured = !!(config?.provider === "uazapi" && config?.uazapiInstanceToken);
 
-  // Check WAHA connection status
+  // Check connection status
   const checkStatus = useCallback(async () => {
-    if (!isWahaConfigured) return;
+    if (!isUazapiConfigured) return;
     setCheckingStatus(true);
-    const result = await getWahaStatus();
+    const result = await getUazapiStatus();
     setCheckingStatus(false);
     if (result.success && result.data) {
-      setWahaConnected(result.data.connected);
-      setWahaState(result.data.state ?? null);
+      setConnected(result.data.connected);
+      setConnState(result.data.state ?? null);
     }
-  }, [isWahaConfigured]);
+  }, [isUazapiConfigured]);
 
   useEffect(() => {
-    if (isWahaConfigured) {
+    if (isUazapiConfigured) {
       checkStatus();
     }
-  }, [isWahaConfigured, checkStatus]);
+  }, [isUazapiConfigured, checkStatus]);
 
   // ─── Official API submit ───
   async function handleOfficialSubmit(e: React.FormEvent) {
@@ -86,18 +87,17 @@ export function WhatsAppConfigForm({ config }: Props) {
     }
   }
 
-  // ─── WAHA: criar sessão e obter QR ───
-  async function handleWahaConnect() {
+  // ─── Uazapi: connect ───
+  async function handleUazapiConnect() {
     setLoading(true);
-    const result = await saveWahaConfig();
+    const result = await saveUazapiConfig();
     if (result.success) {
       if (result.data?.qrcode) {
         setQrCode(result.data.qrcode);
         toast.success("Escaneie o QR Code para conectar.");
       } else {
-        // Session created but QR didn't come — fetch it
         toast.info("Sessão criada, buscando QR Code...");
-        const qr = await getWahaQR();
+        const qr = await getUazapiQR();
         if (qr.success && qr.data?.qrcode) {
           setQrCode(qr.data.qrcode);
           toast.success("Escaneie o QR Code para conectar.");
@@ -114,7 +114,7 @@ export function WhatsAppConfigForm({ config }: Props) {
   // ─── Get QR Code ───
   async function handleGetQR() {
     setLoadingQR(true);
-    const result = await getWahaQR();
+    const result = await getUazapiQR();
     setLoadingQR(false);
     if (result.success && result.data) {
       setQrCode(result.data.qrcode);
@@ -123,16 +123,16 @@ export function WhatsAppConfigForm({ config }: Props) {
     }
   }
 
-  // ─── Disconnect WAHA ───
+  // ─── Disconnect ───
   async function handleDisconnect() {
     setLoading(true);
-    const result = await disconnectWaha();
+    const result = await disconnectUazapi();
     setLoading(false);
     if (result.success) {
       toast.success("WhatsApp desconectado");
-      setWahaConnected(false);
+      setConnected(false);
       setQrCode(null);
-      setWahaState(null);
+      setConnState(null);
     } else {
       toast.error(result.error);
     }
@@ -157,20 +157,20 @@ export function WhatsAppConfigForm({ config }: Props) {
           </button>
           <button
             type="button"
-            onClick={() => setProvider("waha")}
+            onClick={() => setProvider("uazapi")}
             className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-              provider === "waha"
+              provider === "uazapi"
                 ? "bg-green-600 text-white border-green-600"
                 : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
             }`}
           >
-            WAHA (QR Code)
+            Uazapi (QR Code)
           </button>
         </div>
         <p className="text-xs text-slate-400">
           {provider === "official"
             ? "Requer conta Meta Business verificada. Ideal para empresas com acesso à API oficial."
-            : "Conecte via QR Code usando seu WhatsApp pessoal ou Business. Gratuito e sem burocracia."}
+            : "Conecte via QR Code usando seu WhatsApp pessoal ou Business. Estável e sem burocracia."}
         </p>
       </div>
 
@@ -179,67 +179,28 @@ export function WhatsAppConfigForm({ config }: Props) {
         <form onSubmit={handleOfficialSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="phoneNumberId">Phone Number ID</Label>
-            <Input
-              id="phoneNumberId"
-              placeholder="Ex: 123456789012345"
-              value={phoneNumberId}
-              onChange={(e) => setPhoneNumberId(e.target.value)}
-              required
-            />
-            <p className="text-xs text-zinc-400">
-              Encontre em Meta Developers → WhatsApp → Configuração da API → Phone Number ID.
-            </p>
+            <Input id="phoneNumberId" placeholder="Ex: 123456789012345" value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} required />
+            <p className="text-xs text-zinc-400">Encontre em Meta Developers → WhatsApp → Configuração da API → Phone Number ID.</p>
           </div>
-
           <div className="space-y-1.5">
             <Label htmlFor="whatsappToken">Access Token</Label>
-            <Input
-              id="whatsappToken"
-              type="password"
-              placeholder="Token de acesso permanente"
-              value={accessToken}
-              onChange={(e) => setAccessToken(e.target.value)}
-              required
-            />
-            <p className="text-xs text-zinc-400">
-              Token com permissão <span className="font-mono">whatsapp_business_messaging</span>. Gere em Meta Developers → WhatsApp.
-            </p>
+            <Input id="whatsappToken" type="password" placeholder="Token de acesso permanente" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} required />
+            <p className="text-xs text-zinc-400">Token com permissão <span className="font-mono">whatsapp_business_messaging</span>.</p>
           </div>
-
           <div className="space-y-1.5">
             <Label htmlFor="verifyToken">Verify Token</Label>
-            <Input
-              id="verifyToken"
-              placeholder="Crie uma senha secreta qualquer"
-              value={verifyToken}
-              onChange={(e) => setVerifyToken(e.target.value)}
-              required
-            />
-            <p className="text-xs text-zinc-400">
-              Você define este valor e usa o mesmo ao configurar o webhook na Meta.
-            </p>
+            <Input id="verifyToken" placeholder="Crie uma senha secreta qualquer" value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} required />
+            <p className="text-xs text-zinc-400">Você define este valor e usa o mesmo ao configurar o webhook na Meta.</p>
           </div>
-
           <div className="flex gap-2">
-            <Button type="submit" disabled={loading}>
-              {loading ? "Salvando..." : "Salvar WhatsApp"}
-            </Button>
+            <Button type="submit" disabled={loading}>{loading ? "Salvando..." : "Salvar WhatsApp"}</Button>
             {config && config.provider === "official" && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={testing}
-                onClick={async () => {
-                  setTesting(true);
-                  const result = await testWhatsAppConnection();
-                  setTesting(false);
-                  if (result.success) {
-                    toast.success("Conexão com WhatsApp OK!");
-                  } else {
-                    toast.error(result.error);
-                  }
-                }}
-              >
+              <Button type="button" variant="outline" disabled={testing} onClick={async () => {
+                setTesting(true);
+                const result = await testWhatsAppConnection();
+                setTesting(false);
+                result.success ? toast.success("Conexão com WhatsApp OK!") : toast.error(result.error);
+              }}>
                 {testing ? "Testando..." : "Testar Conexão"}
               </Button>
             )}
@@ -247,49 +208,32 @@ export function WhatsAppConfigForm({ config }: Props) {
         </form>
       )}
 
-      {/* ─── WAHA ─── */}
-      {provider === "waha" && (
+      {/* ─── Uazapi ─── */}
+      {provider === "uazapi" && (
         <div className="space-y-4">
-          {/* Connection Status (quando já configurado) */}
-          {isWahaConfigured && (
+          {/* Connection Status */}
+          {isUazapiConfigured && (
             <div className={`flex items-center gap-3 p-4 rounded-xl border ${
-              wahaConnected
-                ? "bg-green-50 border-green-200"
-                : "bg-amber-50 border-amber-200"
+              connected ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
             }`}>
               <div className={`w-3 h-3 rounded-full shrink-0 ${
-                wahaConnected ? "bg-green-500" : "bg-amber-500 animate-pulse"
+                connected ? "bg-green-500" : "bg-amber-500 animate-pulse"
               }`} />
               <div className="flex-1">
-                <p className={`text-sm font-medium ${
-                  wahaConnected ? "text-green-700" : "text-amber-700"
-                }`}>
-                  {wahaConnected
+                <p className={`text-sm font-medium ${connected ? "text-green-700" : "text-amber-700"}`}>
+                  {connected
                     ? "WhatsApp conectado"
                     : checkingStatus
                       ? "Verificando conexão..."
-                      : `Desconectado${wahaState ? ` (${wahaState})` : ""}`
-                  }
+                      : `Desconectado${connState ? ` (${connState})` : ""}`}
                 </p>
               </div>
               <div className="flex gap-1.5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={checkingStatus}
-                  onClick={checkStatus}
-                >
+                <Button type="button" variant="outline" size="sm" disabled={checkingStatus} onClick={checkStatus}>
                   {checkingStatus ? "..." : "Atualizar"}
                 </Button>
-                {!wahaConnected && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={loadingQR}
-                    onClick={handleGetQR}
-                  >
+                {!connected && (
+                  <Button type="button" variant="outline" size="sm" disabled={loadingQR} onClick={handleGetQR}>
                     {loadingQR ? "..." : "QR Code"}
                   </Button>
                 )}
@@ -298,98 +242,79 @@ export function WhatsAppConfigForm({ config }: Props) {
           )}
 
           {/* QR Code Display */}
-          {qrCode && !wahaConnected && (
+          {qrCode && !connected && (
             <div className="flex flex-col items-center gap-3 p-5 bg-white border border-slate-200 rounded-xl">
-              <p className="text-sm font-medium text-slate-700">
-                Escaneie o QR Code com seu WhatsApp
-              </p>
+              <p className="text-sm font-medium text-slate-700">Escaneie o QR Code com seu WhatsApp</p>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={qrCode.startsWith("data:") ? qrCode : `data:image/png;base64,${qrCode}`}
+                src={qrCode}
                 alt="QR Code WhatsApp"
                 className="w-64 h-64 rounded-lg"
               />
               <p className="text-xs text-slate-400 text-center">
                 Abra o WhatsApp → Aparelhos conectados → Conectar um aparelho
               </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  checkStatus();
-                  setQrCode(null);
-                }}
-              >
+              <Button type="button" variant="outline" size="sm" onClick={() => { checkStatus(); setQrCode(null); }}>
                 Já escaneei
               </Button>
             </div>
           )}
 
-          {/* Botão de conectar (quando ainda não configurado) */}
-          {!isWahaConfigured && !qrCode && (
+          {/* Connect button */}
+          {!isUazapiConfigured && !qrCode && (
             <div className="space-y-3">
               <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
                 <p className="text-sm text-slate-600">
                   Clique no botão abaixo para gerar um QR Code. Depois, escaneie com seu WhatsApp para conectar.
                 </p>
               </div>
-              <Button
-                type="button"
-                disabled={loading}
-                onClick={handleWahaConnect}
-                className="w-full bg-green-600 hover:bg-green-700"
-              >
+              <Button type="button" disabled={loading} onClick={handleUazapiConnect} className="w-full bg-green-600 hover:bg-green-700">
                 {loading ? "Criando conexão..." : "Conectar via QR Code"}
               </Button>
             </div>
           )}
 
-          {/* Sync buttons (quando conectado) */}
-          {isWahaConfigured && wahaConnected && (
-            <div className="space-y-2">
-              <Button
-                type="button"
-                disabled={syncing}
-                onClick={async () => {
-                  setSyncing(true);
-                  // 1. Sync contacts
-                  toast.info("Importando contatos...");
-                  const result = await syncWhatsAppChats();
-                  if (result.success && result.data) {
-                    toast.success(`${result.data.imported} contatos importados`);
-                  } else if (!result.success) {
-                    toast.error(result.error);
-                    setSyncing(false);
-                    return;
-                  }
-
-                  // 2. Sync messages in batches
-                  let totalMsgs = 0;
-                  let remaining = 999;
-                  let rounds = 0;
-                  while (remaining > 0 && rounds < 50) {
-                    toast.info(`Importando mensagens... (${totalMsgs} até agora)`);
-                    const msgResult = await syncWhatsAppMessages();
-                    if (!msgResult.success) break;
-                    totalMsgs += msgResult.data?.messagesImported ?? 0;
-                    remaining = msgResult.data?.remaining ?? 0;
-                    rounds++;
-                    if ((msgResult.data?.messagesImported ?? 0) === 0) break;
-                  }
-
+          {/* Sync button */}
+          {isUazapiConfigured && connected && (
+            <Button
+              type="button"
+              disabled={syncing}
+              onClick={async () => {
+                setSyncing(true);
+                toast.info("Importando contatos...");
+                const result = await syncWhatsAppChats();
+                if (result.success && result.data) {
+                  toast.success(`${result.data.imported} contatos importados`);
+                } else if (!result.success) {
+                  toast.error(result.error);
                   setSyncing(false);
-                  toast.success(`Sincronização completa: ${totalMsgs} mensagens importadas`);
-                }}
-                className="w-full bg-indigo-600 hover:bg-indigo-700"
-              >
-                {syncing ? "Sincronizando..." : "Sincronizar Conversas do WhatsApp"}
-              </Button>
-            </div>
+                  return;
+                }
+
+                let totalMsgs = 0;
+                let remaining = 999;
+                let rounds = 0;
+                while (remaining > 0 && rounds < 50) {
+                  toast.info(`Importando mensagens... (${totalMsgs} até agora)`);
+                  const msgResult = await syncWhatsAppMessages();
+                  if (!msgResult.success) break;
+                  totalMsgs += msgResult.data?.messagesImported ?? 0;
+                  remaining = msgResult.data?.remaining ?? 0;
+                  rounds++;
+                  if ((msgResult.data?.messagesImported ?? 0) === 0) break;
+                }
+
+                setSyncing(false);
+                toast.success(`Sincronização completa: ${totalMsgs} mensagens importadas`);
+              }}
+              className="w-full bg-indigo-600 hover:bg-indigo-700"
+            >
+              {syncing ? "Sincronizando..." : "Sincronizar Conversas do WhatsApp"}
+            </Button>
           )}
 
           {/* Disconnect button */}
-          {isWahaConfigured && (
+          {isUazapiConfigured && (
             <Button
               type="button"
               variant="outline"

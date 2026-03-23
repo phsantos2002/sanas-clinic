@@ -53,7 +53,7 @@ export async function sendManualMessage(
     data: { leadId, role: "assistant", content },
   });
 
-  // Send via WhatsApp (official or WAHA)
+  // Send via WhatsApp (official or Uazapi)
   const whatsappConfig = await prisma.whatsAppConfig.findUnique({
     where: { userId: user.id },
   });

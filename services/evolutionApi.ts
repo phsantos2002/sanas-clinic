@@ -1,50 +1,37 @@
 /**
- * WAHA API — envio de mensagens via variáveis de ambiente.
- * Usado pelo webhook e processos que não têm config do banco.
+ * Uazapi — envio de mensagens via variáveis de ambiente.
+ * Usado por processos que não têm config do banco.
  */
 
-const WAHA_URL = process.env.WAHA_SERVER_URL ?? "";
-const WAHA_KEY = process.env.WAHA_API_KEY ?? "";
-const WAHA_SESSION = process.env.WAHA_SESSION ?? "default";
+const UAZAPI_URL = process.env.UAZAPI_SERVER_URL ?? "";
+const UAZAPI_TOKEN = process.env.UAZAPI_INSTANCE_TOKEN ?? "";
 
 function normalize(phone: string) {
   return phone.replace(/\D/g, "");
 }
 
-function headers() {
-  return { "Content-Type": "application/json", "X-Api-Key": WAHA_KEY };
-}
-
 export async function sendWhatsAppMessage(phone: string, text: string) {
-  if (!WAHA_URL || !WAHA_KEY) return;
+  if (!UAZAPI_URL || !UAZAPI_TOKEN) return;
 
-  await fetch(`${WAHA_URL}/api/sendText`, {
+  await fetch(`${UAZAPI_URL}/send/text`, {
     method: "POST",
-    headers: headers(),
-    body: JSON.stringify({
-      session: WAHA_SESSION,
-      chatId: `${normalize(phone)}@c.us`,
-      text,
-    }),
+    headers: { "Content-Type": "application/json", token: UAZAPI_TOKEN },
+    body: JSON.stringify({ number: normalize(phone), text }),
   });
 }
 
 export async function sendWhatsAppAudio(phone: string, audioBuffer: Buffer) {
-  if (!WAHA_URL || !WAHA_KEY) return;
+  if (!UAZAPI_URL || !UAZAPI_TOKEN) return;
 
   const base64 = audioBuffer.toString("base64");
 
-  await fetch(`${WAHA_URL}/api/sendFile`, {
+  await fetch(`${UAZAPI_URL}/send/media`, {
     method: "POST",
-    headers: headers(),
+    headers: { "Content-Type": "application/json", token: UAZAPI_TOKEN },
     body: JSON.stringify({
-      session: WAHA_SESSION,
-      chatId: `${normalize(phone)}@c.us`,
-      file: {
-        mimetype: "audio/mpeg",
-        filename: "resposta.mp3",
-        data: base64,
-      },
+      number: normalize(phone),
+      type: "ptt",
+      file: `data:audio/mpeg;base64,${base64}`,
     }),
   });
 }
