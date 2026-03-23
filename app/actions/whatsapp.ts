@@ -426,14 +426,14 @@ export async function syncWhatsAppMessages(): Promise<ActionResult<{ messagesImp
       sessionName: config.wahaSessionName,
     };
 
-    // Find leads without messages (batch of 15)
+    // Find leads without messages (batch of 5 to stay under Vercel 60s timeout)
     const leadsWithoutMessages = await prisma.lead.findMany({
       where: {
         userId: dbUser.id,
         messages: { none: {} },
       },
       orderBy: { updatedAt: "desc" },
-      take: 15,
+      take: 5,
     });
 
     if (leadsWithoutMessages.length === 0) {
