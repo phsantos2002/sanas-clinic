@@ -76,7 +76,7 @@ export function ChatPageClient() {
     try {
       const type = tab === "groups" ? "&type=groups" : "";
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
-      const res = await fetch(`/api/whatsapp?action=chats&limit=100${type}${searchParam}`);
+      const res = await fetch(`/api/whatsapp?action=chats&limit=300${type}${searchParam}`);
       const data = await res.json();
       setChats(data.chats ?? []);
     } catch {

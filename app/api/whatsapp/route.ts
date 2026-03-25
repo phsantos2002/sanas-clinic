@@ -65,29 +65,28 @@ export async function GET(req: NextRequest) {
         const data = await res.json();
         const chats = data.chats ?? data ?? [];
 
-        // Fetch profile pics for first 20 chats that don't have one
-        const enriched = await Promise.all(
-          chats.slice(0, 50).map(async (chat: Record<string, unknown>) => {
-            if (!chat.imagePreview && chat.wa_chatid) {
-              const phone = (chat.wa_chatid as string).split("@")[0];
-              try {
-                const detailRes = await fetch(`${config.serverUrl}/chat/details`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", token: config.token },
-                  body: JSON.stringify({ number: phone, preview: true }),
-                });
-                const detail = await detailRes.json();
-                chat.imagePreview = detail.imagePreview || "";
-                chat.image = detail.image || "";
-              } catch {
-                // ignore
-              }
-            }
-            return chat;
+        // Fetch profile pics for first 15 visible chats in parallel
+        const toEnrich = chats.slice(0, 15).filter(
+          (c: Record<string, unknown>) => !c.imagePreview && c.wa_chatid
+        );
+
+        await Promise.all(
+          toEnrich.map(async (chat: Record<string, unknown>) => {
+            const phone = (chat.wa_chatid as string).split("@")[0];
+            try {
+              const detailRes = await fetch(`${config.serverUrl}/chat/details`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", token: config.token },
+                body: JSON.stringify({ number: phone, preview: true }),
+              });
+              const detail = await detailRes.json();
+              chat.imagePreview = detail.imagePreview || "";
+              chat.image = detail.image || "";
+            } catch { /* ignore */ }
           })
         );
 
-        return NextResponse.json({ chats: enriched });
+        return NextResponse.json({ chats, pagination: data.pagination });
       }
 
       case "messages": {
