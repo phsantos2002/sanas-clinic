@@ -73,12 +73,29 @@ export async function saveUazapiConfig(): Promise<ActionResult<{ qrcode?: string
     let instanceToken = existing?.uazapiInstanceToken;
 
     if (!instanceToken) {
-      // Create new instance
-      const createResult = await createUazapiInstance(serverUrl, adminToken, instanceName);
-      if (!createResult.success || !createResult.token) {
-        return { success: false, error: createResult.error ?? "Erro ao criar instância" };
+      // Check if instance already exists on Uazapi (avoid duplicates)
+      const allInstances = await fetch(`${serverUrl}/instance/all`, {
+        headers: { admintoken: adminToken },
+      }).then(r => r.json()).catch(() => []);
+
+      const existingInstance = Array.isArray(allInstances)
+        ? allInstances.find((i: { name: string; token: string }) => i.name === instanceName)
+        : null;
+
+      if (existingInstance) {
+        instanceToken = existingInstance.token;
+      } else {
+        // Create new instance
+        const createResult = await createUazapiInstance(serverUrl, adminToken, instanceName);
+        if (!createResult.success || !createResult.token) {
+          return { success: false, error: createResult.error ?? "Erro ao criar instância" };
+        }
+        instanceToken = createResult.token;
       }
-      instanceToken = createResult.token;
+    }
+
+    if (!instanceToken) {
+      return { success: false, error: "Não foi possível obter token da instância" };
     }
 
     // Configure webhook
