@@ -25,6 +25,8 @@ model User {
   alerts          Alert[]
   campaignActions CampaignAction[]
   campaignConfigs CampaignConfig[]
+  socialConnections SocialConnection[]
+  socialPosts       SocialPost[]
 }
 
 model AIConfig {
@@ -245,5 +247,67 @@ model AdTrackingCode {
 
   @@unique([code, userId])
   @@index([userId])
+}
+
+// ── Social Media Module ──────────────────────────────────────
+
+model SocialConnection {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform       String   // "instagram" | "facebook" | "tiktok" | "linkedin" | "pinterest" | "google_business"
+  accessToken    String
+  refreshToken   String?
+  pageId         String?
+  profileName    String?
+  profilePicture String?
+  tokenExpiresAt DateTime?
+  isActive       Boolean  @default(true)
+  connectedAt    DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, platform])
+  @@index([userId])
+}
+
+model SocialPost {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String?
+  caption          String?
+  hashtags         String[] // array de hashtags
+  mediaUrls        String[] // URLs dos assets no storage
+  mediaType        String?  // "image" | "video" | "carousel" | "reels" | "story"
+  platforms        String[] // ["instagram", "facebook", "tiktok"]
+  platformSpecific Json?    // configs específicas por plataforma
+  scheduledAt      DateTime?
+  publishedAt      DateTime?
+  status           String   @default("draft") // "draft" | "scheduled" | "generating" | "ready" | "publishing" | "published" | "failed"
+  aiGenerated      Boolean  @default(false)
+  aiCostEstimate   Float?
+  publishResults   Json?    // resultado de cada plataforma
+  engagementData   Json?    // métricas pós-publicação
+  versions         SocialPostVersion[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, scheduledAt])
+}
+
+model SocialPostVersion {
+  id          String     @id @default(cuid())
+  postId      String
+  post        SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  platform    String
+  caption     String?
+  mediaUrl    String?
+  aspectRatio String?    // "1:1" | "9:16" | "16:9" | "4:5"
+  specs       Json?      // dimensões, duração, etc.
+  createdAt   DateTime   @default(now())
+
+  @@index([postId])
 }
 
