@@ -42,6 +42,13 @@ model AIConfig {
   apiKey       String?                         // user's own API key
   voiceClonePrompt String?                     // prompt for voice cloning audio sample
   openaiKey    String?                         // legacy, kept for TTS
+  // ── Brand Identity ──
+  brandIdentity   Json?    // { logo_url, primary_color, secondary_color, font, business_type, default_tone, target_audience }
+  // ── AI Content Generation providers ──
+  aiImageProvider String?  @default("openai")  // "openai" | "replicate" | "fal"
+  aiImageApiKey   String?                      // Replicate or Fal.ai key (OpenAI reuses apiKey)
+  aiVideoProvider String?  @default("none")    // "replicate" | "fal" | "none"
+  aiVideoApiKey   String?                      // separate key if different provider
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -309,5 +316,20 @@ model SocialPostVersion {
   createdAt   DateTime   @default(now())
 
   @@index([postId])
+}
+
+model AiUsageLog {
+  id           String   @id @default(cuid())
+  userId       String
+  operation    String   // "caption" | "image" | "video" | "carousel"
+  provider     String   // "openai" | "replicate" | "fal"
+  model        String?
+  inputTokens  Int?
+  outputTokens Int?
+  costUsd      Float?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, createdAt])
 }
 

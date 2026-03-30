@@ -2,25 +2,30 @@ import { getPixel } from "@/app/actions/pixel";
 import { getStages } from "@/app/actions/stages";
 import { getAIConfig } from "@/app/actions/aiConfig";
 import { getWhatsAppConfig } from "@/app/actions/whatsapp";
+import { getContentGenSettings, getAIUsageStats } from "@/app/actions/brandSettings";
 import { FacebookPixelForm } from "@/components/forms/FacebookPixelForm";
 import { WhatsAppConfigForm } from "@/components/forms/WhatsAppConfigForm";
 import { ManageStagesSection } from "@/components/settings/ManageStagesSection";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
+import { BrandIdentityForm } from "@/components/settings/BrandIdentityForm";
+import { ContentGenKeysForm } from "@/components/settings/ContentGenKeysForm";
 
 export default async function SettingsPage() {
-  const [pixel, stages, aiConfig, whatsappConfig] = await Promise.all([
+  const [pixel, stages, aiConfig, whatsappConfig, contentGen, usage] = await Promise.all([
     getPixel(),
     getStages(),
     getAIConfig(),
     getWhatsAppConfig(),
+    getContentGenSettings(),
+    getAIUsageStats(),
   ]);
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-lg sm:text-xl font-bold text-slate-900">Configurações</h1>
+        <h1 className="text-lg sm:text-xl font-bold text-slate-900">Configuracoes</h1>
         <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Gerencie integrações, IA e pipeline
+          Gerencie integracoes, IA e pipeline
         </p>
       </div>
 
@@ -30,7 +35,7 @@ export default async function SettingsPage() {
           <div>
             <h2 className="text-base font-semibold text-slate-900">Pixel do Facebook</h2>
             <p className="text-sm text-slate-400 mt-0.5">
-              Configure o Pixel ID e o Access Token para enviar eventos de conversão.
+              Configure o Pixel ID e o Access Token para enviar eventos de conversao.
             </p>
           </div>
           <FacebookPixelForm pixel={pixel} />
@@ -41,7 +46,7 @@ export default async function SettingsPage() {
           <div>
             <h2 className="text-base font-semibold text-slate-900">WhatsApp Business</h2>
             <p className="text-sm text-slate-400 mt-0.5">
-              Configure o número do WhatsApp para receber mensagens e responder automaticamente com IA.
+              Configure o numero do WhatsApp para receber mensagens e responder automaticamente com IA.
             </p>
           </div>
           <WhatsAppConfigForm config={whatsappConfig} />
@@ -50,9 +55,9 @@ export default async function SettingsPage() {
         {/* IA */}
         <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Inteligência Artificial</h2>
+            <h2 className="text-base font-semibold text-slate-900">Inteligencia Artificial</h2>
             <p className="text-sm text-slate-400 mt-0.5">
-              Configure o provedor de IA, modelo e comportamento. Você fornece sua própria chave de API.
+              Configure o provedor de IA, modelo e comportamento. Voce fornece sua propria chave de API.
             </p>
           </div>
           <AIConfigForm config={aiConfig ?? {
@@ -66,6 +71,36 @@ export default async function SettingsPage() {
             voiceClonePrompt: "",
             openaiKey: "",
           }} />
+        </div>
+
+        {/* Brand Identity */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Identidade Visual</h2>
+            <p className="text-sm text-slate-400 mt-0.5">
+              Usada pela IA para gerar conteudo alinhado com sua marca
+            </p>
+          </div>
+          <BrandIdentityForm initial={contentGen?.brandIdentity ?? {}} />
+        </div>
+
+        {/* Content Generation API Keys */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Chaves de API — Geracao de Conteudo</h2>
+            <p className="text-sm text-slate-400 mt-0.5">
+              Configure os provedores para gerar imagens e videos com IA. Voce e responsavel pelo uso e custos.
+            </p>
+          </div>
+          <ContentGenKeysForm
+            initial={{
+              aiImageProvider: contentGen?.aiImageProvider ?? "openai",
+              aiImageApiKey: contentGen?.aiImageApiKey ?? "",
+              aiVideoProvider: contentGen?.aiVideoProvider ?? "none",
+              aiVideoApiKey: contentGen?.aiVideoApiKey ?? "",
+            }}
+            usage={usage}
+          />
         </div>
 
         {/* Pipeline */}

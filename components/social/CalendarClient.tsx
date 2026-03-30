@@ -14,8 +14,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { SocialPostData } from "@/app/actions/social";
-import { createSocialPost, getScheduledPosts } from "@/app/actions/social";
+import { getScheduledPosts } from "@/app/actions/social";
 import { CreatePostModal } from "./CreatePostModal";
+import { GenerateWithAIModal } from "./GenerateWithAIModal";
 
 const WEEKDAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
 const MONTH_NAMES = [
@@ -64,8 +65,8 @@ export function CalendarClient({
   const [year, setYear] = useState(initialYear);
   const [posts, setPosts] = useState(initialPosts);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const navigateMonth = useCallback(
     async (direction: -1 | 1) => {
@@ -80,10 +81,8 @@ export function CalendarClient({
       }
       setMonth(newMonth);
       setYear(newYear);
-      setLoading(true);
       const newPosts = await getScheduledPosts(newMonth, newYear);
       setPosts(newPosts);
-      setLoading(false);
     },
     [month, year]
   );
@@ -150,7 +149,10 @@ export function CalendarClient({
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Agendar Post</span>
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-xl text-sm font-medium hover:bg-violet-100 transition-colors">
+            <button
+              onClick={() => setShowAIModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-xl text-sm font-medium hover:bg-violet-100 transition-colors"
+            >
               <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline">Gerar com IA</span>
             </button>
@@ -312,6 +314,14 @@ export function CalendarClient({
             setSelectedDate(null);
           }}
           onCreated={handlePostCreated}
+        />
+      )}
+
+      {/* Generate with AI Modal */}
+      {showAIModal && (
+        <GenerateWithAIModal
+          onClose={() => setShowAIModal(false)}
+          onPostCreated={handlePostCreated}
         />
       )}
     </div>

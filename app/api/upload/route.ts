@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from "next/server";
+import { put } from "@vercel/blob";
+import { createClient } from "@/lib/supabase/server";
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
+  }
+
+  const form = await request.formData();
+  const file = form.get("file") as File | null;
+  if (!file) {
+    return NextResponse.json({ error: "Nenhum arquivo enviado" }, { status: 400 });
+  }
+
+  // Validate file size (max 100MB)
+  if (file.size > 100 * 1024 * 1024) {
+    return NextResponse.json(
+      { error: "Arquivo muito grande. Maximo 100MB." },
+      { status: 400 }
+    );
+  }
+
+  // Validate file type
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+  ];
+  if (!allowedTypes.includes(file.type)) {
+    return NextResponse.json(
+      { error: "Tipo de arquivo nao suportado" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const ext = file.name.split(".").pop() || "bin";
+    const blob = await put(
+      `social/${user.id}/${Date.now()}.${ext}`,
+      file,
+      { access: "public" }
+    );
+
+    return NextResponse.json({ url: blob.url });
+  } catch (error) {
+    console.error("Upload error:", error);
+    return NextResponse.json(
+      { error: "Erro ao fazer upload" },
+      { status: 500 }
+    );
+  }
+}

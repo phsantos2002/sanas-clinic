@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { X, Image, Video, Layers, Clock, Sparkles } from "lucide-react";
+import { X, Image, Video, Layers, Clock } from "lucide-react";
 import { createSocialPost } from "@/app/actions/social";
+import { FileUpload } from "./FileUpload";
 
 const MEDIA_TYPES = [
   { id: "image", label: "Post Unico", icon: Image },
@@ -38,10 +39,22 @@ export function CreatePostModal({
   const [status, setStatus] = useState<"draft" | "scheduled">("scheduled");
   const [saving, setSaving] = useState(false);
 
+  // Media state
+  const [singleMediaUrl, setSingleMediaUrl] = useState<string | null>(null);
+  const [carouselMediaUrls, setCarouselMediaUrls] = useState<string[]>([]);
+  const [addSubtitles, setAddSubtitles] = useState(false);
+  const [addMusic, setAddMusic] = useState(false);
+
   const togglePlatform = (id: string) => {
     setPlatforms((prev) =>
       prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
     );
+  };
+
+  const getMediaUrls = (): string[] => {
+    if (mediaType === "carousel") return carouselMediaUrls;
+    if (singleMediaUrl) return [singleMediaUrl];
+    return [];
   };
 
   const handleSubmit = async () => {
@@ -60,6 +73,7 @@ export function CreatePostModal({
         .split(/[\s,]+/)
         .map((h) => h.replace(/^#/, "").trim())
         .filter(Boolean),
+      mediaUrls: getMediaUrls(),
       mediaType,
       platforms,
       scheduledAt,
@@ -96,7 +110,11 @@ export function CreatePostModal({
               {MEDIA_TYPES.map((type) => (
                 <button
                   key={type.id}
-                  onClick={() => setMediaType(type.id)}
+                  onClick={() => {
+                    setMediaType(type.id);
+                    setSingleMediaUrl(null);
+                    setCarouselMediaUrls([]);
+                  }}
                   className={`flex flex-col items-center gap-1 p-3 rounded-xl text-xs font-medium transition-all ${
                     mediaType === type.id
                       ? "bg-indigo-50 text-indigo-700 border-2 border-indigo-200"
@@ -124,6 +142,67 @@ export function CreatePostModal({
             />
           </div>
 
+          {/* Media Upload - adapts per content type */}
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-2 block">
+              {mediaType === "reels" ? "Video" : "Midia"}
+            </label>
+
+            {mediaType === "carousel" ? (
+              <FileUpload
+                mode="multi"
+                accept="image/jpeg,image/png,image/webp"
+                value={carouselMediaUrls}
+                onChange={setCarouselMediaUrls}
+                maxFiles={10}
+                hint="Arraste 2-10 imagens para o carrossel"
+              />
+            ) : mediaType === "reels" ? (
+              <div className="space-y-2">
+                <FileUpload
+                  mode="single"
+                  accept="video/mp4,video/quicktime,video/webm"
+                  value={singleMediaUrl}
+                  onChange={(url) => setSingleMediaUrl(url)}
+                  hint="MP4, MOV ou WebM — max 60s para Reels, 3min para Feed"
+                  maxSizeMB={100}
+                />
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={addSubtitles}
+                      onChange={(e) => setAddSubtitles(e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    Legendas automaticas
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={addMusic}
+                      onChange={(e) => setAddMusic(e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    Musica de fundo
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <FileUpload
+                mode="single"
+                accept="image/jpeg,image/png,image/webp"
+                value={singleMediaUrl}
+                onChange={(url) => setSingleMediaUrl(url)}
+                hint={
+                  mediaType === "story"
+                    ? "Imagem vertical 9:16 recomendada"
+                    : "Imagem quadrada 1:1 ou 4:5 recomendada"
+                }
+              />
+            )}
+          </div>
+
           {/* Caption */}
           <div>
             <label className="text-sm font-medium text-slate-700 mb-1 block">
@@ -132,7 +211,7 @@ export function CreatePostModal({
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="Escreva a legenda do post ou descreva a ideia para a IA gerar..."
+              placeholder="Escreva a legenda do post..."
               rows={4}
               className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
             />
