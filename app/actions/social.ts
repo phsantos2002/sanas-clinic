@@ -368,3 +368,26 @@ export async function getSocialStats() {
 
   return { totalPosts, publishedPosts, scheduledPosts, draftPosts, connections };
 }
+
+// ── Smart Scheduling ─────────────────────────────────────────
+
+export async function getBestPostingTimes() {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  const { suggestBestTimes } = await import("@/services/contentSuggestion");
+  return suggestBestTimes(user.id);
+}
+
+// ── Manual trigger: generate weekly suggestions ──────────────
+
+export async function triggerWeeklySuggestions(): Promise<ActionResult<{ generated: number }>> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Nao autenticado" };
+
+  const { generateWeeklyContentSuggestions } = await import("@/services/contentSuggestion");
+  const result = await generateWeeklyContentSuggestions(user.id);
+
+  revalidatePath("/dashboard/social");
+  return { success: true, data: { generated: result.generated } };
+}
