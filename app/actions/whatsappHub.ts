@@ -209,7 +209,7 @@ export async function deleteMessageTemplate(id: string): Promise<ActionResult> {
 /**
  * Resolve a template with lead placeholders
  */
-export function resolveTemplate(template: string, leadName: string, clinicName: string): string {
+export async function resolveTemplate(template: string, leadName: string, clinicName: string): Promise<string> {
   return template
     .replace(/\{\{nome\}\}/gi, leadName.split(" ")[0])
     .replace(/\{\{nome_completo\}\}/gi, leadName)

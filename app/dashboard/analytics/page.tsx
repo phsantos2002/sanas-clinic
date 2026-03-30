@@ -3,20 +3,27 @@ import { getLeadSourceStats } from "@/app/actions/leads";
 import { getCurrentUser } from "@/app/actions/user";
 import { listCampaignsForSelector } from "@/app/actions/meta";
 import { getAllCampaignConfigs } from "@/app/actions/pixel";
+import { getAdvancedFunnel, getLTVBySource, getCACByChannel, getScoreDistribution, getAIUsageReport } from "@/app/actions/advancedAnalytics";
 import { prisma } from "@/lib/prisma";
 import { AnalyticsClient } from "@/components/dashboard/AnalyticsClient";
 import { AdCreativeReportTable } from "@/components/dashboard/AdCreativeReportTable";
+import { AdvancedAnalyticsSection } from "@/components/dashboard/AdvancedAnalyticsSection";
 
 export default async function AnalyticsPage() {
-  const [data, sourceStats, creatives, user] = await Promise.all([
+  const [data, sourceStats, creatives, user, funnel, ltv, cac, scores, aiUsage] = await Promise.all([
     getAnalytics(),
     getLeadSourceStats(),
     getAdCreativeReport(),
     getCurrentUser(),
+    getAdvancedFunnel(),
+    getLTVBySource(),
+    getCACByChannel(),
+    getScoreDistribution(),
+    getAIUsageReport(),
   ]);
 
   if (!data) {
-    return <div className="text-center text-zinc-500 py-12">Erro ao carregar métricas.</div>;
+    return <div className="text-center text-zinc-500 py-12">Erro ao carregar metricas.</div>;
   }
 
   let pixelConfig: {
@@ -27,7 +34,6 @@ export default async function AnalyticsPage() {
     conversionValue: number | null;
   } | null = null;
 
-  // Fetch campaigns list and per-campaign configs for selector
   const [campaignsList, campaignConfigs] = await Promise.all([
     listCampaignsForSelector(),
     getAllCampaignConfigs(),
@@ -49,7 +55,6 @@ export default async function AnalyticsPage() {
     }
   }
 
-  // Build config map for campaign selector
   const configMap: Record<string, { bidStrategy: string | null; campaignObjective: string | null; businessSegment: string | null }> = {};
   for (const cfg of campaignConfigs) {
     configMap[cfg.campaignId] = {
@@ -69,6 +74,15 @@ export default async function AnalyticsPage() {
         campaignConfigMap={configMap}
       />
       {creatives.length > 0 && <AdCreativeReportTable creatives={creatives} />}
+
+      {/* Advanced Analytics */}
+      <AdvancedAnalyticsSection
+        funnel={funnel}
+        ltv={ltv}
+        cac={cac}
+        scores={scores}
+        aiUsage={aiUsage}
+      />
     </div>
   );
 }
