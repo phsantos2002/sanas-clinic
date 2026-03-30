@@ -103,6 +103,66 @@ export async function saveSocialConnection(data: {
   }
 }
 
+export async function testSocialConnection(platform: string, accessToken: string, pageId?: string): Promise<ActionResult<{ name: string; picture?: string }>> {
+  try {
+    if (platform === "instagram" || platform === "facebook") {
+      // Test Meta Graph API token
+      const res = await fetch(
+        `https://graph.facebook.com/v18.0/me?fields=name,picture&access_token=${accessToken}`
+      );
+      const data = await res.json();
+      if (data.error) {
+        return { success: false, error: data.error.message || "Token invalido" };
+      }
+
+      // If Instagram, check for IG business account on the page
+      if (platform === "instagram" && pageId) {
+        const igRes = await fetch(
+          `https://graph.facebook.com/v18.0/${pageId}?fields=instagram_business_account{name,profile_picture_url}&access_token=${accessToken}`
+        );
+        const igData = await igRes.json();
+        if (igData.error) {
+          return { success: false, error: "Page ID invalido ou sem Instagram Business vinculado" };
+        }
+        const igAccount = igData.instagram_business_account;
+        if (!igAccount) {
+          return { success: false, error: "Nenhuma conta Instagram Business encontrada nesta Page" };
+        }
+        return {
+          success: true,
+          data: { name: igAccount.name || data.name, picture: igAccount.profile_picture_url },
+        };
+      }
+
+      return {
+        success: true,
+        data: { name: data.name, picture: data.picture?.data?.url },
+      };
+    }
+
+    if (platform === "google_business") {
+      // Test Google Business Profile API
+      const res = await fetch(
+        "https://mybusinessaccountmanagement.googleapis.com/v1/accounts",
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const data = await res.json();
+      if (data.error) {
+        return { success: false, error: data.error.message || "Token invalido" };
+      }
+      const account = data.accounts?.[0];
+      return {
+        success: true,
+        data: { name: account?.accountName || "Google Business" },
+      };
+    }
+
+    return { success: true, data: { name: platform } };
+  } catch {
+    return { success: false, error: "Erro ao testar conexao" };
+  }
+}
+
 export async function disconnectPlatform(platform: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
