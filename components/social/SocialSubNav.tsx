@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Images, Link2, BarChart3 } from "lucide-react";
+import { CalendarDays, Images, Link2, BarChart3, Clapperboard } from "lucide-react";
 
 const subNavItems = [
   { href: "/dashboard/social/calendar", label: "Calendario", icon: CalendarDays },
   { href: "/dashboard/social/posts", label: "Posts", icon: Images },
+  { href: "/dashboard/social/studio", label: "Studio", icon: Clapperboard },
   { href: "/dashboard/social/connect", label: "Conexoes", icon: Link2 },
   { href: "/dashboard/social/analytics", label: "Analytics", icon: BarChart3 },
 ];

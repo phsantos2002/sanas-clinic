@@ -30,6 +30,7 @@ model User {
   attendants        Attendant[]
   messageTemplates  MessageTemplate[]
   broadcastCampaigns BroadcastCampaign[]
+  stories           Story[]
 }
 
 model AIConfig {
@@ -463,5 +464,120 @@ model AIAgentChat {
 
   @@index([userId])
   @@index([userId, agentType])
+}
+
+// ── Video Storyboard Pipeline ────────────────────────────────
+
+model Story {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  status          String   @default("draft")     // draft|scripting|script_review|characters|char_review|storyboarding|storyboard_review|video_generating|video_review|concatenating|completed|published|failed
+  currentStage    String   @default("script")    // script|characters|storyboard|video|concat|publish
+  videoType       String   @default("reel")      // reel|story|tiktok|youtube_short|carousel|post
+  targetDuration  Int      @default(30)
+  tone            String?                         // educativo|vendas|bastidores|humor|autoridade
+  targetAudience  String?
+  niche           String   @default("clinica_estetica")
+  scriptRaw       String?
+  scriptJson      Json?
+  finalVideoUrl   String?
+  thumbnailUrl    String?
+  caption         String?
+  hashtags        String?
+  platforms       String[]                        // ["instagram","facebook","tiktok"]
+  scheduledAt     DateTime?
+  publishedAt     DateTime?
+  // Metricas pos-publicacao
+  likes           Int      @default(0)
+  comments        Int      @default(0)
+  shares          Int      @default(0)
+  views           Int      @default(0)
+  saves           Int      @default(0)
+  reach           Int      @default(0)
+  // Relacoes
+  chatMessages    StoryChatMessage[]
+  characters      StoryCharacter[]
+  frames          StoryboardFrame[]
+  videoClips      VideoClip[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+}
+
+model StoryChatMessage {
+  id        String   @id @default(cuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  role      String   // "user"|"assistant"|"system"
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([storyId, createdAt])
+}
+
+model StoryCharacter {
+  id          String   @id @default(cuid())
+  storyId     String
+  story       Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  name        String
+  description String
+  role        String?  // "protagonista"|"paciente"|"narrador"
+  imageUrl    String?
+  imagePrompt String?
+  imageStatus String   @default("pending") // "pending"|"generating"|"done"|"error"
+  isApproved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([storyId])
+}
+
+model StoryboardFrame {
+  id                String   @id @default(cuid())
+  storyId           String
+  story             Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  order             Int
+  sceneTitle        String
+  narration         String
+  visualDescription String
+  duration          Int      @default(3)
+  cameraDirection   String?  // "close-up"|"wide"|"POV"|"detail"|"aerial"
+  transition        String?  // "cut"|"fade"|"zoom-in"|"swipe"
+  textOverlay       String?
+  imageUrl          String?
+  imagePrompt       String?
+  imageStatus       String   @default("pending") // "pending"|"generating"|"done"|"error"
+  imageProvider     String?
+  isApproved        Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([storyId, order])
+}
+
+model VideoClip {
+  id             String   @id @default(cuid())
+  storyId        String
+  story          Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  order          Int
+  startFrameId   String
+  endFrameId     String
+  videoUrl       String?
+  clipStatus     String   @default("pending") // "pending"|"generating"|"done"|"error"
+  provider       String?  // "kling"|"runway"|"luma"
+  model          String?
+  mode           String?  // "standard"|"pro"
+  duration       Int      @default(5)
+  externalTaskId String?
+  isApproved     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([storyId, order])
 }
 

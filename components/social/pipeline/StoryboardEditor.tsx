@@ -1,0 +1,131 @@
+"use client";
+
+import { useState } from "react";
+import { LayoutGrid, RefreshCw, Check, Loader2, Camera, Clock, Type, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+import { generateStoryboardFrames, regenerateFrame, approveAllFrames } from "@/app/actions/pipeline";
+
+type Frame = {
+  id: string; order: number; sceneTitle: string; narration: string; visualDescription: string;
+  duration: number; cameraDirection: string | null; transition: string | null; textOverlay: string | null;
+  imageUrl: string | null; imageStatus: string; isApproved: boolean;
+};
+
+export function StoryboardEditor({ storyId, frames, status }: {
+  storyId: string; frames: Frame[]; status: string;
+}) {
+  const [generating, setGenerating] = useState(false);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+
+  const handleGenerateAll = async () => {
+    setGenerating(true);
+    const result = await generateStoryboardFrames(storyId);
+    setGenerating(false);
+    if (result.success) { toast.success("Frames gerados!"); window.location.reload(); }
+    else toast.error(result.success ? "Erro" : result.error);
+  };
+
+  const handleRegenerate = async (frameId: string) => {
+    setRegeneratingId(frameId);
+    const result = await regenerateFrame(frameId);
+    setRegeneratingId(null);
+    if (result.success) { toast.success("Frame regenerado!"); window.location.reload(); }
+    else toast.error(result.success ? "Erro" : result.error);
+  };
+
+  const handleApproveAll = async () => {
+    const result = await approveAllFrames(storyId);
+    if (result.success) { toast.success("Aprovados! Proximo: gerar video."); window.location.reload(); }
+  };
+
+  const allDone = frames.length > 0 && frames.every((f) => f.imageStatus === "done");
+  const hasPending = frames.some((f) => f.imageStatus === "pending");
+  const doneCount = frames.filter((f) => f.imageStatus === "done").length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <LayoutGrid className="h-5 w-5 text-violet-600" />
+          <h3 className="font-semibold text-slate-900 text-sm">
+            Storyboard ({doneCount}/{frames.length} frames)
+          </h3>
+        </div>
+        <div className="flex gap-2">
+          {hasPending && (
+            <button onClick={handleGenerateAll} disabled={generating}
+              className="px-3 py-1.5 bg-violet-600 text-white rounded-xl text-xs font-medium hover:bg-violet-700 disabled:opacity-50">
+              {generating ? `Gerando ${doneCount}/${frames.length}...` : "Gerar Todos os Frames"}
+            </button>
+          )}
+          {allDone && (status === "storyboard_review" || status === "storyboarding") && (
+            <button onClick={handleApproveAll}
+              className="px-3 py-1.5 bg-green-600 text-white rounded-xl text-xs font-medium hover:bg-green-700 flex items-center gap-1">
+              <Check className="h-3 w-3" /> Aprovar Tudo e Gerar Video
+            </button>
+          )}
+        </div>
+      </div>
+
+      {frames.length === 0 ? (
+        <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center">
+          <LayoutGrid className="h-10 w-10 text-slate-200 mx-auto mb-2" />
+          <p className="text-sm text-slate-400">Gere o roteiro primeiro para criar o storyboard.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {frames.map((frame) => (
+            <div key={frame.id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden group">
+              {/* Image */}
+              <div className="h-44 bg-slate-50 flex items-center justify-center relative">
+                {frame.imageUrl ? (
+                  <img src={frame.imageUrl} alt={frame.sceneTitle} className="w-full h-full object-cover" />
+                ) : frame.imageStatus === "generating" ? (
+                  <Loader2 className="h-8 w-8 text-violet-400 animate-spin" />
+                ) : frame.imageStatus === "error" ? (
+                  <AlertCircle className="h-8 w-8 text-red-300" />
+                ) : (
+                  <LayoutGrid className="h-8 w-8 text-slate-200" />
+                )}
+                <span className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">
+                  Cena {frame.order + 1}
+                </span>
+                {frame.isApproved && (
+                  <span className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5">
+                    <Check className="h-3 w-3" />
+                  </span>
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="p-3 space-y-1.5">
+                <h4 className="font-medium text-slate-900 text-sm">{frame.sceneTitle}</h4>
+                <p className="text-xs text-slate-500 line-clamp-2">{frame.narration}</p>
+
+                <div className="flex items-center gap-3 text-[10px] text-slate-400">
+                  {frame.cameraDirection && (
+                    <span className="flex items-center gap-0.5"><Camera className="h-2.5 w-2.5" />{frame.cameraDirection}</span>
+                  )}
+                  <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{frame.duration}s</span>
+                  {frame.textOverlay && (
+                    <span className="flex items-center gap-0.5"><Type className="h-2.5 w-2.5" />{frame.textOverlay}</span>
+                  )}
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => handleRegenerate(frame.id)}
+                    disabled={regeneratingId === frame.id}
+                    className="text-xs text-slate-500 hover:text-violet-600 flex items-center gap-1"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${regeneratingId === frame.id ? "animate-spin" : ""}`} /> Regenerar
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
