@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { generateAIReply } from "@/services/aiChat";
 import { sendFacebookEvent } from "@/services/facebookEvents";
 import { getAIConfigByUserId } from "@/app/actions/aiConfig";
+import { fireTrigger } from "@/services/workflowEngine";
 
 type AdAttribution = {
   adId?: string | null;
@@ -40,6 +41,7 @@ export async function processIncomingMessage(params: {
   if (existingMsg) return;
 
   // ── Find or create lead ───────────────────────────────────
+  let isNewLead = false;
   let lead = await prisma.lead.findFirst({
     where: { userId, phone },
     include: {
@@ -57,6 +59,7 @@ export async function processIncomingMessage(params: {
     const isFromAd = !!(attribution?.adId || attribution?.campaignId);
 
     try {
+      isNewLead = true;
       lead = await prisma.$transaction(async (tx) => {
         const created = await tx.lead.create({
           data: {
@@ -99,6 +102,11 @@ export async function processIncomingMessage(params: {
       });
       if (!lead) throw new Error("Failed to find or create lead");
     }
+  }
+
+  // Fire new_lead workflow trigger (non-blocking)
+  if (isNewLead) {
+    fireTrigger(userId, "new_lead", lead.id).catch(() => {});
   }
 
   // ── Update attribution if missing ─────────────────────────
@@ -190,6 +198,9 @@ export async function processIncomingMessage(params: {
         leadId: lead.id,
         stageName: newStage.name,
       }).catch(() => {});
+
+      // Fire stage_change workflow trigger
+      fireTrigger(userId, "stage_change", lead.id, { stageId: newStage.id }).catch(() => {});
     }
   }
 }

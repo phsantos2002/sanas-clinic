@@ -402,3 +402,49 @@ model BroadcastCampaign {
   @@index([userId])
 }
 
+// ── Automações Visuais (Workflows) ───────────────────────────
+
+model Workflow {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  trigger     Json     // { type: "new_lead" | "stage_change" | "inactivity" | "tag_added" | "score_change", config: {} }
+  steps       WorkflowStep[]
+  executions  WorkflowExecution[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, isActive])
+}
+
+model WorkflowStep {
+  id          String   @id @default(cuid())
+  workflowId  String
+  workflow    Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  order       Int
+  type        String   // "condition" | "action" | "delay"
+  config      Json     // depends on type — see WorkflowEngine
+  createdAt   DateTime @default(now())
+
+  @@index([workflowId])
+}
+
+model WorkflowExecution {
+  id          String   @id @default(cuid())
+  workflowId  String
+  workflow    Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  leadId      String
+  status      String   @default("running") // "running" | "completed" | "failed" | "skipped"
+  currentStep Int      @default(0)
+  logs        Json?    // [{ step, action, result, timestamp }]
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([workflowId])
+  @@index([leadId])
+  @@index([status])
+}
+

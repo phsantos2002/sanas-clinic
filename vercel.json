@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/reactivate-leads",
       "schedule": "0 10 * * 1-5"
+    },
+    {
+      "path": "/api/cron/run-workflows",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
