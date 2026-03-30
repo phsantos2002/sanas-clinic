@@ -51,8 +51,12 @@ model AIConfig {
   // ── AI Content Generation providers ──
   aiImageProvider String?  @default("openai")  // "openai" | "replicate" | "fal"
   aiImageApiKey   String?                      // Replicate or Fal.ai key (OpenAI reuses apiKey)
-  aiVideoProvider String?  @default("none")    // "replicate" | "fal" | "none"
+  aiVideoProvider String?  @default("none")    // "replicate" | "fal" | "kling" | "none"
   aiVideoApiKey   String?                      // separate key if different provider
+  // ── Video Pipeline extras ──
+  klingApiKey     String?                      // Kling AI API key (direct)
+  runwayApiKey    String?                      // Runway ML API key
+  shotstackApiKey String?                      // Shotstack API key (video concat)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
