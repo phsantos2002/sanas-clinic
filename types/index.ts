@@ -39,6 +39,10 @@ export type Lead = {
   platform: string | null;
   referrer: string | null;
   aiEnabled: boolean;
+  score: number;
+  scoreLabel: string | null;
+  tags: string[];
+  lastInteractionAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

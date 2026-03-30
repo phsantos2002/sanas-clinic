@@ -118,10 +118,16 @@ export async function processIncomingMessage(params: {
     });
   }
 
-  // ── Save incoming message ─────────────────────────────────
-  await prisma.message.create({
-    data: { leadId: lead.id, role: "user", content: text },
-  });
+  // ── Save incoming message + update lastInteractionAt ─────
+  await prisma.$transaction([
+    prisma.message.create({
+      data: { leadId: lead.id, role: "user", content: text },
+    }),
+    prisma.lead.update({
+      where: { id: lead.id },
+      data: { lastInteractionAt: new Date() },
+    }),
+  ]);
 
   if (!lead.aiEnabled) return;
 

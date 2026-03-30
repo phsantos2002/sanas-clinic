@@ -105,6 +105,12 @@ model Lead {
   metaAdSetId    String?            // adset_id numérico da Meta
   metaCampaignId String?            // campaign_id numérico da Meta
   pixelEvents    PixelEvent[]
+  // ── Lead Scoring & Tags ──
+  score              Int        @default(0)     // 0-100
+  scoreLabel         String?                    // "frio" | "morno" | "quente" | "vip"
+  tags               String[]                   // ["vip", "retorno", "indicacao"]
+  lastInteractionAt  DateTime?                  // última msg ou mudança de stage
+  reactivationSentAt DateTime?                  // última msg de reativação enviada
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -112,6 +118,7 @@ model Lead {
   @@index([userId, phone])
   @@index([stageId])
   @@index([userId, createdAt])
+  @@index([userId, score])
 }
 
 model Message {

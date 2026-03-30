@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Phone, MoreHorizontal, MessageCircle, Eye, Trash2 } from "lucide-react";
+import { GripVertical, Phone, MoreHorizontal, MessageCircle, Eye, Trash2, Flame, Snowflake, Zap, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -83,21 +83,51 @@ export function LeadCard({ lead, onClickLead }: Props) {
             <p className="text-[10px] text-slate-400 mt-0.5 truncate">{lead.email}</p>
           )}
 
-          {config && (
-            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-              <div className={`flex items-center justify-center w-5 h-5 rounded ${config.bg}`}>
-                <SourceIcon source={lead.source} size={12} />
-              </div>
-              <span className={`text-[10px] font-medium ${config.text}`}>
-                {config.label}
-              </span>
-              {lead.campaign && (
-                <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded truncate max-w-[120px]" title={lead.campaign}>
-                  {lead.campaign}
+          {/* Source + Score + Tags */}
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            {config && (
+              <>
+                <div className={`flex items-center justify-center w-5 h-5 rounded ${config.bg}`}>
+                  <SourceIcon source={lead.source} size={12} />
+                </div>
+                <span className={`text-[10px] font-medium ${config.text}`}>
+                  {config.label}
                 </span>
-              )}
-            </div>
-          )}
+              </>
+            )}
+            {lead.campaign && (
+              <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded truncate max-w-[100px]" title={lead.campaign}>
+                {lead.campaign}
+              </span>
+            )}
+            {/* Score badge */}
+            {lead.score > 0 && (
+              <span
+                className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                  lead.scoreLabel === "vip"
+                    ? "bg-amber-100 text-amber-700"
+                    : lead.scoreLabel === "quente"
+                    ? "bg-red-100 text-red-600"
+                    : lead.scoreLabel === "morno"
+                    ? "bg-orange-100 text-orange-600"
+                    : "bg-blue-100 text-blue-600"
+                }`}
+                title={`Score: ${lead.score}/100`}
+              >
+                {lead.scoreLabel === "vip" ? <Crown className="h-2.5 w-2.5" /> :
+                 lead.scoreLabel === "quente" ? <Flame className="h-2.5 w-2.5" /> :
+                 lead.scoreLabel === "morno" ? <Zap className="h-2.5 w-2.5" /> :
+                 <Snowflake className="h-2.5 w-2.5" />}
+                {lead.score}
+              </span>
+            )}
+            {/* Tags */}
+            {lead.tags?.slice(0, 2).map((tag) => (
+              <span key={tag} className="text-[10px] bg-violet-50 text-violet-600 px-1.5 py-0.5 rounded">
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
 
         <DropdownMenu onOpenChange={(open) => { if (!open) setConfirmDelete(false); }}>

@@ -379,3 +379,140 @@ export async function deleteLead(leadId: string): Promise<ActionResult> {
     return { success: false, error: "Erro ao deletar lead" };
   }
 }
+
+// ── Tags ─────────────────────────────────────────────────────
+
+export async function addLeadTag(leadId: string, tag: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Nao autenticado" };
+
+  const lead = await prisma.lead.findFirst({
+    where: { id: leadId, userId: user.id },
+    select: { tags: true },
+  });
+  if (!lead) return { success: false, error: "Lead nao encontrado" };
+
+  const normalized = tag.toLowerCase().trim();
+  if (lead.tags.includes(normalized)) return { success: true };
+
+  await prisma.lead.update({
+    where: { id: leadId },
+    data: { tags: [...lead.tags, normalized] },
+  });
+
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function removeLeadTag(leadId: string, tag: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Nao autenticado" };
+
+  const lead = await prisma.lead.findFirst({
+    where: { id: leadId, userId: user.id },
+    select: { tags: true },
+  });
+  if (!lead) return { success: false, error: "Lead nao encontrado" };
+
+  await prisma.lead.update({
+    where: { id: leadId },
+    data: { tags: lead.tags.filter((t) => t !== tag.toLowerCase().trim()) },
+  });
+
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+// ── Lead Timeline (unified) ──────────────────────────────────
+
+export type TimelineEvent = {
+  id: string;
+  type: "message" | "stage_change" | "pixel_event" | "created";
+  title: string;
+  description?: string;
+  timestamp: Date;
+  metadata?: Record<string, string>;
+};
+
+export async function getLeadTimeline(leadId: string): Promise<TimelineEvent[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  const lead = await prisma.lead.findFirst({
+    where: { id: leadId, userId: user.id },
+    include: {
+      messages: { orderBy: { createdAt: "desc" }, take: 30 },
+      stageHistory: { include: { stage: true }, orderBy: { createdAt: "desc" } },
+      pixelEvents: { orderBy: { createdAt: "desc" }, take: 20 },
+    },
+  });
+  if (!lead) return [];
+
+  const events: TimelineEvent[] = [];
+
+  // Created event
+  events.push({
+    id: `created-${lead.id}`,
+    type: "created",
+    title: "Lead criado",
+    description: lead.source ? `Fonte: ${lead.source}` : undefined,
+    timestamp: lead.createdAt,
+  });
+
+  // Messages
+  for (const msg of lead.messages) {
+    events.push({
+      id: `msg-${msg.id}`,
+      type: "message",
+      title: msg.role === "user" ? "Mensagem recebida" : "Mensagem enviada",
+      description: msg.content.slice(0, 100) + (msg.content.length > 100 ? "..." : ""),
+      timestamp: msg.createdAt,
+      metadata: { role: msg.role },
+    });
+  }
+
+  // Stage changes
+  for (const sh of lead.stageHistory) {
+    events.push({
+      id: `stage-${sh.id}`,
+      type: "stage_change",
+      title: `Movido para "${sh.stage.name}"`,
+      description: `Evento: ${sh.stage.eventName}`,
+      timestamp: sh.createdAt,
+      metadata: { stageName: sh.stage.name, eventName: sh.stage.eventName },
+    });
+  }
+
+  // Pixel events
+  for (const pe of lead.pixelEvents) {
+    events.push({
+      id: `pixel-${pe.id}`,
+      type: "pixel_event",
+      title: `Pixel: ${pe.eventName}`,
+      description: `Plataforma: ${pe.platform} — ${pe.success ? "Sucesso" : "Falhou"}`,
+      timestamp: pe.createdAt,
+      metadata: { eventName: pe.eventName, platform: pe.platform },
+    });
+  }
+
+  // Sort by timestamp descending
+  events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+  return events;
+}
+
+// ── Recalculate single lead score ────────────────────────────
+
+export async function refreshLeadScore(leadId: string): Promise<ActionResult<{ score: number; label: string }>> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Nao autenticado" };
+
+  const lead = await prisma.lead.findFirst({ where: { id: leadId, userId: user.id } });
+  if (!lead) return { success: false, error: "Lead nao encontrado" };
+
+  const { recalculateLeadScore } = await import("@/services/leadScoring");
+  const result = await recalculateLeadScore(leadId);
+
+  revalidatePath("/dashboard");
+  return { success: true, data: result };
+}
