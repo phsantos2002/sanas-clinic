@@ -27,6 +27,9 @@ model User {
   campaignConfigs CampaignConfig[]
   socialConnections SocialConnection[]
   socialPosts       SocialPost[]
+  attendants        Attendant[]
+  messageTemplates  MessageTemplate[]
+  broadcastCampaigns BroadcastCampaign[]
 }
 
 model AIConfig {
@@ -111,6 +114,8 @@ model Lead {
   tags               String[]                   // ["vip", "retorno", "indicacao"]
   lastInteractionAt  DateTime?                  // última msg ou mudança de stage
   reactivationSentAt DateTime?                  // última msg de reativação enviada
+  // ── Multi-attendant ──
+  assignedTo         String?                    // attendant id
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -341,5 +346,59 @@ model AiUsageLog {
 
   @@index([userId])
   @@index([userId, createdAt])
+}
+
+// ── WhatsApp Hub: Multi-attendant ────────────────────────────
+
+model Attendant {
+  id        String   @id @default(cuid())
+  userId    String                         // owner user
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  email     String?
+  phone     String?
+  role      String   @default("attendant") // "admin" | "attendant"
+  isActive  Boolean  @default(true)
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String                         // "Saudacao", "Follow-up", "Agendamento"
+  category  String   @default("geral")     // "saudacao" | "follow_up" | "agendamento" | "promo" | "geral"
+  content   String                         // Texto com {{nome}}, {{clinica}} placeholders
+  shortcut  String?                        // "/oi", "/agenda", "/promo"
+  isActive  Boolean  @default(true)
+  usageCount Int     @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@unique([userId, shortcut])
+}
+
+model BroadcastCampaign {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  message      String                      // Message text (supports {{nome}} placeholder)
+  filters      Json?                       // { tags: [], scoreMin: 0, stageIds: [], source: "" }
+  totalLeads   Int      @default(0)
+  sentCount    Int      @default(0)
+  failedCount  Int      @default(0)
+  status       String   @default("draft")  // "draft" | "sending" | "completed" | "failed"
+  scheduledAt  DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
 }
 
