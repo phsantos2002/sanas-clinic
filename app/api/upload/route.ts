@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -9,6 +10,11 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
+  }
+
+  const rl = rateLimit(`upload:${user.id}`, RATE_LIMITS.upload);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Muitas requisicoes. Tente novamente em breve." }, { status: 429 });
   }
 
   const form = await request.formData();

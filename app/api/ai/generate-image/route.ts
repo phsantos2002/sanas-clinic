@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
+import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -10,6 +11,11 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!authUser) {
     return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
+  }
+
+  const rl = rateLimit(`ai:${authUser.id}`, RATE_LIMITS.ai);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Muitas requisicoes. Tente novamente em breve." }, { status: 429 });
   }
 
   const dbUser = await prisma.user.findUnique({

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generateAIReply } from "@/services/aiChat";
 import { sendMessage } from "@/services/whatsappService";
-import { sendFacebookEvent } from "@/services/facebookEvents";
-import { getAIConfigByUserId } from "@/app/actions/aiConfig";
+import { processIncomingMessage } from "@/services/webhookProcessor";
 
 // Meta WhatsApp Cloud API webhook payload
 type MetaEntry = {
@@ -38,10 +36,7 @@ type MetaEntry = {
   }[];
 };
 
-type MetaPayload = {
-  object: string;
-  entry: MetaEntry[];
-};
+type MetaPayload = { object: string; entry: MetaEntry[] };
 
 // GET — webhook verification by Meta
 export async function GET(req: NextRequest) {
@@ -54,17 +49,13 @@ export async function GET(req: NextRequest) {
     const config = await prisma.whatsAppConfig.findFirst({
       where: { verifyToken: token ?? "" },
     });
-
-    if (config) {
-      return new Response(challenge, { status: 200 });
-    }
+    if (config) return new Response(challenge, { status: 200 });
   }
 
   return new Response("Forbidden", { status: 403 });
 }
 
 export async function POST(req: NextRequest) {
-  // Always return 200 to Meta — returning 500 causes infinite retry storm
   try {
     const body = (await req.json()) as MetaPayload;
 
@@ -81,7 +72,6 @@ export async function POST(req: NextRequest) {
         const messages = value.messages;
         if (!messages?.length) continue;
 
-        // Find which user owns this phone number
         const whatsappConfig = await prisma.whatsAppConfig.findFirst({
           where: { phoneNumberId },
         });
@@ -90,19 +80,28 @@ export async function POST(req: NextRequest) {
         for (const msg of messages) {
           if (msg.type !== "text" || !msg.text?.body?.trim()) continue;
 
-          const text = msg.text.body.trim();
-          const phone = msg.from;
-          const pushName = value.contacts?.[0]?.profile?.name ?? "";
-
-          // Extract Meta Ads referral data (Click-to-WhatsApp ads)
-          const referral = msg.referral ?? undefined;
+          const referral = msg.referral;
 
           try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await processMessage(whatsappConfig as any, msg.id, phone, text, pushName, referral);
+            await processIncomingMessage({
+              userId: whatsappConfig.userId,
+              phone: msg.from,
+              text: msg.text.body.trim(),
+              pushName: value.contacts?.[0]?.profile?.name ?? "",
+              attribution: referral
+                ? {
+                    adId: referral.ad_id,
+                    adSetId: referral.ads_context_metadata?.adset_id,
+                    campaignId: referral.ads_context_metadata?.campaign_id,
+                    adName: referral.ads_context_metadata?.ad_title,
+                    campaignName: referral.headline,
+                  }
+                : undefined,
+              sendReply: (phone, text) =>
+                sendMessage(whatsappConfig, phone, text),
+            });
           } catch (err) {
             console.error(`[webhook] Erro processando msg ${msg.id}:`, err);
-            // Continue processing other messages even if one fails
           }
         }
       }
@@ -111,230 +110,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[whatsapp webhook] Erro no parse:", err);
-    // Return 200 even on error to prevent Meta retry storm
     return NextResponse.json({ ok: true });
-  }
-}
-
-type ReferralData = {
-  source_url?: string;
-  source_type?: string;
-  source_id?: string;
-  headline?: string;
-  body?: string;
-  ad_id?: string;
-  ads_context_metadata?: {
-    ad_title?: string;
-    adset_id?: string;
-    campaign_id?: string;
-  };
-};
-
-async function processMessage(
-  whatsappConfig: {
-    userId: string;
-    provider: string;
-    phoneNumberId: string;
-    accessToken: string;
-    uazapiServerUrl: string | null;
-    uazapiInstanceToken: string | null;
-  },
-  _metaMsgId: string,
-  phone: string,
-  text: string,
-  pushName: string,
-  referral?: ReferralData,
-) {
-  // Deduplication: check if we already processed this Meta message ID
-  const phoneSuffix = phone.slice(-9);
-  const existingMsg = await prisma.message.findFirst({
-    where: {
-      content: text,
-      role: "user",
-      lead: {
-        userId: whatsappConfig.userId,
-        phone: { endsWith: phoneSuffix },
-      },
-      createdAt: { gte: new Date(Date.now() - 60_000) }, // within last 60s
-    },
-  });
-  if (existingMsg) return; // Already processed, skip duplicate
-
-  // Find or create lead (upsert-like to avoid race conditions)
-  let lead = await prisma.lead.findFirst({
-    where: {
-      userId: whatsappConfig.userId,
-      phone: { endsWith: phoneSuffix },
-    },
-    include: {
-      messages: { orderBy: { createdAt: "asc" } },
-      stage: true,
-    },
-  });
-
-  if (!lead) {
-    const firstStage = await prisma.stage.findFirst({
-      where: { userId: whatsappConfig.userId },
-      orderBy: { order: "asc" },
-    });
-
-    try {
-      const isFromAd = !!referral?.ad_id;
-      const created = await prisma.lead.create({
-        data: {
-          name: pushName || phone,
-          phone,
-          userId: whatsappConfig.userId,
-          stageId: firstStage?.id ?? null,
-          source: isFromAd ? "meta" : "whatsapp",
-          platform: "whatsapp",
-          medium: isFromAd ? "cpc" : "organic",
-          metaAdId: referral?.ad_id ?? null,
-          metaAdSetId: referral?.ads_context_metadata?.adset_id ?? null,
-          metaCampaignId: referral?.ads_context_metadata?.campaign_id ?? null,
-          adName: referral?.ads_context_metadata?.ad_title ?? null,
-          campaign: referral?.headline ?? null,
-        },
-        include: {
-          messages: { orderBy: { createdAt: "asc" } },
-          stage: true,
-        },
-      });
-
-      if (firstStage) {
-        await prisma.leadStageHistory.create({
-          data: { leadId: created.id, stageId: firstStage.id },
-        });
-      }
-
-      lead = created;
-    } catch {
-      // Race condition: another webhook already created this lead
-      lead = await prisma.lead.findFirst({
-        where: {
-          userId: whatsappConfig.userId,
-          phone: { endsWith: phoneSuffix },
-        },
-        include: {
-          messages: { orderBy: { createdAt: "asc" } },
-          stage: true,
-        },
-      });
-      if (!lead) throw new Error("Failed to find or create lead");
-    }
-  }
-
-  // If lead came from a Meta ad and doesn't have ad IDs yet, update them
-  if (referral?.ad_id && !lead.metaAdId) {
-    await prisma.lead.update({
-      where: { id: lead.id },
-      data: {
-        source: "meta",
-        medium: "cpc",
-        metaAdId: referral.ad_id,
-        metaAdSetId: referral.ads_context_metadata?.adset_id ?? null,
-        metaCampaignId: referral.ads_context_metadata?.campaign_id ?? null,
-        adName: referral.ads_context_metadata?.ad_title ?? lead.adName,
-        campaign: referral.headline ?? lead.campaign,
-      },
-    });
-  }
-
-  // Resolve campaign name from Meta API in background (non-blocking)
-  const campaignId = referral?.ads_context_metadata?.campaign_id ?? lead.metaCampaignId;
-  if (campaignId && (!lead.campaign || lead.campaign === referral?.headline)) {
-    resolveMetaCampaignName(lead.id, campaignId, whatsappConfig.userId).catch(() => {});
-  }
-
-  // Save incoming message
-  await prisma.message.create({
-    data: { leadId: lead.id, role: "user", content: text },
-  });
-
-  if (!lead.aiEnabled) return;
-
-  // Load AI config
-  const aiConfig = await getAIConfigByUserId(lead.userId);
-  if (!aiConfig?.apiKey) return;
-
-  // Build conversation history
-  const history = [
-    ...lead.messages.map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    })),
-    { role: "user" as const, content: text },
-  ];
-
-  const { reply, newStageEventName } = await generateAIReply(
-    history,
-    lead.name || pushName,
-    {
-      provider: aiConfig.provider,
-      model: aiConfig.model,
-      apiKey: aiConfig.apiKey,
-      clinicName: aiConfig.clinicName,
-      systemPrompt: aiConfig.systemPrompt,
-    }
-  );
-
-  // Save AI reply
-  await prisma.message.create({
-    data: { leadId: lead.id, role: "assistant", content: reply },
-  });
-
-  // Send reply via WhatsApp (official or Uazapi)
-  const sendResult = await sendMessage(whatsappConfig, phone, reply);
-
-  if (!sendResult.success) {
-    console.error(`[webhook] Falha ao enviar msg para ${phone}:`, sendResult.error);
-  }
-
-  // Update stage if AI determined a new one
-  if (newStageEventName && newStageEventName !== lead.stage?.eventName) {
-    const newStage = await prisma.stage.findFirst({
-      where: { userId: lead.userId, eventName: newStageEventName },
-    });
-
-    if (newStage) {
-      await prisma.lead.update({
-        where: { id: lead.id },
-        data: { stageId: newStage.id },
-      });
-      await prisma.leadStageHistory.create({
-        data: { leadId: lead.id, stageId: newStage.id },
-      });
-      await sendFacebookEvent({
-        userId: lead.userId,
-        phone: lead.phone,
-        eventName: newStage.eventName,
-        leadId: lead.id,
-        stageName: newStage.name,
-      });
-    }
-  }
-}
-
-// ─── Background: resolve campaign name from Meta API ───
-
-async function resolveMetaCampaignName(leadId: string, campaignId: string, userId: string) {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pixel = await prisma.pixel.findUnique({ where: { userId } }) as any;
-    if (!pixel?.metaAdsToken) return;
-
-    const res = await fetch(
-      `https://graph.facebook.com/v18.0/${campaignId}?fields=name&access_token=${pixel.metaAdsToken}`,
-      { cache: "no-store" }
-    );
-    const json = await res.json();
-    if (json.name) {
-      await prisma.lead.update({
-        where: { id: leadId },
-        data: { campaign: json.name },
-      });
-    }
-  } catch {
-    // Non-critical — campaign name will just not be resolved
   }
 }

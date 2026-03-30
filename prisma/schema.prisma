@@ -121,6 +121,9 @@ model Message {
   role      String   // "user" | "assistant"
   content   String
   createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([leadId, createdAt])
 }
 
 model Stage {
