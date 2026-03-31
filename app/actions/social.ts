@@ -96,7 +96,7 @@ export async function saveSocialConnection(data: {
       },
     });
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/posts");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao salvar conexao" };
@@ -173,7 +173,7 @@ export async function disconnectPlatform(platform: string): Promise<ActionResult
       data: { isActive: false },
     });
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/posts");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao desconectar plataforma" };
@@ -288,7 +288,7 @@ export async function createSocialPost(data: {
       },
     });
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/posts");
     return { success: true, data: { id: post.id } };
   } catch {
     return { success: false, error: "Erro ao criar post" };
@@ -328,7 +328,7 @@ export async function updateSocialPost(
       },
     });
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/posts");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao atualizar post" };
@@ -344,7 +344,7 @@ export async function deleteSocialPost(id: string): Promise<ActionResult> {
       where: { id, userId: user.id },
     });
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/posts");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao excluir post" };
@@ -388,6 +388,6 @@ export async function triggerWeeklySuggestions(): Promise<ActionResult<{ generat
   const { generateWeeklyContentSuggestions } = await import("@/services/contentSuggestion");
   const result = await generateWeeklyContentSuggestions(user.id);
 
-  revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/posts");
   return { success: true, data: { generated: result.generated } };
 }

@@ -296,7 +296,7 @@ export function SocialAnalyticsClient({
         {connections.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-4">
             Nenhuma plataforma conectada.{" "}
-            <a href="/dashboard/social/connect" className="text-indigo-600 hover:text-indigo-700">
+            <a href="/dashboard/studio/connect" className="text-indigo-600 hover:text-indigo-700">
               Conectar agora
             </a>
           </p>

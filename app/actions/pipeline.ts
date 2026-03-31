@@ -78,7 +78,7 @@ export async function sendChatMessage(
       data: { status: "scripting", currentStage: "script" },
     });
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/studio");
     return { success: true, data: { reply } };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Erro no chat" };
@@ -154,7 +154,7 @@ export async function generateStoryScript(storyId: string): Promise<ActionResult
       }
     });
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/studio");
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Erro ao gerar roteiro" };
@@ -170,7 +170,7 @@ export async function approveScript(storyId: string): Promise<ActionResult> {
     data: { status: "characters", currentStage: "characters" },
   });
 
-  revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/studio");
   return { success: true };
 }
 
@@ -222,7 +222,7 @@ export async function generateCharacters(storyId: string): Promise<ActionResult>
       data: { status: "char_review" },
     });
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/studio");
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Erro ao gerar personagens" };
@@ -260,7 +260,7 @@ export async function regenerateCharacter(characterId: string, customPrompt?: st
       data: { imageUrl, imageStatus: "done", isApproved: false },
     });
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/studio");
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Erro ao regenerar" };
@@ -281,7 +281,7 @@ export async function approveAllCharacters(storyId: string): Promise<ActionResul
     data: { status: "storyboarding", currentStage: "storyboard" },
   });
 
-  revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/studio");
   return { success: true };
 }
 
@@ -335,7 +335,7 @@ export async function generateStoryboardFrames(storyId: string): Promise<ActionR
       data: { status: "storyboard_review" },
     });
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/studio");
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Erro ao gerar frames" };
@@ -374,7 +374,7 @@ export async function regenerateFrame(frameId: string, customPrompt?: string): P
       data: { imageUrl, imageStatus: "done", isApproved: false },
     });
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/studio");
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Erro ao regenerar frame" };
@@ -394,7 +394,7 @@ export async function reorderFrames(storyId: string, frameIds: string[]): Promis
     });
   }
 
-  revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/studio");
   return { success: true };
 }
 
@@ -412,7 +412,7 @@ export async function approveAllFrames(storyId: string): Promise<ActionResult> {
     data: { status: "video_generating", currentStage: "video" },
   });
 
-  revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/studio");
   return { success: true };
 }
 
@@ -475,7 +475,7 @@ export async function generateVideoClips(storyId: string): Promise<ActionResult>
       }
     }
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/studio");
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Erro ao gerar clips" };
@@ -515,7 +515,7 @@ export async function checkClipStatus(clipId: string): Promise<ActionResult<{ st
     });
   }
 
-  revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/studio");
   return { success: true, data: result };
 }
 
@@ -566,7 +566,7 @@ export async function checkAllClipsStatus(storyId: string): Promise<ActionResult
     });
   }
 
-  revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/studio");
   return { success: true, data: { total: clips.length, done, generating, error: errorCount } };
 }
 
@@ -585,7 +585,7 @@ export async function approveAllClips(storyId: string): Promise<ActionResult> {
     data: { status: "completed", currentStage: "publish" },
   });
 
-  revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/studio");
   return { success: true };
 }
 
@@ -622,7 +622,7 @@ export async function generateStoryCaptions(storyId: string): Promise<ActionResu
       });
     }
 
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/studio");
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Erro ao gerar captions" };
@@ -703,6 +703,6 @@ export async function retryFailedStage(storyId: string): Promise<ActionResult> {
     data: { status: story.currentStage === "characters" ? "characters" : story.currentStage === "storyboard" ? "storyboarding" : "video_generating" },
   });
 
-  revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/studio");
   return { success: true };
 }

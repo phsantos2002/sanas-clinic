@@ -41,7 +41,7 @@ export function StudioClient({ initialStories }: { initialStories: StoryData[] }
 
     if (result.success && result.data) {
       toast.success("Video criado!");
-      router.push(`/dashboard/social/studio/${result.data.id}`);
+      router.push(`/dashboard/studio/chat?project=${result.data.id}`);
     } else {
       toast.error(result.success ? "Erro" : result.error);
     }
@@ -116,7 +116,7 @@ export function StudioClient({ initialStories }: { initialStories: StoryData[] }
             return (
               <div
                 key={story.id}
-                onClick={() => router.push(`/dashboard/social/studio/${story.id}`)}
+                onClick={() => router.push(`/dashboard/studio/chat?project=${story.id}`)}
                 className="bg-white border border-slate-100 rounded-2xl p-4 hover:shadow-sm hover:border-slate-200 transition-all cursor-pointer"
               >
                 {story.thumbnailUrl ? (

@@ -43,7 +43,7 @@ export function PipelineView({ story, pipelineStatus }: { story: any; pipelineSt
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => router.push("/dashboard/social/studio")} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100">
+        <button onClick={() => router.push("/dashboard/studio")} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100">
           <ArrowLeft className="h-4 w-4 text-slate-500" />
         </button>
         <div className="min-w-0">

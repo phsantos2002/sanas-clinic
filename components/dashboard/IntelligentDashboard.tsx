@@ -57,7 +57,7 @@ export function IntelligentDashboard({ data }: { data: { alerts: DashboardAlert[
           { label: "Leads hoje", value: kpis.leadsToday, icon: Users, color: "text-blue-600 bg-blue-50", href: "/dashboard/pipeline" },
           { label: "Leads quentes", value: kpis.hotLeads, icon: Flame, color: "text-red-600 bg-red-50", href: "/dashboard/pipeline" },
           { label: "Clientes (mes)", value: kpis.clientsThisMonth, icon: TrendingUp, color: "text-green-600 bg-green-50", href: "/dashboard/analytics" },
-          { label: "Posts (semana)", value: kpis.publishedPostsWeek, icon: PenTool, color: "text-violet-600 bg-violet-50", href: "/dashboard/social/posts" },
+          { label: "Posts (semana)", value: kpis.publishedPostsWeek, icon: PenTool, color: "text-violet-600 bg-violet-50", href: "/dashboard/posts/library" },
         ].map((kpi) => (
           <Link key={kpi.label} href={kpi.href} className="bg-white border border-slate-100 rounded-xl p-3 hover:shadow-sm transition-all group">
             <div className="flex items-center justify-between mb-1">
@@ -124,7 +124,7 @@ export function IntelligentDashboard({ data }: { data: { alerts: DashboardAlert[
           <div className="grid grid-cols-2 gap-2">
             {[
               { label: "Perguntar a IA", href: "/dashboard/chat/assistant", icon: Bot, color: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100" },
-              { label: "Criar Post", href: "/dashboard/social/calendar", icon: PenTool, color: "bg-violet-50 text-violet-700 hover:bg-violet-100" },
+              { label: "Criar Post", href: "/dashboard/posts", icon: PenTool, color: "bg-violet-50 text-violet-700 hover:bg-violet-100" },
               { label: "Ver Pipeline", href: "/dashboard/pipeline", icon: Users, color: "bg-blue-50 text-blue-700 hover:bg-blue-100" },
               { label: "Broadcast", href: "/dashboard/chat/broadcast", icon: Megaphone, color: "bg-amber-50 text-amber-700 hover:bg-amber-100" },
             ].map((action) => (

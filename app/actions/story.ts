@@ -61,7 +61,7 @@ export async function createStory(data: {
         niche: data.niche || "clinica_estetica",
       },
     });
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/studio");
     return { success: true, data: { id: story.id } };
   } catch {
     return { success: false, error: "Erro ao criar story" };
@@ -141,7 +141,7 @@ export async function updateStory(storyId: string, data: {
         }),
       },
     });
-    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/studio");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao atualizar story" };
@@ -153,6 +153,6 @@ export async function deleteStory(storyId: string): Promise<ActionResult> {
   if (!user) return { success: false, error: "Nao autenticado" };
 
   await prisma.story.deleteMany({ where: { id: storyId, userId: user.id } });
-  revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/studio");
   return { success: true };
 }

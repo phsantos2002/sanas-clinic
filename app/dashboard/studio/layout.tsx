@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderOpen, MessageCircle, Clapperboard } from "lucide-react";
+import { FolderOpen, MessageCircle, Clapperboard, Link2 } from "lucide-react";
 
 const tabs = [
   { href: "/dashboard/studio", label: "Projetos", icon: Clapperboard, exact: true },
   { href: "/dashboard/studio/vault", label: "Acervo", icon: FolderOpen },
   { href: "/dashboard/studio/chat", label: "Criar com IA", icon: MessageCircle },
+  { href: "/dashboard/studio/connect", label: "Conexoes", icon: Link2 },
 ];
 
 export default function StudioLayout({ children }: { children: React.ReactNode }) {
