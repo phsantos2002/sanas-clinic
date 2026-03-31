@@ -146,3 +146,49 @@ export async function getAIUsageStats() {
 
   return stats;
 }
+
+// ── Business Profile ─────────────────────────────────────────
+
+export async function getBusinessProfile() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const config = await prisma.aIConfig.findUnique({ where: { userId: user.id } });
+  return (config?.businessProfile as Record<string, string>) || null;
+}
+
+export async function saveBusinessProfile(data: Record<string, string>): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Nao autenticado" };
+  try {
+    await prisma.aIConfig.upsert({
+      where: { userId: user.id },
+      update: { businessProfile: JSON.parse(JSON.stringify(data)) },
+      create: { userId: user.id, businessProfile: JSON.parse(JSON.stringify(data)) },
+    });
+    revalidatePath("/dashboard/settings");
+    return { success: true };
+  } catch { return { success: false, error: "Erro ao salvar perfil" }; }
+}
+
+// ── Automations ──────────────────────────────────────────────
+
+export async function getAutomations() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const config = await prisma.aIConfig.findUnique({ where: { userId: user.id } });
+  return (config?.automations as Record<string, boolean>) || null;
+}
+
+export async function saveAutomations(data: Record<string, boolean>): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Nao autenticado" };
+  try {
+    await prisma.aIConfig.upsert({
+      where: { userId: user.id },
+      update: { automations: JSON.parse(JSON.stringify(data)) },
+      create: { userId: user.id, automations: JSON.parse(JSON.stringify(data)) },
+    });
+    revalidatePath("/dashboard/settings");
+    return { success: true };
+  } catch { return { success: false, error: "Erro ao salvar automacoes" }; }
+}

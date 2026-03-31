@@ -44,16 +44,20 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   const [stageFilter, setStageFilter] = useState<string | null>(null);
+  const [scoreFilter, setScoreFilter] = useState<string | null>(null);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>(loadSavedFilters);
   const [showSavedDropdown, setShowSavedDropdown] = useState(false);
 
-  const hasActiveFilters = !!(search.trim() || sourceFilter || stageFilter);
+  const hasActiveFilters = !!(search.trim() || sourceFilter || stageFilter || scoreFilter || tagFilter);
 
   const clearFilters = useCallback(() => {
     setSearch("");
     setSourceFilter(null);
     setStageFilter(null);
+    setScoreFilter(null);
+    setTagFilter(null);
   }, []);
 
   const saveCurrentFilter = useCallback(() => {
@@ -108,8 +112,19 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
       result = result.filter((l) => l.stageId === stageFilter);
     }
 
+    if (scoreFilter) {
+      if (scoreFilter === "vip") result = result.filter((l) => l.score >= 80);
+      else if (scoreFilter === "quente") result = result.filter((l) => l.score >= 50 && l.score < 80);
+      else if (scoreFilter === "morno") result = result.filter((l) => l.score >= 25 && l.score < 50);
+      else if (scoreFilter === "frio") result = result.filter((l) => l.score < 25);
+    }
+
+    if (tagFilter) {
+      result = result.filter((l) => l.tags?.includes(tagFilter!));
+    }
+
     return result;
-  }, [leads, search, sourceFilter, stageFilter]);
+  }, [leads, search, sourceFilter, stageFilter, scoreFilter, tagFilter]);
 
   const exportCSV = useCallback(() => {
     const headers = ["Nome", "Telefone", "Email", "Origem", "Etapa", "Campanha", "Criado em"];
@@ -185,6 +200,19 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
           value={stageFilter ?? ""}
           onChange={(v) => setStageFilter(v || null)}
           className="w-full sm:w-[180px]"
+        />
+
+        <CustomSelect
+          options={[
+            { value: "", label: "Todos os Scores" },
+            { value: "vip", label: "VIP (80+)" },
+            { value: "quente", label: "Quente (50-79)" },
+            { value: "morno", label: "Morno (25-49)" },
+            { value: "frio", label: "Frio (0-24)" },
+          ]}
+          value={scoreFilter ?? ""}
+          onChange={(v) => setScoreFilter(v || null)}
+          className="w-full sm:w-[160px]"
         />
 
         {/* Clear filters */}

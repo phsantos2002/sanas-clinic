@@ -54,9 +54,13 @@ model AIConfig {
   aiVideoProvider String?  @default("none")    // "replicate" | "fal" | "kling" | "none"
   aiVideoApiKey   String?                      // separate key if different provider
   // ── Video Pipeline extras ──
-  klingApiKey     String?                      // Kling AI API key (direct)
-  runwayApiKey    String?                      // Runway ML API key
-  shotstackApiKey String?                      // Shotstack API key (video concat)
+  klingApiKey     String?
+  runwayApiKey    String?
+  shotstackApiKey String?
+  // ── Business Profile ──
+  businessProfile Json?    // { name, niche, city, services, avgTicket, differentials }
+  // ── Automation Toggles ──
+  automations     Json?    // { whatsappWelcome, followUp24h, confirmAgendamento, reactivation30d, nps7d, weeklySuggestions, autoPublish, collectComments, aiReplies, autoLikeComments, cplAlert, frequencyAlert, capiEvents, dailyScoring, stuckLeadAlert }
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

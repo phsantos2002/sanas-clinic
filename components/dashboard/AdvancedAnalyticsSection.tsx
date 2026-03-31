@@ -181,6 +181,70 @@ export function AdvancedAnalyticsSection({ funnel, ltv, cac, scores, aiUsage }: 
           )}
         </div>
       </div>
+      {/* IA Insights */}
+      <div className="bg-white border border-slate-100 rounded-2xl p-5">
+        <h3 className="font-semibold text-slate-900 text-sm mb-4 flex items-center gap-2">
+          <Zap className="h-4 w-4 text-amber-500" /> Insights da IA
+        </h3>
+        <div className="space-y-2">
+          {generateInsights(funnel, ltv, cac, scores).map((insight, i) => (
+            <div key={i} className="flex items-start gap-2 bg-amber-50 rounded-xl p-3">
+              <span className="text-amber-500 mt-0.5 shrink-0">💡</span>
+              <p className="text-sm text-amber-800">{insight}</p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
+}
+
+function generateInsights(funnel: FunnelStep[], ltv: LTVData[], cac: CACData[], scores: ScoreDistribution): string[] {
+  const insights: string[] = [];
+
+  // Funnel insights
+  const worstDropoff = funnel.reduce((worst, step) => step.dropoffRate > (worst?.dropoffRate || 0) ? step : worst, funnel[0]);
+  if (worstDropoff && worstDropoff.dropoffRate > 30) {
+    insights.push(`Maior gargalo no funil: "${worstDropoff.stageName}" com ${worstDropoff.dropoffRate}% de perda. Foque em melhorar essa etapa.`);
+  }
+
+  const slowestStep = funnel.reduce((slow, step) => (step.avgDaysFromPrevious || 0) > (slow?.avgDaysFromPrevious || 0) ? step : slow, funnel[0]);
+  if (slowestStep?.avgDaysFromPrevious && slowestStep.avgDaysFromPrevious > 3) {
+    insights.push(`A etapa "${slowestStep.stageName}" demora em media ${slowestStep.avgDaysFromPrevious} dias. Considere automacoes para acelerar.`);
+  }
+
+  // LTV insights
+  if (ltv.length >= 2) {
+    const sorted = [...ltv].sort((a, b) => b.conversionRate - a.conversionRate);
+    if (sorted[0].conversionRate > sorted[1].conversionRate * 1.3) {
+      insights.push(`Leads de "${sorted[0].source}" convertem ${Math.round(sorted[0].conversionRate / (sorted[1].conversionRate || 1))}x mais que "${sorted[1].source}". Priorize esse canal.`);
+    }
+  }
+
+  // CAC insights
+  const bestROAS = cac.reduce((best, ch) => ch.roas > (best?.roas || 0) ? ch : best, cac[0]);
+  if (bestROAS && bestROAS.roas > 2) {
+    insights.push(`Melhor ROAS: canal "${bestROAS.channel}" com ${bestROAS.roas}x de retorno. Considere aumentar investimento.`);
+  }
+
+  // Score insights
+  const total = scores.frio + scores.morno + scores.quente + scores.vip;
+  if (total > 0) {
+    const hotPercent = Math.round(((scores.quente + scores.vip) / total) * 100);
+    if (hotPercent > 30) {
+      insights.push(`${hotPercent}% dos seus leads sao quentes ou VIP. Pipeline saudavel — foque no atendimento.`);
+    } else if (hotPercent < 10) {
+      insights.push(`Apenas ${hotPercent}% dos leads sao quentes. Invista em qualificacao e follow-up mais rapido.`);
+    }
+  }
+
+  if (scores.avgScore > 0) {
+    insights.push(`Score medio dos leads: ${scores.avgScore}/100. ${scores.avgScore >= 40 ? "Acima da media — bom sinal." : "Abaixo da media — melhore o engajamento."}`);
+  }
+
+  if (insights.length === 0) {
+    insights.push("Continue alimentando o sistema com dados para receber insights personalizados.");
+  }
+
+  return insights;
 }
