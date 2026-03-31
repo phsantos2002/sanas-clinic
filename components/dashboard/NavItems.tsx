@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Kanban, BarChart3, MessageCircle, Settings, PenTool } from "lucide-react";
+import { LayoutDashboard, Kanban, BarChart3, MessageCircle, Settings, Clapperboard, CalendarDays } from "lucide-react";
 import { MetaIcon } from "@/components/icons/SourceIcons";
 
 const navItems = [
@@ -10,7 +10,8 @@ const navItems = [
   { href: "/dashboard/chat", label: "Chat", icon: MessageCircle },
   { href: "/dashboard/pipeline", label: "Pipeline", icon: Kanban },
   { href: "/dashboard/meta", label: "Ads", iconCustom: <MetaIcon size={16} /> },
-  { href: "/dashboard/social", label: "Conteudo", icon: PenTool },
+  { href: "/dashboard/studio", label: "Estudio", icon: Clapperboard },
+  { href: "/dashboard/posts", label: "Postagens", icon: CalendarDays },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Config", icon: Settings },
 ];

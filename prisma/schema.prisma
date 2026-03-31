@@ -31,6 +31,10 @@ model User {
   messageTemplates  MessageTemplate[]
   broadcastCampaigns BroadcastCampaign[]
   stories           Story[]
+  assets            AssetVault[]
+  studioProjects    StudioProject[]
+  generatedPosts    GeneratedPost[]
+  whatsappCampaigns WhatsAppCampaign[]
 }
 
 model AIConfig {
@@ -587,5 +591,157 @@ model VideoClip {
   updatedAt      DateTime @updatedAt
 
   @@index([storyId, order])
+}
+
+// ── Acervo (Asset Vault) ─────────────────────────────────────
+
+model AssetVault {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category        String   // "person"|"space"|"procedure"|"brand"|"reference"
+  subcategory     String?
+  name            String
+  description     String?
+  fileUrl         String?
+  fileType        String?
+  fileName        String?
+  fileSize        Int?
+  metadata        Json?
+  isVoiceSample   Boolean  @default(false)
+  voiceId         String?
+  isFaceReference Boolean  @default(false)
+  personName      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, category])
+}
+
+// ── Estudio (Studio Projects) ────────────────────────────────
+
+model StudioProject {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  type          String   @default("single_post")
+  status        String   @default("draft")
+  chatMessages  StudioChatMessage[]
+  posts         GeneratedPost[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model StudioChatMessage {
+  id        String        @id @default(cuid())
+  projectId String
+  project   StudioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  role      String
+  content   String
+  toolsUsed Json?
+  createdAt DateTime      @default(now())
+
+  @@index([projectId, createdAt])
+}
+
+model GeneratedPost {
+  id              String         @id @default(cuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId       String?
+  project         StudioProject? @relation(fields: [projectId], references: [id])
+  title           String
+  type            String         @default("post")
+  status          String         @default("draft")
+  scriptJson      Json?
+  mediaUrls       Json           @default("[]")
+  thumbnailUrl    String?
+  captions        Json           @default("{}")
+  hashtags        Json?
+  voiceoverUrl    String?
+  scenes          Json?
+  finalVideoUrl   String?
+  scheduledAt     DateTime?
+  publishedAt     DateTime?
+  platforms       GeneratedPostPlatform[]
+  likes           Int            @default(0)
+  comments        Int            @default(0)
+  shares          Int            @default(0)
+  views           Int            @default(0)
+  saves           Int            @default(0)
+  reach           Int            @default(0)
+  productionCost  Float          @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, scheduledAt])
+}
+
+model GeneratedPostPlatform {
+  id              String        @id @default(cuid())
+  postId          String
+  post            GeneratedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  platform        String
+  captionOverride String?
+  platformPostId  String?
+  status          String        @default("pending")
+  publishedAt     DateTime?
+  errorMessage    String?
+
+  @@unique([postId, platform])
+}
+
+// ── WhatsApp Campaigns (com anti-ban) ────────────────────────
+
+model WhatsAppCampaign {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  type            String   @default("custom")
+  status          String   @default("draft")
+  baseMessage     String
+  variations      Json     @default("[]")
+  filters         Json?
+  antiBanConfig   Json?
+  riskScore       String?
+  totalLeads      Int      @default(0)
+  sentCount       Int      @default(0)
+  deliveredCount  Int      @default(0)
+  readCount       Int      @default(0)
+  repliedCount    Int      @default(0)
+  optOutCount     Int      @default(0)
+  leadsConverted  Int      @default(0)
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  messages        WACampaignMessage[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+}
+
+model WACampaignMessage {
+  id              String           @id @default(cuid())
+  campaignId      String
+  campaign        WhatsAppCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  leadId          String
+  variationIndex  Int              @default(0)
+  messageText     String
+  status          String           @default("queued")
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  repliedAt       DateTime?
+  optedOut        Boolean          @default(false)
+
+  @@index([campaignId, status])
 }
 
