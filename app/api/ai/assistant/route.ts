@@ -84,6 +84,29 @@ const tools: Anthropic.Tool[] = [
       required: ["message"],
     },
   },
+  {
+    name: "get_top_posts",
+    description: "Retorna os posts com melhor performance (mais likes, views ou comentarios)",
+    input_schema: {
+      type: "object" as const,
+      properties: { limit: { type: "number", description: "Quantidade (default 5)" } },
+      required: [],
+    },
+  },
+  {
+    name: "get_scheduled_posts",
+    description: "Retorna posts agendados para os proximos dias",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "get_assets",
+    description: "Retorna assets do Acervo do Estudio (fotos, procedimentos, marca)",
+    input_schema: {
+      type: "object" as const,
+      properties: { category: { type: "string", description: "Filtro: 'person', 'space', 'procedure', 'brand', 'reference'" } },
+      required: [],
+    },
+  },
 ];
 
 // ── Tool execution ───────────────────────────────────────────
@@ -251,6 +274,57 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
         leadsAlvo: count,
         nota: "Preview do broadcast. O usuario precisa confirmar antes de enviar.",
       });
+    }
+
+    case "get_top_posts": {
+      const limit = (input.limit as number) || 5;
+      const posts = await prisma.socialPost.findMany({
+        where: { userId, status: "published" },
+        select: { title: true, caption: true, mediaType: true, platforms: true, engagementData: true, publishedAt: true },
+        orderBy: { publishedAt: "desc" },
+        take: 20,
+      });
+      // Sort by engagement from JSON
+      const sorted = posts
+        .map((p) => {
+          const eng = (p.engagementData || {}) as Record<string, number>;
+          return { ...p, totalEng: (eng.likes || 0) + (eng.comments || 0) + (eng.shares || 0) };
+        })
+        .sort((a, b) => b.totalEng - a.totalEng)
+        .slice(0, limit);
+      return JSON.stringify(sorted.map((p) => ({
+        titulo: p.title, tipo: p.mediaType, engagement: p.totalEng,
+        publicadoEm: p.publishedAt?.toISOString(),
+      })));
+    }
+
+    case "get_scheduled_posts": {
+      const posts = await prisma.socialPost.findMany({
+        where: { userId, status: "scheduled", scheduledAt: { gte: new Date() } },
+        select: { title: true, mediaType: true, platforms: true, scheduledAt: true },
+        orderBy: { scheduledAt: "asc" },
+        take: 10,
+      });
+      return JSON.stringify(posts.map((p) => ({
+        titulo: p.title, tipo: p.mediaType, plataformas: p.platforms,
+        agendadoPara: p.scheduledAt?.toISOString(),
+      })));
+    }
+
+    case "get_assets": {
+      const category = input.category as string | undefined;
+      const where: Record<string, unknown> = { userId };
+      if (category) where.category = category;
+      const assets = await prisma.assetVault.findMany({
+        where,
+        select: { name: true, category: true, description: true, personName: true, metadata: true, isVoiceSample: true, isFaceReference: true },
+        take: 20,
+      });
+      return JSON.stringify(assets.map((a) => ({
+        nome: a.name, categoria: a.category, descricao: a.description,
+        pessoa: a.personName, temVoz: a.isVoiceSample, temRosto: a.isFaceReference,
+        dados: a.metadata,
+      })));
     }
 
     default:
