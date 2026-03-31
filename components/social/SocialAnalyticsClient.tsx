@@ -47,10 +47,12 @@ export function SocialAnalyticsClient({
   publishedPosts: SocialPostData[];
   connections: SocialConnectionData[];
 }) {
-  if (!stats) {
+  if (!stats || stats.totalPosts === 0) {
     return (
       <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
-        <p className="text-sm text-slate-400">Erro ao carregar analytics</p>
+        <BarChart3 className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+        <h3 className="font-semibold text-slate-900 mb-1">Sem dados ainda</h3>
+        <p className="text-sm text-slate-400">Publique seu primeiro post para ver metricas aqui</p>
       </div>
     );
   }

@@ -1,5 +1,4 @@
-import { getSocialStats, getSocialPosts } from "@/app/actions/social";
-import { getSocialConnections } from "@/app/actions/social";
+import { getSocialStats, getSocialPosts, getSocialConnections } from "@/app/actions/social";
 import { SocialAnalyticsClient } from "@/components/social/SocialAnalyticsClient";
 
 export default async function PostsMetricsPage() {
@@ -9,5 +8,11 @@ export default async function PostsMetricsPage() {
     getSocialConnections(),
   ]);
 
-  return <SocialAnalyticsClient stats={stats} publishedPosts={posts} connections={connections} />;
+  return (
+    <SocialAnalyticsClient
+      stats={stats ?? { totalPosts: 0, publishedPosts: 0, scheduledPosts: 0, draftPosts: 0, connections: 0 }}
+      publishedPosts={posts}
+      connections={connections}
+    />
+  );
 }

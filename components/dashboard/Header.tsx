@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { LogOut, UserCircle } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/actions/auth";
 import { SystemStatus } from "@/components/dashboard/WhatsAppStatus";
@@ -18,16 +18,14 @@ export function Header() {
         </div>
         <NavItems />
         <div className="flex items-center gap-1">
-          <Link href="/dashboard/account">
-            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600 gap-2 rounded-lg">
-              <UserCircle className="h-4 w-4" />
-              <span className="hidden sm:inline text-sm">Conta</span>
+          <Link href="/dashboard/settings/account">
+            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600 gap-1.5 rounded-lg">
+              <Settings className="h-4 w-4" />
             </Button>
           </Link>
           <form action={signOut}>
-            <Button variant="ghost" size="sm" type="submit" className="text-slate-400 hover:text-slate-600 gap-2 rounded-lg">
+            <Button variant="ghost" size="sm" type="submit" className="text-slate-400 hover:text-red-500 gap-1.5 rounded-lg">
               <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline text-sm">Sair</span>
             </Button>
           </form>
         </div>
@@ -41,13 +39,13 @@ export function Header() {
             <SystemStatus />
           </div>
           <div className="flex items-center gap-0.5">
-            <Link href="/dashboard/account">
+            <Link href="/dashboard/settings/account">
               <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600 h-8 w-8 p-0 rounded-lg">
-                <UserCircle className="h-4 w-4" />
+                <Settings className="h-4 w-4" />
               </Button>
             </Link>
             <form action={signOut}>
-              <Button variant="ghost" size="sm" type="submit" className="text-slate-400 hover:text-slate-600 h-8 w-8 p-0 rounded-lg">
+              <Button variant="ghost" size="sm" type="submit" className="text-slate-400 hover:text-red-500 h-8 w-8 p-0 rounded-lg">
                 <LogOut className="h-4 w-4" />
               </Button>
             </form>
