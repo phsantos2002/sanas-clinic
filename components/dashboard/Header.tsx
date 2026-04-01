@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/actions/auth";
 import { SystemStatus } from "@/components/dashboard/WhatsAppStatus";
 import { NavItems } from "@/components/dashboard/NavItems";
+import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
+import { SearchButton } from "@/components/dashboard/SearchButton";
 
 export function Header() {
   return (
@@ -18,6 +20,8 @@ export function Header() {
         </div>
         <NavItems />
         <div className="flex items-center gap-1">
+          <SearchButton />
+          <NotificationCenter />
           <Link href="/dashboard/settings/account">
             <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600 gap-1.5 rounded-lg">
               <Settings className="h-4 w-4" />
@@ -39,6 +43,7 @@ export function Header() {
             <SystemStatus />
           </div>
           <div className="flex items-center gap-0.5">
+            <NotificationCenter />
             <Link href="/dashboard/settings/account">
               <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600 h-8 w-8 p-0 rounded-lg">
                 <Settings className="h-4 w-4" />

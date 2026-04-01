@@ -27,6 +27,33 @@ export async function getLeads(page = 1, limit = 200): Promise<{ leads: Lead[]; 
   return { leads: leads as Lead[], total };
 }
 
+// ── Get Lead by Phone ────────────────────────────────────────
+
+export async function getLeadByPhone(phone: string): Promise<LeadDetail | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const normalized = phone.replace(/\D/g, "");
+  const lead = await prisma.lead.findFirst({
+    where: {
+      userId: user.id,
+      phone: { endsWith: normalized.slice(-8) },
+    },
+    include: {
+      stage: true,
+      messages: { orderBy: { createdAt: "desc" }, take: 50 },
+      stageHistory: {
+        include: { stage: true },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      },
+      pixelEvents: { orderBy: { createdAt: "desc" }, take: 20 },
+    },
+  });
+
+  return lead as LeadDetail | null;
+}
+
 // ── Create Lead (with Zod + Transaction) ─────────────────────
 
 export async function createLead(

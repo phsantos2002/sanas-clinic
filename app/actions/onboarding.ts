@@ -77,3 +77,53 @@ export async function saveOnboardingData(data: {
   revalidatePath("/dashboard");
   return { success: true };
 }
+
+// ── Setup Progress (7.2) ────────────────────────────────────
+
+export async function getSetupProgress() {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  const [waConfig, pixel, aiConfig, templates, workflows] = await Promise.all([
+    prisma.whatsAppConfig.findUnique({ where: { userId: user.id } }),
+    prisma.pixel.findUnique({ where: { userId: user.id } }),
+    prisma.aIConfig.findUnique({ where: { userId: user.id } }),
+    prisma.messageTemplate.count({ where: { userId: user.id } }),
+    prisma.workflow.count({ where: { userId: user.id, isActive: true } }),
+  ]);
+
+  const brand = aiConfig?.brandIdentity as Record<string, string> | null;
+  const profile = aiConfig?.businessProfile as Record<string, string> | null;
+
+  return [
+    { id: "whatsapp", label: "WhatsApp conectado", completed: !!(waConfig?.uazapiInstanceToken || waConfig?.accessToken), weight: 20, href: "/dashboard/settings/integrations" },
+    { id: "pixel", label: "Meta Pixel configurado", completed: !!pixel?.pixelId, weight: 15, href: "/dashboard/settings/integrations" },
+    { id: "meta_ads", label: "Meta Ads conta vinculada", completed: !!pixel?.metaAdsToken, weight: 15, href: "/dashboard/settings/integrations" },
+    { id: "brand", label: "Identidade de marca preenchida", completed: !!(brand?.primary_color && brand?.default_tone), weight: 15, href: "/dashboard/settings" },
+    { id: "profile", label: "Perfil de negocio preenchido", completed: !!(profile?.name && profile?.niche), weight: 10, href: "/dashboard/settings" },
+    { id: "templates", label: "Pelo menos 1 template criado", completed: templates > 0, weight: 10, href: "/dashboard/chat/templates" },
+    { id: "automations", label: "Pelo menos 1 automacao ativa", completed: workflows > 0, weight: 10, href: "/dashboard/workflows" },
+    { id: "prompt", label: "Prompt do assistente personalizado", completed: !!(aiConfig?.systemPrompt), weight: 5, href: "/dashboard/settings/integrations" },
+  ];
+}
+
+// ── Checklist Progress (7.5) ────────────────────────────────
+
+export async function getChecklistProgress() {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  const [waConfig, leadCount, workflowCount, postCount] = await Promise.all([
+    prisma.whatsAppConfig.findUnique({ where: { userId: user.id } }),
+    prisma.lead.count({ where: { userId: user.id } }),
+    prisma.workflow.count({ where: { userId: user.id } }),
+    prisma.socialPost.count({ where: { userId: user.id } }),
+  ]);
+
+  return [
+    { id: "connect_wa", label: "Conecte seu WhatsApp", description: "Vincule seu numero para receber leads", completed: !!(waConfig?.uazapiInstanceToken), href: "/dashboard/settings/integrations" },
+    { id: "first_lead", label: "Crie seu primeiro lead", description: "Adicione um contato manualmente", completed: leadCount > 0, href: "/dashboard/pipeline" },
+    { id: "first_workflow", label: "Configure um workflow", description: "Crie uma automacao de boas-vindas", completed: workflowCount > 0, href: "/dashboard/workflows" },
+    { id: "first_post", label: "Publique seu primeiro post", description: "Crie e agende um post para redes sociais", completed: postCount > 0, href: "/dashboard/posts" },
+  ];
+}

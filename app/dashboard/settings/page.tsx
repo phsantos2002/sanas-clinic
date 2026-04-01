@@ -2,6 +2,7 @@ import { getContentGenSettings, getBusinessProfile, saveBusinessProfile } from "
 import { getAIConfig } from "@/app/actions/aiConfig";
 import { BrandIdentityForm } from "@/components/settings/BrandIdentityForm";
 import { BusinessProfileForm } from "@/components/settings/BusinessProfileForm";
+import { SetupProgress } from "@/components/settings/SetupProgress";
 
 export default async function SettingsBusinessPage() {
   const [contentGen, businessProfile, aiConfig] = await Promise.all([
@@ -12,6 +13,7 @@ export default async function SettingsBusinessPage() {
 
   return (
     <div className="space-y-4 max-w-2xl">
+      <SetupProgress />
       {/* Business Profile */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
         <div>

@@ -208,3 +208,35 @@ export async function getWorkflowExecutions(workflowId?: string): Promise<Execut
     completedAt: e.completedAt,
   }));
 }
+
+// ── Canvas Visual (Sprint 5) ────────────────────────────────
+
+export async function saveWorkflowCanvas(workflowId: string, canvas: { nodes: unknown[]; edges: unknown[] }) {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Nao autenticado" };
+
+  await prisma.workflow.updateMany({
+    where: { id: workflowId, userId: user.id },
+    data: { canvas: canvas as never },
+  });
+
+  revalidatePath("/dashboard/workflows");
+  return { success: true };
+}
+
+export async function createWorkflowFromTemplate(name: string, canvas: { nodes: unknown[]; edges: unknown[] }, trigger: unknown) {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Nao autenticado" };
+
+  const workflow = await prisma.workflow.create({
+    data: {
+      userId: user.id,
+      name,
+      trigger: (trigger || { type: "new_lead", config: {} }) as never,
+      canvas: canvas as never,
+    },
+  });
+
+  revalidatePath("/dashboard/workflows");
+  return { success: true, data: workflow };
+}

@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/app/actions/user";
 import { getAllCampaignConfigs } from "@/app/actions/pixel";
 import { prisma } from "@/lib/prisma";
 import { MetaPageClient } from "@/components/meta/MetaPageClient";
+import { MetaDiagnosis } from "@/components/meta/MetaDiagnosis";
 
 export default async function MetaPage() {
   const [
@@ -42,6 +43,8 @@ export default async function MetaPage() {
   }
 
   return (
+    <div className="space-y-6">
+    <MetaDiagnosis />
     <MetaPageClient
       campaigns={campaigns}
       hasConfig={!!config}
@@ -59,5 +62,6 @@ export default async function MetaPage() {
       userId={user?.id}
       campaignConfigs={campaignConfigs}
     />
+    </div>
   );
 }

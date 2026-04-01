@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, MessageCircle, Send, ArrowLeft, Users, User, Phone, MoreVertical, RefreshCw } from "lucide-react";
+import { Search, MessageCircle, Send, ArrowLeft, Users, User, Phone, MoreVertical, RefreshCw, PanelRightOpen, PanelRightClose } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { LeadContextPanel } from "@/components/chat/LeadContextPanel";
+import { SuggestedReplies } from "@/components/chat/SuggestedReplies";
+import { AIStatusBadge } from "@/components/chat/AIStatusBadge";
 
 type Chat = {
   id: string;
@@ -68,6 +71,7 @@ export function ChatPageClient() {
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
+  const [showPanel, setShowPanel] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch chats
@@ -282,15 +286,20 @@ export function ChatPageClient() {
                 </p>
               </div>
 
-              <div className="flex gap-1">
+              <div className="flex items-center gap-1">
+                <AIStatusBadge aiEnabled={true} />
                 <a
                   href={`tel:${selectedChat.wa_chatid?.split("@")[0]}`}
                   className="p-2 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors"
                 >
                   <Phone className="h-4 w-4" />
                 </a>
-                <button className="p-2 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors">
-                  <MoreVertical className="h-4 w-4" />
+                <button
+                  onClick={() => setShowPanel(!showPanel)}
+                  className="p-2 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors hidden lg:block"
+                  title={showPanel ? "Fechar painel" : "Abrir painel do lead"}
+                >
+                  {showPanel ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -340,6 +349,14 @@ export function ChatPageClient() {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Suggested Replies */}
+            <SuggestedReplies
+              lastMessages={messages.slice(-5).map((m) => ({ role: m.fromMe ? "assistant" : "user", content: m.text }))}
+              leadName={selectedChat.wa_contactName || selectedChat.phone || ""}
+              onSelect={(text) => setNewMsg(text)}
+              visible={messages.length > 0 && !newMsg}
+            />
+
             {/* Input */}
             <div className="px-4 py-3 border-t border-slate-200 bg-slate-50">
               <form
@@ -371,11 +388,19 @@ export function ChatPageClient() {
             </div>
             <div className="text-center">
               <p className="text-lg font-semibold text-slate-600">LuxCRM Chat</p>
-              <p className="text-sm text-slate-400 mt-1">Selecione uma conversa para começar</p>
+              <p className="text-sm text-slate-400 mt-1">Selecione uma conversa para comecar</p>
             </div>
           </div>
         )}
       </div>
+
+      {/* Lead Context Panel */}
+      {selectedChat && showPanel && (
+        <LeadContextPanel
+          leadPhone={selectedChat.wa_chatid?.split("@")[0] || selectedChat.phone || ""}
+          onClose={() => setShowPanel(false)}
+        />
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { AnalyticsClient } from "@/components/dashboard/AnalyticsClient";
 import { AdCreativeReportTable } from "@/components/dashboard/AdCreativeReportTable";
 import { AdvancedAnalyticsSection } from "@/components/dashboard/AdvancedAnalyticsSection";
+import { AnalyticsNarrative } from "@/components/dashboard/AnalyticsNarrative";
 
 export default async function AnalyticsPage() {
   const [data, sourceStats, creatives, user, funnel, ltv, cac, scores, aiUsage] = await Promise.all([
@@ -66,6 +67,7 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-8">
+      <AnalyticsNarrative />
       <AnalyticsClient
         data={data}
         sourceStats={sourceStats}

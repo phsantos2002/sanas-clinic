@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import {
-  Workflow, Plus, Play, Pause, Trash2, ChevronRight,
+  Workflow, Plus, Play, Pause, Trash2, ChevronRight, PenTool,
   Zap, Clock, MessageCircle, Tag, Users, ArrowRight, BarChart3,
 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   createWorkflow, toggleWorkflow, deleteWorkflow,
@@ -139,6 +140,13 @@ export function WorkflowsClient({ workflows, stages }: { workflows: WorkflowData
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Link
+                      href={`/dashboard/workflows/${wf.id}`}
+                      className="h-8 w-8 rounded-lg flex items-center justify-center bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                      title="Editar no canvas"
+                    >
+                      <PenTool className="h-4 w-4" />
+                    </Link>
                     <button
                       onClick={() => handleToggle(wf.id)}
                       className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${

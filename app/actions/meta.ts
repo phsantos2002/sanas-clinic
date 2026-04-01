@@ -971,3 +971,80 @@ export async function getInstagramMedia(): Promise<SocialPost[]> {
     return [];
   }
 }
+
+// ── Meta Ads Diagnosis (4.1) ────────────────────────────────
+
+export async function getMetaDiagnosis(_force = false) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const pixel = await prisma.pixel.findUnique({ where: { userId: user.id } });
+  if (!pixel?.metaAdsToken || !pixel?.adAccountId) {
+    return {
+      insight: "Configure sua conta Meta Ads em Integracoes para receber diagnosticos automaticos.",
+      severity: "info" as const,
+      actions: [{ label: "Configurar", href: "/dashboard/settings/integrations" }],
+      generatedAt: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    };
+  }
+
+  try {
+    const res = await fetch(
+      `${GRAPH_URL}/act_${pixel.adAccountId}/campaigns?fields=name,status,insights.date_preset(last_7d){spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency}&filtering=[{"field":"effective_status","operator":"IN","value":["ACTIVE"]}]&limit=10&access_token=${pixel.metaAdsToken}`
+    );
+    const data = await res.json();
+    const campaigns = data.data || [];
+
+    if (campaigns.length === 0) {
+      return {
+        insight: "Nenhuma campanha ativa encontrada. Crie uma nova campanha para comecar a receber diagnosticos.",
+        severity: "info" as const,
+        actions: [{ label: "Criar campanha", href: "/dashboard/meta" }],
+        generatedAt: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      };
+    }
+
+    const insights: string[] = [];
+    const actions: { label: string; href: string }[] = [];
+    let severity = "info" as string;
+
+    for (const c of campaigns) {
+      const i = c.insights?.data?.[0];
+      if (!i) continue;
+      const freq = parseFloat(i.frequency || "0");
+      const ctr = parseFloat(i.ctr || "0");
+      const cpm = parseFloat(i.cpm || "0");
+
+      if (freq > 4) {
+        insights.push(`${c.name}: frequencia ${freq.toFixed(1)} — fadiga criativa. Troque o criativo.`);
+        severity = "warning";
+        actions.push({ label: `Ver ${c.name.slice(0, 20)}`, href: "/dashboard/meta" });
+      }
+      if (ctr < 0.8) {
+        insights.push(`${c.name}: CTR ${ctr.toFixed(2)}% — abaixo do benchmark. Revise copy e segmentacao.`);
+        if (severity !== "critical") severity = "warning";
+      }
+      if (cpm > 50) {
+        insights.push(`${c.name}: CPM R$${cpm.toFixed(2)} — alto. Ajuste a segmentacao.`);
+      }
+    }
+
+    if (insights.length === 0) {
+      insights.push("Campanhas ativas performando dentro dos parametros normais.");
+    }
+
+    return {
+      insight: insights.join("\n\n"),
+      severity: severity as "info" | "warning" | "critical",
+      actions: actions.slice(0, 3),
+      generatedAt: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    };
+  } catch {
+    return {
+      insight: "Erro ao analisar campanhas. Verifique o token Meta Ads.",
+      severity: "warning" as const,
+      actions: [{ label: "Verificar token", href: "/dashboard/settings/integrations" }],
+      generatedAt: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    };
+  }
+}

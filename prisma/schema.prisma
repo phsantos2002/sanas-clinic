@@ -35,6 +35,10 @@ model User {
   studioProjects    StudioProject[]
   generatedPosts    GeneratedPost[]
   whatsappCampaigns WhatsAppCampaign[]
+  notifications     Notification[]
+  checklistCompleted String[]         // IDs of completed checklist items
+  agencyId          String?
+  agency            Agency?          @relation(fields: [agencyId], references: [id])
 }
 
 model AIConfig {
@@ -152,16 +156,17 @@ model Message {
 }
 
 model Stage {
-  id        String             @id @default(cuid())
-  name      String
-  order     Int
-  eventName String
-  userId    String
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  leads     Lead[]
-  history   LeadStageHistory[]
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  id                       String             @id @default(cuid())
+  name                     String
+  order                    Int
+  eventName                String
+  stagnationDaysThreshold  Int?               // Dias max sem interação antes de alertar
+  userId                   String
+  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leads                    Lead[]
+  history                  LeadStageHistory[]
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
 
   @@unique([userId, order])
 }
@@ -364,17 +369,19 @@ model AiUsageLog {
 // ── WhatsApp Hub: Multi-attendant ────────────────────────────
 
 model Attendant {
-  id        String   @id @default(cuid())
-  userId    String                         // owner user
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  email     String?
-  phone     String?
-  role      String   @default("attendant") // "admin" | "attendant"
-  isActive  Boolean  @default(true)
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String    @id @default(cuid())
+  userId          String                         // owner user
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  email           String?
+  phone           String?
+  role            String    @default("attendant") // "admin" | "attendant"
+  isActive        Boolean   @default(true)
+  avatar          String?
+  status          String    @default("offline")   // "online" | "away" | "busy" | "offline"
+  statusUpdatedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([userId])
 }
@@ -388,9 +395,10 @@ model MessageTemplate {
   content   String                         // Texto com {{nome}}, {{clinica}} placeholders
   shortcut  String?                        // "/oi", "/agenda", "/promo"
   isActive  Boolean  @default(true)
-  usageCount Int     @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  usageCount   Int     @default(0)
+  responseRate Float?                        // Taxa de resposta após uso deste template
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([userId])
   @@unique([userId, shortcut])
@@ -424,6 +432,7 @@ model Workflow {
   description String?
   isActive    Boolean  @default(true)
   trigger     Json     // { type: "new_lead" | "stage_change" | "inactivity" | "tag_added" | "score_change", config: {} }
+  canvas      Json?    // { nodes: WorkflowNode[], edges: WorkflowEdge[] } — visual canvas data
   steps       WorkflowStep[]
   executions  WorkflowExecution[]
   createdAt   DateTime @default(now())
@@ -743,5 +752,44 @@ model WACampaignMessage {
   optedOut        Boolean          @default(false)
 
   @@index([campaignId, status])
+}
+
+// ── White-Label (Agency) ─────────────────────────────────────
+
+model Agency {
+  id            String   @id @default(cuid())
+  name          String
+  subdomain     String   @unique // ex: "minha-agencia"
+  customDomain  String?          // ex: "app.minhaagencia.com.br"
+  logoUrl       String?
+  faviconUrl    String?
+  primaryColor  String   @default("#4f46e5") // Indigo-600
+  secondaryColor String  @default("#7c3aed") // Violet-600
+  productName   String   @default("LuxCRM")  // Nome do produto white-label
+  supportEmail  String?
+  users         User[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([subdomain])
+}
+
+// ── Notificações ─────────────────────────────────────────────
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String   // "new_lead" | "lead_stuck" | "cpl_alert" | "lead_replied" | "workflow_error" | "broadcast_done" | "score_change"
+  title      String
+  message    String
+  read       Boolean  @default(false)
+  entityId   String?  // ID do recurso relacionado
+  entityType String?  // "lead" | "alert" | "workflow" | "broadcast" | "post"
+  actionUrl  String?  // Link direto para o contexto
+  createdAt  DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
 }
 

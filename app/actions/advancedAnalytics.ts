@@ -451,3 +451,62 @@ export async function exportAnalyticsJSON(): Promise<string> {
     aiUsage,
   }, null, 2);
 }
+
+// ── Analytics Narrative (4.5) ───────────────────────────────
+
+export async function getAnalyticsNarrative(_force = false) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const now = new Date();
+  const monthAgo = new Date(now.getTime() - 30 * 86400000);
+  const weekAgo = new Date(now.getTime() - 7 * 86400000);
+
+  const [totalLeads, weekLeads, convertedLeads, avgScore, publishedPosts, stages] = await Promise.all([
+    prisma.lead.count({ where: { userId: user.id, createdAt: { gte: monthAgo } } }),
+    prisma.lead.count({ where: { userId: user.id, createdAt: { gte: weekAgo } } }),
+    prisma.lead.count({ where: { userId: user.id, stage: { eventName: "Purchase" }, createdAt: { gte: monthAgo } } }),
+    prisma.lead.aggregate({ where: { userId: user.id }, _avg: { score: true } }),
+    prisma.socialPost.count({ where: { userId: user.id, status: "published", publishedAt: { gte: monthAgo } } }),
+    prisma.stage.findMany({
+      where: { userId: user.id },
+      include: { _count: { select: { leads: true } } },
+      orderBy: { order: "asc" },
+    }),
+  ]);
+
+  const parts: string[] = [];
+
+  const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : "0";
+  parts.push(`No ultimo mes, voce recebeu ${totalLeads} leads (${weekLeads} esta semana) com taxa de conversao de ${conversionRate}%.`);
+
+  const avgScoreVal = Math.round(avgScore._avg.score || 0);
+  parts.push(`Score medio dos seus leads: ${avgScoreVal}/100.`);
+
+  // Find bottleneck
+  if (stages.length >= 2) {
+    let maxDrop = 0;
+    let bottleneckFrom = "";
+    let bottleneckTo = "";
+    for (let i = 0; i < stages.length - 1; i++) {
+      const drop = stages[i]._count.leads - stages[i + 1]._count.leads;
+      if (drop > maxDrop) {
+        maxDrop = drop;
+        bottleneckFrom = stages[i].name;
+        bottleneckTo = stages[i + 1].name;
+      }
+    }
+    if (maxDrop > 0) {
+      parts.push(`Maior gargalo do pipeline: de "${bottleneckFrom}" para "${bottleneckTo}" com queda de ${maxDrop} leads.`);
+    }
+  }
+
+  if (publishedPosts > 0) {
+    parts.push(`${publishedPosts} posts publicados no periodo.`);
+  }
+
+  return {
+    text: parts.join(" "),
+    generatedAt: now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+  };
+}

@@ -391,3 +391,80 @@ export async function triggerWeeklySuggestions(): Promise<ActionResult<{ generat
   revalidatePath("/dashboard/posts");
   return { success: true, data: { generated: result.generated } };
 }
+
+// ── Suggest Best Post Time (6.2) ────────────────────────────
+
+export async function suggestBestPostTime(platform: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  // Analyze last 30 published posts for engagement patterns
+  const posts = await prisma.socialPost.findMany({
+    where: {
+      userId: user.id,
+      status: "published",
+      platforms: { has: platform },
+      publishedAt: { not: null },
+    },
+    select: { publishedAt: true, engagementData: true },
+    orderBy: { publishedAt: "desc" },
+    take: 30,
+  });
+
+  const dayNames = ["Domingo", "Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado"];
+
+  if (posts.length < 5) {
+    // Not enough data, use defaults by platform
+    const defaults: Record<string, { day: number; hour: number; reason: string }> = {
+      instagram: { day: 3, hour: 19, reason: "Melhor horario medio para Instagram" },
+      facebook: { day: 2, hour: 12, reason: "Melhor horario medio para Facebook" },
+      tiktok: { day: 4, hour: 20, reason: "Melhor horario medio para TikTok" },
+      linkedin: { day: 2, hour: 10, reason: "Melhor horario medio para LinkedIn" },
+    };
+    const d = defaults[platform] || defaults.instagram;
+    return { day: dayNames[d.day], hour: `${d.hour}:00`, reason: d.reason };
+  }
+
+  // Simple analysis: find day/hour with best engagement
+  const hourEngagement: Record<number, number[]> = {};
+  for (const post of posts) {
+    if (!post.publishedAt) continue;
+    const hour = new Date(post.publishedAt).getHours();
+    const engagement = post.engagementData as { likes?: number; comments?: number; shares?: number } | null;
+    const total = (engagement?.likes || 0) + (engagement?.comments || 0) * 3 + (engagement?.shares || 0) * 5;
+    (hourEngagement[hour] ||= []).push(total);
+  }
+
+  let bestHour = 19;
+  let bestAvg = 0;
+  for (const [hour, values] of Object.entries(hourEngagement)) {
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    if (avg > bestAvg) { bestAvg = avg; bestHour = parseInt(hour); }
+  }
+
+  // Find best day
+  const nextDate = new Date();
+  nextDate.setHours(bestHour, 0, 0, 0);
+  if (nextDate <= new Date()) nextDate.setDate(nextDate.getDate() + 1);
+
+  return {
+    day: dayNames[nextDate.getDay()],
+    hour: `${bestHour}:00`,
+    reason: `Baseado nos seus ultimos ${posts.length} posts`,
+  };
+}
+
+// ── Reschedule Post (6.3) ───────────────────────────────────
+
+export async function reschedulePost(postId: string, newDate: string) {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Nao autenticado" };
+
+  await prisma.socialPost.updateMany({
+    where: { id: postId, userId: user.id },
+    data: { scheduledAt: new Date(newDate) },
+  });
+
+  revalidatePath("/dashboard/posts");
+  return { success: true };
+}
