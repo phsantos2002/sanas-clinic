@@ -24,7 +24,18 @@ export default async function AnalyticsPage() {
   ]);
 
   if (!data) {
-    return <div className="text-center text-zinc-500 py-12">Erro ao carregar metricas.</div>;
+    return (
+      <div className="space-y-8">
+        <AnalyticsNarrative />
+        <div className="text-center text-slate-500 py-12">
+          <p className="text-lg font-semibold mb-2">Sem dados de analytics</p>
+          <p className="text-sm">Configure suas integracoes (Meta Ads, Pipeline) para ver metricas aqui.</p>
+          <a href="/dashboard/settings/integrations" className="inline-block mt-4 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">
+            Configurar integracoes
+          </a>
+        </div>
+      </div>
+    );
   }
 
   let pixelConfig: {

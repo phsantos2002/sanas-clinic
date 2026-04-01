@@ -34,7 +34,8 @@ export function SetupChecklist() {
   const completed = items.filter((i) => i.completed).length;
   const total = items.length;
 
-  if (completed === total && total > 0) return null;
+  // Don't show if no items loaded (auth issue) or all completed
+  if (total === 0 || (completed === total && total > 0)) return null;
 
   return (
     <div className="fixed bottom-4 right-4 z-40 w-80">
