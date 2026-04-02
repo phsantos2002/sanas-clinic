@@ -26,56 +26,65 @@ export async function saveOnboardingData(data: {
   avgTicket?: string;
   targetAudience?: string;
   tone?: string;
-}): Promise<{ success: boolean }> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false };
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Nao autenticado" };
 
-  const businessProfile = {
-    name: data.businessName,
-    niche: data.niche,
-    city: data.city || "",
-    services: data.services || "",
-    avgTicket: data.avgTicket || "",
-  };
+    const businessProfile = {
+      name: data.businessName,
+      niche: data.niche,
+      city: data.city || "",
+      services: data.services || "",
+      avgTicket: data.avgTicket || "",
+    };
 
-  const brandIdentity = {
-    business_type: data.niche,
-    default_tone: data.tone || "profissional",
-    target_audience: data.targetAudience || "",
-  };
+    const brandIdentity = {
+      business_type: data.niche,
+      default_tone: data.tone || "profissional",
+      target_audience: data.targetAudience || "",
+    };
 
-  await prisma.aIConfig.upsert({
-    where: { userId: user.id },
-    update: {
-      clinicName: data.businessName,
-      businessProfile: JSON.parse(JSON.stringify(businessProfile)),
-      brandIdentity: JSON.parse(JSON.stringify(brandIdentity)),
-    },
-    create: {
-      userId: user.id,
-      clinicName: data.businessName,
-      businessProfile: JSON.parse(JSON.stringify(businessProfile)),
-      brandIdentity: JSON.parse(JSON.stringify(brandIdentity)),
-    },
-  });
+    await prisma.aIConfig.upsert({
+      where: { userId: user.id },
+      update: {
+        clinicName: data.businessName,
+        businessProfile: JSON.parse(JSON.stringify(businessProfile)),
+        brandIdentity: JSON.parse(JSON.stringify(brandIdentity)),
+      },
+      create: {
+        userId: user.id,
+        clinicName: data.businessName,
+        businessProfile: JSON.parse(JSON.stringify(businessProfile)),
+        brandIdentity: JSON.parse(JSON.stringify(brandIdentity)),
+      },
+    });
 
-  // Create default pipeline stages if none exist
-  const stageCount = await prisma.stage.count({ where: { userId: user.id } });
-  if (stageCount === 0) {
-    const defaults = [
-      { name: "Novo Lead", order: 1, eventName: "Lead" },
-      { name: "Atendido", order: 2, eventName: "Contact" },
-      { name: "Qualificado", order: 3, eventName: "QualifiedLead" },
-      { name: "Agendado", order: 4, eventName: "Schedule" },
-      { name: "Cliente", order: 5, eventName: "Purchase" },
-    ];
-    for (const stage of defaults) {
-      await prisma.stage.create({ data: { ...stage, userId: user.id } });
+    // Create default pipeline stages if none exist
+    const stageCount = await prisma.stage.count({ where: { userId: user.id } });
+    if (stageCount === 0) {
+      const defaults = [
+        { name: "Novo Lead", order: 1, eventName: "Lead" },
+        { name: "Atendido", order: 2, eventName: "Contact" },
+        { name: "Qualificado", order: 3, eventName: "QualifiedLead" },
+        { name: "Agendado", order: 4, eventName: "Schedule" },
+        { name: "Cliente", order: 5, eventName: "Purchase" },
+      ];
+      for (const stage of defaults) {
+        await prisma.stage.create({ data: { ...stage, userId: user.id } }).catch(() => {
+          // Ignore unique constraint - stage already exists
+        });
+      }
     }
-  }
 
-  revalidatePath("/dashboard");
-  return { success: true };
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/onboarding");
+    revalidatePath("/dashboard/pipeline");
+    return { success: true };
+  } catch (err) {
+    console.error("[saveOnboardingData]", err);
+    return { success: false, error: "Erro ao salvar dados" };
+  }
 }
 
 // ── Setup Progress (7.2) ────────────────────────────────────
@@ -99,7 +108,7 @@ export async function getSetupProgress() {
     { id: "whatsapp", label: "WhatsApp conectado", completed: !!(waConfig?.uazapiInstanceToken || waConfig?.accessToken), weight: 20, href: "/dashboard/settings/integrations" },
     { id: "pixel", label: "Meta Pixel configurado", completed: !!pixel?.pixelId, weight: 15, href: "/dashboard/settings/integrations" },
     { id: "meta_ads", label: "Meta Ads conta vinculada", completed: !!pixel?.metaAdsToken, weight: 15, href: "/dashboard/settings/integrations" },
-    { id: "brand", label: "Identidade de marca preenchida", completed: !!(brand?.primary_color && brand?.default_tone), weight: 15, href: "/dashboard/settings" },
+    { id: "brand", label: "Tom de voz configurado", completed: !!(brand?.default_tone), weight: 15, href: "/dashboard/settings" },
     { id: "profile", label: "Perfil de negocio preenchido", completed: !!(profile?.name && profile?.niche), weight: 10, href: "/dashboard/settings" },
     { id: "templates", label: "Pelo menos 1 template criado", completed: templates > 0, weight: 10, href: "/dashboard/chat/templates" },
     { id: "automations", label: "Pelo menos 1 automacao ativa", completed: workflows > 0, weight: 10, href: "/dashboard/workflows" },
