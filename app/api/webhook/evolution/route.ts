@@ -90,16 +90,17 @@ export async function POST(req: NextRequest) {
         text,
         pushName: body.senderName ?? "",
         attribution,
-        sendReply: (replyPhone, replyText) => {
+        sendReply: async (replyPhone, replyText) => {
           if (whatsappConfig.uazapiServerUrl && whatsappConfig.uazapiInstanceToken) {
-            return sendUazapiMessage(
+            const res = await sendUazapiMessage(
               whatsappConfig.uazapiServerUrl,
               whatsappConfig.uazapiInstanceToken,
               replyPhone,
               replyText,
             );
+            return { success: res.ok, error: res.ok ? undefined : res.error };
           }
-          return Promise.resolve({ success: false, error: "Uazapi nao configurado" });
+          return { success: false, error: "Uazapi nao configurado" };
         },
       });
     } catch (err) {

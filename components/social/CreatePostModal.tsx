@@ -13,11 +13,12 @@ const MEDIA_TYPES = [
 ];
 
 const PLATFORM_OPTIONS = [
-  { id: "instagram", label: "Instagram", emoji: "\uD83D\uDCF7" },
-  { id: "facebook", label: "Facebook", emoji: "\uD83D\uDCF1" },
-  { id: "tiktok", label: "TikTok", emoji: "\uD83C\uDFB5" },
-  { id: "linkedin", label: "LinkedIn", emoji: "\uD83D\uDCBC" },
-  { id: "google_business", label: "Google", emoji: "\uD83D\uDCCD" },
+  { id: "instagram", label: "Instagram", emoji: "📸" },
+  { id: "facebook", label: "Facebook", emoji: "👍" },
+  { id: "youtube", label: "YouTube", emoji: "▶️" },
+  { id: "tiktok", label: "TikTok", emoji: "🎬" },
+  { id: "linkedin", label: "LinkedIn", emoji: "🔗" },
+  { id: "google_business", label: "Google", emoji: "📍" },
 ];
 
 export function CreatePostModal({

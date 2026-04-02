@@ -87,7 +87,7 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
   }
 
   return (
-    <div className="w-72 border-l border-slate-200 bg-white flex-col overflow-y-auto hidden lg:flex">
+    <div className="w-72 flex-shrink-0 border-l border-slate-200 bg-white flex-col overflow-y-auto hidden lg:flex">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
         <h3 className="text-sm font-semibold text-slate-800">Detalhes do Lead</h3>

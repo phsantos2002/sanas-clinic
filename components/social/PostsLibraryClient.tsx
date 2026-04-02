@@ -45,12 +45,13 @@ const MEDIA_TYPE_LABELS: Record<string, string> = {
 };
 
 const PLATFORM_EMOJIS: Record<string, string> = {
-  instagram: "\uD83D\uDCF7",
-  facebook: "\uD83D\uDCF1",
-  tiktok: "\uD83C\uDFB5",
-  linkedin: "\uD83D\uDCBC",
-  pinterest: "\uD83D\uDCCC",
-  google_business: "\uD83D\uDCCD",
+  instagram: "📸",
+  facebook: "👍",
+  youtube: "▶️",
+  tiktok: "🎬",
+  linkedin: "🔗",
+  pinterest: "📌",
+  google_business: "📍",
 };
 
 type FilterState = {

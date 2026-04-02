@@ -7,6 +7,7 @@ import { FacebookPixelForm } from "@/components/forms/FacebookPixelForm";
 import { WhatsAppConfigForm } from "@/components/forms/WhatsAppConfigForm";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
 import { ContentGenKeysForm } from "@/components/settings/ContentGenKeysForm";
+import { SetupProgress } from "@/components/settings/SetupProgress";
 
 export default async function IntegrationsPage() {
   const [pixel, aiConfig, whatsappConfig, contentGen, usage, connections] = await Promise.all([
@@ -20,6 +21,8 @@ export default async function IntegrationsPage() {
 
   return (
     <div className="space-y-4 max-w-2xl">
+      <SetupProgress />
+
       {/* Status Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[

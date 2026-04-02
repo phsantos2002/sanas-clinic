@@ -25,12 +25,13 @@ export async function sendMessage(
     if (!config.uazapiServerUrl || !config.uazapiInstanceToken) {
       return { success: false, error: "Uazapi não configurado" };
     }
-    return sendUazapiMessage(
+    const res = await sendUazapiMessage(
       config.uazapiServerUrl,
       config.uazapiInstanceToken,
       to,
       text,
     );
+    return { success: res.ok, error: res.ok ? undefined : res.error };
   }
 
   // Default: API Oficial

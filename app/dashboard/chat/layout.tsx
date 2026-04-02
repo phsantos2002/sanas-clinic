@@ -16,8 +16,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
 
   return (
-    <div className="space-y-4">
-      <nav className="flex items-center gap-1 bg-white border border-slate-100 rounded-xl p-1 overflow-x-auto">
+    <div className="flex flex-col gap-3">
+      <nav className="flex items-center gap-1 bg-white border border-slate-100 rounded-xl p-1 overflow-x-auto flex-shrink-0">
         {chatTabs.map((tab) => {
           const isActive = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
           return (

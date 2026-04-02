@@ -22,7 +22,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
 };
 
 const VIDEO_TYPES: Record<string, string> = {
-  reel: "Reels", story: "Story", tiktok: "TikTok", youtube_short: "YouTube Short", carousel: "Carrossel", post: "Post",
+  reel: "Reels", story: "Story", tiktok: "TikTok", youtube_short: "YouTube Short", youtube_video: "YouTube Video", carousel: "Carrossel", post: "Post",
 };
 
 export function StudioClient({ initialStories }: { initialStories: StoryData[] }) {

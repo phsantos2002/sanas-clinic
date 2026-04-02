@@ -562,17 +562,54 @@ export function ChatPageClient() {
     });
   }, [chats, forwardingMsg, forwardSearch]);
 
+  // New conversation state
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [newChatNumber, setNewChatNumber] = useState("");
+
+  const handleStartNewChat = () => {
+    const cleaned = newChatNumber.replace(/\D/g, "");
+    if (cleaned.length < 10) {
+      toast.error("Numero invalido. Use DDD + numero (ex: 11999998888)");
+      return;
+    }
+    const number = cleaned.startsWith("55") ? cleaned : `55${cleaned}`;
+    const fakeChat: Chat = {
+      id: `new-${number}`,
+      wa_chatid: `${number}@s.whatsapp.net`,
+      wa_contactName: "",
+      wa_isGroup: false,
+      wa_lastMsgTimestamp: Date.now(),
+      wa_unreadCount: 0,
+      wa_lastMessageTextVote: "",
+      wa_lastMessageSender: "",
+      wa_lastMessageType: "",
+      phone: number,
+      image: "",
+      imagePreview: "",
+    };
+    setSelectedChat(fakeChat);
+    setShowNewChat(false);
+    setNewChatNumber("");
+  };
+
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] -mx-4 -my-4 md:-mx-6 md:-my-8">
+    <div className="flex h-[calc(100vh-3.5rem)] -mx-4 -my-4 md:-mx-6 md:-my-8 overflow-hidden">
       {/* ─── Sidebar ─── */}
-      <div className={`${showMobileSidebar ? "flex" : "hidden"} md:flex w-full md:w-[340px] flex-shrink-0 border-r border-slate-200 bg-white flex-col`}>
-        <div className="px-4 py-3 border-b border-slate-100 space-y-3">
+      <div className={`${showMobileSidebar ? "flex" : "hidden"} md:flex w-full md:w-[340px] flex-shrink-0 border-r border-slate-200 bg-white flex-col overflow-hidden`}>
+        <div className="px-4 py-3 border-b border-slate-100 space-y-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-slate-900">Conversas</h2>
               <span className={`w-2 h-2 rounded-full ${connectionStatus === "connected" ? "bg-emerald-500" : connectionStatus === "disconnected" ? "bg-red-500" : "bg-amber-500"}`} title={connectionStatus === "connected" ? "Conectado" : "Desconectado"} />
             </div>
             <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowNewChat(!showNewChat)}
+                className={`p-1.5 rounded-lg transition-colors ${showNewChat ? "bg-indigo-100 text-indigo-700" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"}`}
+                title="Nova conversa"
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+              </button>
               <button
                 onClick={() => setChatFilter(f => f === "all" ? "unread" : "all")}
                 className={`p-1.5 rounded-lg transition-colors ${chatFilter === "unread" ? "bg-emerald-100 text-emerald-700" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"}`}
@@ -585,6 +622,27 @@ export function ChatPageClient() {
               </Button>
             </div>
           </div>
+
+          {/* New Chat Input */}
+          {showNewChat && (
+            <div className="flex gap-2 p-2 bg-indigo-50 rounded-lg border border-indigo-100">
+              <input
+                type="text"
+                value={newChatNumber}
+                onChange={(e) => setNewChatNumber(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleStartNewChat()}
+                placeholder="DDD + numero (ex: 11999998888)"
+                className="flex-1 text-xs bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                autoFocus
+              />
+              <button
+                onClick={handleStartNewChat}
+                className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Iniciar
+              </button>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg">
@@ -688,11 +746,11 @@ export function ChatPageClient() {
       </div>
 
       {/* ─── Chat area ─── */}
-      <div className={`${showMobileSidebar ? "hidden" : "flex"} md:flex flex-1 flex-col overflow-hidden`}>
+      <div className={`${showMobileSidebar ? "hidden" : "flex"} md:flex flex-1 flex-col overflow-hidden min-w-0`}>
         {selectedChat ? (
           <>
             {/* Chat header */}
-            <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-200 bg-slate-50">
+            <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-200 bg-slate-50 flex-shrink-0">
               <button onClick={() => setSelectedChat(null)} className="md:hidden p-1">
                 <ArrowLeft className="h-5 w-5 text-slate-600" />
               </button>
@@ -1021,7 +1079,7 @@ export function ChatPageClient() {
 
             {/* Reply preview */}
             {replyTo && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border-t border-emerald-100">
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border-t border-emerald-100 flex-shrink-0">
                 <Reply className="h-4 w-4 text-emerald-500 flex-shrink-0" />
                 <div className="flex-1 border-l-2 border-emerald-400 pl-2">
                   <p className="text-[10px] font-medium text-emerald-700">
@@ -1036,7 +1094,7 @@ export function ChatPageClient() {
             )}
 
             {/* Input */}
-            <div className="px-4 py-3 border-t border-slate-200 bg-slate-50">
+            <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex-shrink-0">
               <form
                 onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                 className="flex items-center gap-2"

@@ -2,57 +2,72 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { MessageCircle, PenTool, BarChart3, Kanban, Heart } from "lucide-react";
+import { MessageCircle, PenTool, BarChart3, Kanban, Heart, Info } from "lucide-react";
 
 type Automations = Record<string, boolean>;
 
 const SECTIONS = [
   {
-    title: "WhatsApp",
+    title: "Atendimento WhatsApp",
     icon: MessageCircle,
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+    description: "Respostas e follow-ups automaticos para nao perder leads",
     toggles: [
-      { key: "whatsappWelcome", label: "Resposta automatica de boas-vindas (< 1 min)" },
-      { key: "followUp24h", label: "Follow-up apos 24h sem resposta" },
-      { key: "confirmAgendamento", label: "Confirmacao de agendamento 48h antes" },
-      { key: "reminderAgendamento", label: "Lembrete de agendamento 2h antes" },
-      { key: "reactivation30d", label: "Reativacao de leads inativos (30 dias)" },
-      { key: "nps7d", label: "NPS pos-procedimento (7 dias)" },
+      { key: "whatsappWelcome", label: "Boas-vindas automaticas", desc: "Responde em menos de 1 min quando um lead envia mensagem" },
+      { key: "followUp24h", label: "Follow-up 24h", desc: "Envia lembrete se o lead nao respondeu em 24 horas" },
+      { key: "confirmAgendamento", label: "Confirmar agendamento", desc: "Pergunta se o cliente confirma 48h antes" },
+      { key: "reminderAgendamento", label: "Lembrete 2h antes", desc: "Envia lembrete no dia do agendamento" },
+      { key: "reactivation30d", label: "Reativar inativos", desc: "Tenta reconectar leads sem interacao ha 30 dias" },
+      { key: "nps7d", label: "Pesquisa NPS", desc: "Pede avaliacao 7 dias apos o atendimento" },
     ],
   },
   {
-    title: "Conteudo",
+    title: "Publicacao & Conteudo",
     icon: PenTool,
+    color: "text-violet-600",
+    bgColor: "bg-violet-50",
+    description: "Criacao e publicacao automatica de posts nas redes sociais",
     toggles: [
-      { key: "weeklySuggestions", label: "Gerar sugestoes semanais com IA (segunda 8h)" },
-      { key: "autoPublish", label: "Publicar posts agendados automaticamente" },
-      { key: "collectMetrics", label: "Coletar metricas de posts a cada 6h" },
+      { key: "weeklySuggestions", label: "Sugestoes semanais com IA", desc: "Gera ideias de conteudo toda segunda as 8h" },
+      { key: "autoPublish", label: "Publicar posts agendados", desc: "Publica automaticamente nos horarios definidos" },
+      { key: "collectMetrics", label: "Coletar metricas", desc: "Atualiza engajamento e alcance a cada 6 horas" },
     ],
   },
   {
-    title: "Engajamento",
+    title: "Engajamento Social",
     icon: Heart,
+    color: "text-pink-600",
+    bgColor: "bg-pink-50",
+    description: "Interacoes automaticas com seguidores e comentarios",
     toggles: [
-      { key: "collectComments", label: "Coletar comentarios a cada 30 min" },
-      { key: "aiReplies", label: "Gerar respostas sugeridas com IA" },
-      { key: "autoLikeComments", label: "Curtir elogios automaticamente" },
-      { key: "classifyFollowers", label: "Classificar novos seguidores como publico-alvo" },
+      { key: "collectComments", label: "Monitorar comentarios", desc: "Coleta novos comentarios a cada 30 minutos" },
+      { key: "aiReplies", label: "Sugerir respostas com IA", desc: "IA gera sugestoes de resposta para cada comentario" },
+      { key: "autoLikeComments", label: "Curtir elogios", desc: "Curte automaticamente comentarios positivos" },
+      { key: "classifyFollowers", label: "Classificar seguidores", desc: "Identifica novos seguidores como potencial publico-alvo" },
     ],
   },
   {
-    title: "Ads",
+    title: "Ads & Conversao",
     icon: BarChart3,
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    description: "Alertas e eventos do Meta Ads para otimizar campanhas",
     toggles: [
-      { key: "cplAlert", label: "Alertar quando CPL subir mais de 30%" },
-      { key: "frequencyAlert", label: "Alertar quando frequencia passar de 3" },
-      { key: "capiEvents", label: "Disparar eventos CAPI em mudanca de stage" },
+      { key: "cplAlert", label: "Alerta de CPL alto", desc: "Notifica quando o custo por lead subir mais de 30%" },
+      { key: "frequencyAlert", label: "Alerta de frequencia", desc: "Avisa quando a frequencia do anuncio passar de 3" },
+      { key: "capiEvents", label: "Eventos CAPI automaticos", desc: "Dispara eventos de conversao ao mudar lead de etapa" },
     ],
   },
   {
-    title: "Pipeline",
+    title: "Pipeline & Leads",
     icon: Kanban,
+    color: "text-amber-600",
+    bgColor: "bg-amber-50",
+    description: "Gestao automatica do funil de vendas",
     toggles: [
-      { key: "dailyScoring", label: "Recalcular lead scoring diariamente" },
-      { key: "stuckLeadAlert", label: "Alertar leads parados ha 5+ dias" },
+      { key: "dailyScoring", label: "Lead scoring diario", desc: "Recalcula a pontuacao de todos os leads diariamente" },
+      { key: "stuckLeadAlert", label: "Alerta de leads parados", desc: "Notifica leads sem movimentacao ha 5+ dias" },
     ],
   },
 ];
@@ -88,30 +103,56 @@ export function AutomationsForm({ initial, onSave }: {
     else toast.error(result.error || "Erro ao salvar");
   };
 
+  // Count active automations per section
+  const getSectionActiveCount = (section: typeof SECTIONS[0]) => {
+    return section.toggles.filter((t) => automations[t.key]).length;
+  };
+
   return (
-    <div className="space-y-5">
-      {SECTIONS.map((section) => (
-        <div key={section.title}>
-          <div className="flex items-center gap-2 mb-2">
-            <section.icon className="h-4 w-4 text-slate-500" />
-            <h4 className="text-sm font-semibold text-slate-700">{section.title}</h4>
+    <div className="space-y-6">
+      {SECTIONS.map((section) => {
+        const activeCount = getSectionActiveCount(section);
+        const totalCount = section.toggles.length;
+
+        return (
+          <div key={section.title} className="border border-slate-100 rounded-xl overflow-hidden">
+            {/* Section Header */}
+            <div className={`flex items-center gap-3 px-4 py-3 ${section.bgColor}`}>
+              <section.icon className={`h-4.5 w-4.5 ${section.color}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-semibold text-slate-800">{section.title}</h4>
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                    activeCount === totalCount ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
+                  }`}>
+                    {activeCount}/{totalCount}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">{section.description}</p>
+              </div>
+            </div>
+
+            {/* Toggles */}
+            <div className="divide-y divide-slate-50">
+              {section.toggles.map((t) => (
+                <label key={t.key} className="flex items-start gap-3 px-4 py-3 cursor-pointer group hover:bg-slate-25 transition-colors">
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <span className="text-sm text-slate-700 font-medium group-hover:text-slate-900 transition-colors block">{t.label}</span>
+                    <span className="text-xs text-slate-400 block mt-0.5">{t.desc}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggle(t.key)}
+                    className={`relative w-10 h-5 rounded-full transition-colors shrink-0 mt-1 ${automations[t.key] ? "bg-indigo-600" : "bg-slate-200"}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 h-4 w-4 bg-white rounded-full shadow transition-transform ${automations[t.key] ? "translate-x-5" : ""}`} />
+                  </button>
+                </label>
+              ))}
+            </div>
           </div>
-          <div className="space-y-1.5">
-            {section.toggles.map((t) => (
-              <label key={t.key} className="flex items-center justify-between py-1.5 cursor-pointer group">
-                <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">{t.label}</span>
-                <button
-                  type="button"
-                  onClick={() => toggle(t.key)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${automations[t.key] ? "bg-indigo-600" : "bg-slate-200"}`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 h-4 w-4 bg-white rounded-full shadow transition-transform ${automations[t.key] ? "translate-x-5" : ""}`} />
-                </button>
-              </label>
-            ))}
-          </div>
-        </div>
-      ))}
+        );
+      })}
 
       <button
         onClick={handleSave}

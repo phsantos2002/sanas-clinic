@@ -1,13 +1,11 @@
 import { getBusinessProfile, saveBusinessProfile } from "@/app/actions/brandSettings";
 import { BusinessProfileForm } from "@/components/settings/BusinessProfileForm";
-import { SetupProgress } from "@/components/settings/SetupProgress";
 
 export default async function SettingsBusinessPage() {
   const businessProfile = await getBusinessProfile();
 
   return (
     <div className="space-y-4 max-w-2xl">
-      <SetupProgress />
       {/* Business Profile */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
         <div>

@@ -23,6 +23,7 @@ type SocialStats = {
 const PLATFORM_LABELS: Record<string, string> = {
   instagram: "Instagram",
   facebook: "Facebook",
+  youtube: "YouTube",
   tiktok: "TikTok",
   linkedin: "LinkedIn",
   pinterest: "Pinterest",
@@ -32,6 +33,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 const PLATFORM_COLORS: Record<string, string> = {
   instagram: "bg-gradient-to-r from-purple-500 to-pink-500",
   facebook: "bg-blue-600",
+  youtube: "bg-red-600",
   tiktok: "bg-slate-900",
   linkedin: "bg-blue-700",
   pinterest: "bg-red-600",
