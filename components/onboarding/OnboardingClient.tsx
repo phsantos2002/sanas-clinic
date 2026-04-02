@@ -68,7 +68,7 @@ const FEATURES_TOUR = [
     icon: MessagesSquare,
     title: "Chat WhatsApp",
     subtitle: "Atendimento centralizado",
-    desc: "Converse com clientes direto pelo LuxCRM. Respostas automaticas, follow-up inteligente e IA que sugere respostas.",
+    desc: "Converse com clientes direto pelo Sanas Pulse. Respostas automaticas, follow-up inteligente e IA que sugere respostas.",
     color: "text-green-600",
     bg: "bg-green-50",
   },
@@ -104,7 +104,7 @@ export function OnboardingClient() {
     setSaving(false);
 
     if (result.success) {
-      toast.success("Tudo configurado! Bem-vindo ao LuxCRM");
+      toast.success("Tudo configurado! Bem-vindo ao Sanas Pulse");
       router.push("/dashboard/overview");
     } else {
       toast.error("Erro ao salvar. Tente novamente.");
@@ -135,7 +135,7 @@ export function OnboardingClient() {
                 </div>
               </div>
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-                Bem-vindo ao LuxCRM
+                Bem-vindo ao Sanas Pulse
               </h1>
               <p className="text-base text-slate-500 mt-2">
                 Seu CRM com IA pronto em <span className="font-semibold text-indigo-600">2 minutos</span>

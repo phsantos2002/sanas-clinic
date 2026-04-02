@@ -39,7 +39,7 @@ export async function createAgency(data: {
       logoUrl: data.logoUrl,
       primaryColor: data.primaryColor || "#4f46e5",
       secondaryColor: data.secondaryColor || "#7c3aed",
-      productName: data.productName || "LuxCRM",
+      productName: data.productName || "Sanas Pulse",
       supportEmail: data.supportEmail,
     },
   });

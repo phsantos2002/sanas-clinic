@@ -64,7 +64,7 @@ export default async function IntegrationsPage() {
           <p className="text-sm text-slate-400 mt-0.5">Provider principal para chat, roteiros e analises</p>
         </div>
         <AIConfigForm config={aiConfig ?? {
-          clinicName: "Sanas Clinic", systemPrompt: "", sendAudio: false,
+          clinicName: "Sanas Pulse", systemPrompt: "", sendAudio: false,
           provider: "openai", model: "gpt-4o-mini", capabilities: "text",
           apiKey: "", voiceClonePrompt: "", openaiKey: "",
         }} />

@@ -180,7 +180,7 @@ export function AIConfigForm({ config }: Props) {
           id="clinicName"
           value={clinicName}
           onChange={(e) => setClinicName(e.target.value)}
-          placeholder="Sanas Clinic"
+          placeholder="Sanas Pulse"
         />
         <p className="text-xs text-slate-400">
           Usado pela IA ao se apresentar e nas respostas.
@@ -195,7 +195,7 @@ export function AIConfigForm({ config }: Props) {
           value={systemPrompt}
           onChange={(e) => setSystemPrompt(e.target.value)}
           rows={8}
-          placeholder={`Deixe em branco para usar o prompt padrão.\n\nExemplo:\nVocê é a Mari, assistente da Sanas Clinic. Atendemos procedimentos de botox, harmonização facial e limpeza de pele. Nosso horário é de segunda a sábado, das 9h às 18h. Sempre pergunte o nome da pessoa e o procedimento de interesse antes de oferecer o agendamento.`}
+          placeholder={`Deixe em branco para usar o prompt padrão.\n\nExemplo:\nVocê é a Mari, assistente da Sanas Pulse. Atendemos procedimentos de botox, harmonização facial e limpeza de pele. Nosso horário é de segunda a sábado, das 9h às 18h. Sempre pergunte o nome da pessoa e o procedimento de interesse antes de oferecer o agendamento.`}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 resize-none"
         />
         <p className="text-xs text-slate-400">

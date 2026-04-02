@@ -65,7 +65,7 @@ export function AssistantClient() {
               <div className="h-16 w-16 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center mb-4">
                 <Bot className="h-8 w-8 text-white" />
               </div>
-              <h2 className="font-bold text-slate-900 text-lg">Assistente LuxCRM</h2>
+              <h2 className="font-bold text-slate-900 text-lg">Assistente Sanas Pulse</h2>
               <p className="text-sm text-slate-400 text-center mt-1 max-w-md">
                 Pergunto qualquer coisa sobre seu negocio. Uso dados reais do seu pipeline, ads e conteudo.
               </p>

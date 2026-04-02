@@ -104,7 +104,7 @@ export async function generateAIReply(
   leadName: string,
   config: AIProviderConfig,
 ): Promise<AIResponse> {
-  const clinicName = config.clinicName ?? "Sanas Clinic";
+  const clinicName = config.clinicName ?? "Sanas Pulse";
   const systemPrompt = buildSystemPrompt(clinicName, config.systemPrompt);
   const systemWithName = `${systemPrompt}\n\nNome do lead atual: ${leadName}`;
 

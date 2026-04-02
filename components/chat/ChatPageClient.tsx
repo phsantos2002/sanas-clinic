@@ -1187,7 +1187,7 @@ export function ChatPageClient() {
               <MessageCircle className="h-10 w-10 text-emerald-300" />
             </div>
             <div className="text-center">
-              <p className="text-lg font-semibold text-slate-600">LuxCRM Chat</p>
+              <p className="text-lg font-semibold text-slate-600">Sanas Pulse Chat</p>
               <p className="text-sm text-slate-400 mt-1">Selecione uma conversa para comecar</p>
               <div className="flex items-center justify-center gap-2 mt-3">
                 <span className={`w-2 h-2 rounded-full ${connectionStatus === "connected" ? "bg-emerald-500" : "bg-red-500"}`} />

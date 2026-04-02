@@ -66,7 +66,7 @@ export async function saveUazapiConfig(): Promise<ActionResult<{ qrcode?: string
     const { createUazapiInstance, connectUazapiInstance, setUazapiWebhook } =
       await import("@/services/whatsappUazapi");
 
-    const instanceName = `lux-${dbUser.id.slice(0, 8)}`;
+    const instanceName = `sanas-${dbUser.id.slice(0, 8)}`;
 
     // Check if user already has a config with instance token
     const existing = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });

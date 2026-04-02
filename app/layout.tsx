@@ -10,7 +10,7 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Sanas Clinic",
+  title: "Sanas Pulse",
   description: "CRM de conversão automática integrado ao WhatsApp e Facebook Ads",
 };
 

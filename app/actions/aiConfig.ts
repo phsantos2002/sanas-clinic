@@ -29,7 +29,7 @@ export async function getAIConfig(): Promise<AIConfigData | null> {
   const openaiKey = config?.openaiKey ?? "";
 
   return {
-    clinicName: config?.clinicName ?? "Sanas Clinic",
+    clinicName: config?.clinicName ?? "Sanas Pulse",
     systemPrompt: config?.systemPrompt ?? "",
     sendAudio: config?.sendAudio ?? false,
     provider: config?.provider ?? "openai",

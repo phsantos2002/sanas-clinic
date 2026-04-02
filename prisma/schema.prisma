@@ -45,7 +45,7 @@ model AIConfig {
   id           String   @id @default(cuid())
   userId       String   @unique
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clinicName   String   @default("Sanas Clinic")
+  clinicName   String   @default("Sanas Pulse")
   systemPrompt String?
   sendAudio    Boolean  @default(false)
   provider     String   @default("openai")    // "openai" | "gemini"
@@ -765,7 +765,7 @@ model Agency {
   faviconUrl    String?
   primaryColor  String   @default("#4f46e5") // Indigo-600
   secondaryColor String  @default("#7c3aed") // Violet-600
-  productName   String   @default("LuxCRM")  // Nome do produto white-label
+  productName   String   @default("Sanas Pulse")  // Nome do produto white-label
   supportEmail  String?
   users         User[]
   createdAt     DateTime @default(now())

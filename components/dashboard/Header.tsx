@@ -14,7 +14,7 @@ export function Header() {
       {/* Desktop header */}
       <div className="hidden md:flex max-w-screen-2xl mx-auto px-6 h-14 items-center justify-between">
         <div className="flex items-center gap-4">
-          <Image src="/logo.png" alt="Sanas Clinic" width={32} height={32} className="rounded-lg object-contain" />
+          <Image src="/logo.png" alt="Sanas Pulse" width={32} height={32} className="rounded-lg object-contain" />
           <div className="h-6 w-px bg-slate-200" />
           <SystemStatus />
         </div>
@@ -39,7 +39,7 @@ export function Header() {
       <div className="md:hidden">
         <div className="flex items-center justify-between px-4 h-12">
           <div className="flex items-center gap-2.5">
-            <Image src="/logo.png" alt="Sanas Clinic" width={28} height={28} className="rounded-lg object-contain" />
+            <Image src="/logo.png" alt="Sanas Pulse" width={28} height={28} className="rounded-lg object-contain" />
             <SystemStatus />
           </div>
           <div className="flex items-center gap-0.5">

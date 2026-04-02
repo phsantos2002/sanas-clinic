@@ -20,7 +20,7 @@ export function SetupChecklist() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const wasDismissed = localStorage.getItem("lux-checklist-dismissed");
+    const wasDismissed = localStorage.getItem("sanas-checklist-dismissed");
     if (wasDismissed) { setDismissed(true); setLoading(false); return; }
 
     getChecklistProgress().then((data) => {
@@ -54,7 +54,7 @@ export function SetupChecklist() {
           </div>
           <div className="flex items-center gap-1">
             <button
-              onClick={(e) => { e.stopPropagation(); setDismissed(true); localStorage.setItem("lux-checklist-dismissed", "true"); }}
+              onClick={(e) => { e.stopPropagation(); setDismissed(true); localStorage.setItem("sanas-checklist-dismissed", "true"); }}
               className="p-1 text-slate-400 hover:text-slate-600 rounded"
             >
               <X className="h-3.5 w-3.5" />

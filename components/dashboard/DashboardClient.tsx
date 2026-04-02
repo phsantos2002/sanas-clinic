@@ -24,7 +24,7 @@ type Props = {
   stages: Stage[];
 };
 
-const SAVED_FILTERS_KEY = "lux-saved-filters";
+const SAVED_FILTERS_KEY = "sanas-saved-filters";
 
 function loadSavedFilters(): SavedFilter[] {
   if (typeof window === "undefined") return [];

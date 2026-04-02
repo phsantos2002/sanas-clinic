@@ -15,7 +15,7 @@ export default async function ResetPasswordPage({
     <div className="min-h-screen bg-white flex items-center justify-center">
       <div className="w-full max-w-sm space-y-6 px-4">
         <div className="text-center space-y-1">
-          <Image src="/logo.png" alt="Sanas Clinic" width={72} height={72} className="mx-auto" />
+          <Image src="/logo.png" alt="Sanas Pulse" width={72} height={72} className="mx-auto" />
           <h1 className="text-lg font-semibold">Redefinir senha</h1>
           <p className="text-zinc-500 text-sm">Digite sua nova senha abaixo.</p>
         </div>

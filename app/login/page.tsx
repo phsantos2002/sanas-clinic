@@ -31,7 +31,7 @@ export default async function LoginPage({
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 p-8 space-y-6">
           <div className="text-center space-y-2">
-            <Image src="/logo.png" alt="Lux CRM" width={64} height={64} className="mx-auto rounded-2xl" />
+            <Image src="/logo.png" alt="Sanas Pulse" width={64} height={64} className="mx-auto rounded-2xl" />
             <h1 className="text-xl font-bold text-slate-900">Bem-vindo</h1>
             <p className="text-slate-400 text-sm">
               CRM de conversão automática
