@@ -265,7 +265,7 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
     const token = config.uazapiInstanceToken;
 
     // Fetch chats (sorted by most recent)
-    const chatsResult = await getUazapiChats(serverUrl, token, 200);
+    const chatsResult = await getUazapiChats(serverUrl, token, { limit: 200 });
     if (!chatsResult.success || !chatsResult.chats) {
       return { success: false, error: chatsResult.error ?? "Erro ao buscar chats" };
     }
@@ -384,7 +384,7 @@ export async function syncWhatsAppMessages(): Promise<ActionResult<{ messagesImp
       if (lead.phone.startsWith("lid-")) continue;
 
       const chatId = `${lead.phone}@s.whatsapp.net`;
-      const msgsResult = await getUazapiMessages(serverUrl, token, chatId, 30);
+      const msgsResult = await getUazapiMessages(serverUrl, token, chatId, { limit: 30 });
       if (!msgsResult.success || !msgsResult.messages) continue;
 
       const messagesToCreate = msgsResult.messages
