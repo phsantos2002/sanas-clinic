@@ -593,7 +593,7 @@ export function ChatPageClient() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] -mx-4 -my-4 md:-mx-6 md:-my-8 overflow-hidden">
+    <div className="flex h-[calc(100vh-7.5rem)] -mx-4 md:-mx-6 overflow-hidden rounded-xl border border-slate-200">
       {/* ─── Sidebar ─── */}
       <div className={`${showMobileSidebar ? "flex" : "hidden"} md:flex w-full md:w-[340px] flex-shrink-0 border-r border-slate-200 bg-white flex-col overflow-hidden`}>
         <div className="px-4 py-3 border-b border-slate-100 space-y-3 flex-shrink-0">
