@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendUazapiMessage } from "@/services/whatsappUazapi";
 import { processIncomingMessage } from "@/services/webhookProcessor";
+import { logWebhook } from "@/app/api/debug/webhook-log/route";
 
 type UazapiPayload = {
   event?: string;
@@ -29,7 +30,18 @@ function extractPhoneFromChatId(chatId: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as UazapiPayload;
+    const raw = await req.text();
+    console.log(`[uazapi webhook RAW] ${raw.slice(0, 1000)}`);
+
+    let body: UazapiPayload;
+    try {
+      body = JSON.parse(raw) as UazapiPayload;
+      logWebhook(body);
+    } catch {
+      console.error("[uazapi webhook] JSON parse error");
+      logWebhook({ error: "JSON parse error", raw: raw.slice(0, 500) });
+      return NextResponse.json({ ok: true });
+    }
 
     console.log(`[uazapi webhook] event=${body.event} fromMe=${body.fromMe} chatid=${body.chatid?.slice(0, 20)} type=${body.type} body=${body.body?.slice(0, 30)}`);
 
