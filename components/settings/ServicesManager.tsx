@@ -101,11 +101,11 @@ export function ServicesManager({ initialServices }: { initialServices: Service[
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-sm font-medium text-slate-700 mb-1 block">Valor (R$)</label>
-                  <input type="number" value={price} onChange={e => setPrice(Number(e.target.value))} min={0} step={10} className={inputClass} />
+                  <input type="text" inputMode="numeric" value={price || ""} onChange={e => setPrice(Number(e.target.value.replace(/\D/g, "")) || 0)} placeholder="0" className={inputClass} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-slate-700 mb-1 block">Duracao (min)</label>
-                  <input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} min={5} step={5} className={inputClass} />
+                  <input type="text" inputMode="numeric" value={duration || ""} onChange={e => setDuration(Number(e.target.value.replace(/\D/g, "")) || 0)} placeholder="60" className={inputClass} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-slate-700 mb-1 block">Categoria</label>
@@ -167,11 +167,11 @@ export function ServicesManager({ initialServices }: { initialServices: Service[
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-sm font-medium text-slate-700 mb-1 block">Valor (R$)</label>
-              <input type="number" value={price} onChange={e => setPrice(Number(e.target.value))} min={0} step={10} className={inputClass} />
+              <input type="text" inputMode="numeric" value={price || ""} onChange={e => setPrice(Number(e.target.value.replace(/\D/g, "")) || 0)} placeholder="0" className={inputClass} />
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700 mb-1 block">Duracao (min)</label>
-              <input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} min={5} step={5} className={inputClass} />
+              <input type="text" inputMode="numeric" value={duration || ""} onChange={e => setDuration(Number(e.target.value.replace(/\D/g, "")) || 0)} placeholder="60" className={inputClass} />
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700 mb-1 block">Categoria</label>
