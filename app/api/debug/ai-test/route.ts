@@ -206,14 +206,30 @@ export async function POST(req: NextRequest) {
       results.instanceStatus = { status: statusRes.status, body: await statusRes.json().catch(() => statusRes.text()) };
     } catch (err) { results.instanceStatus = { error: String(err) }; }
 
-    // Step 6: Restart instance to force webhook reload
+    // Step 6: Try restart with admin token from env
+    const adminToken = process.env.UAZAPI_ADMIN_TOKEN || "";
+    if (adminToken) {
+      try {
+        const restartRes = await fetch(`${serverUrl}/instance/restart`, {
+          method: "POST",
+          headers: { token: adminToken, "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        results.restartAdmin = { status: restartRes.status, body: await restartRes.json().catch(() => restartRes.text()) };
+      } catch (err) { results.restartAdmin = { error: String(err) }; }
+    }
+
+    // Step 7: Try reconnect
     try {
-      const restartRes = await fetch(`${serverUrl}/instance/restart`, {
+      const reconnRes = await fetch(`${serverUrl}/instance/reconnect`, {
         method: "POST",
         headers: { token },
       });
-      results.restart = { status: restartRes.status, body: await restartRes.json().catch(() => restartRes.text()) };
-    } catch (err) { results.restart = { error: String(err) }; }
+      results.reconnect = { status: reconnRes.status, body: await reconnRes.json().catch(() => reconnRes.text()) };
+    } catch (err) { results.reconnect = { error: String(err) }; }
+
+    // Step 8: Check if our webhook URL is reachable from the server
+    results.ourWebhookTest = "Send a test message via WhatsApp and check /api/debug/webhook-log";
 
     return NextResponse.json(results);
   } catch (err) {
