@@ -28,19 +28,24 @@ export async function createService(data: ServiceData) {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Não autenticado" };
 
-  await prisma.service.create({
-    data: {
-      userId: user.id,
-      name: data.name,
-      description: data.description || null,
-      price: data.price || 0,
-      duration: data.duration || 60,
-      category: data.category || null,
-    },
-  });
+  try {
+    await prisma.service.create({
+      data: {
+        userId: user.id,
+        name: data.name,
+        description: data.description || null,
+        price: data.price || 0,
+        duration: data.duration || 60,
+        category: data.category || null,
+      },
+    });
 
-  revalidatePath("/dashboard/settings");
-  return { success: true };
+    revalidatePath("/dashboard/settings/services");
+    return { success: true };
+  } catch (err) {
+    console.error("[services] Erro ao criar:", err);
+    return { success: false, error: "Erro ao criar servico" };
+  }
 }
 
 export async function updateService(id: string, data: Partial<ServiceData>) {
