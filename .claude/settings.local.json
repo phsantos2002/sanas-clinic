@@ -5,7 +5,10 @@
       "Read(//c/Users/phsan/Desktop/lupa-sjc/backend/**)",
       "Bash(node -e \":*)",
       "Bash(git status:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)"
     ]
   }
 }

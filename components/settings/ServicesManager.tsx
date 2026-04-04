@@ -2,34 +2,38 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit3, Check, X, Clock, DollarSign } from "lucide-react";
+import { Plus, Trash2, Edit3, Clock, DollarSign } from "lucide-react";
 import { createService, updateService, deleteService, type ServiceData } from "@/app/actions/services";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Service = any;
 
+const inputClass = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500";
+
 export function ServicesManager({ initialServices }: { initialServices: Service[] }) {
   const [services, setServices] = useState(initialServices);
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<ServiceData>({ name: "", description: "", price: 0, duration: 60, category: "" });
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState(0);
+  const [duration, setDuration] = useState(60);
+  const [category, setCategory] = useState("");
   const [saving, setSaving] = useState(false);
 
   const resetForm = () => {
-    setForm({ name: "", description: "", price: 0, duration: 60, category: "" });
-    setShowCreate(false);
-    setEditingId(null);
+    setName(""); setDescription(""); setPrice(0); setDuration(60); setCategory("");
+    setShowCreate(false); setEditingId(null);
   };
 
   const handleCreate = async () => {
-    if (!form.name.trim()) { toast.error("Nome obrigatorio"); return; }
+    if (!name.trim()) { toast.error("Nome obrigatorio"); return; }
     setSaving(true);
-    const result = await createService(form);
+    const result = await createService({ name, description, price, duration, category });
     setSaving(false);
     if (result.success) {
       toast.success("Servico criado!");
       resetForm();
-      // Refetch
       window.location.reload();
     } else {
       toast.error(result.error);
@@ -38,7 +42,7 @@ export function ServicesManager({ initialServices }: { initialServices: Service[
 
   const handleUpdate = async (id: string) => {
     setSaving(true);
-    const result = await updateService(id, form);
+    const result = await updateService(id, { name, description, price, duration, category });
     setSaving(false);
     if (result.success) {
       toast.success("Servico atualizado!");
@@ -52,7 +56,7 @@ export function ServicesManager({ initialServices }: { initialServices: Service[
   const handleDelete = async (id: string) => {
     const result = await deleteService(id);
     if (result.success) {
-      setServices(prev => prev.filter(s => s.id !== id));
+      setServices(prev => prev.filter((s: Service) => s.id !== id));
       toast.success("Servico removido");
     } else {
       toast.error(result.error);
@@ -61,57 +65,17 @@ export function ServicesManager({ initialServices }: { initialServices: Service[
 
   const startEdit = (service: Service) => {
     setEditingId(service.id);
-    setForm({
-      name: service.name,
-      description: service.description || "",
-      price: service.price,
-      duration: service.duration,
-      category: service.category || "",
-    });
+    setName(service.name);
+    setDescription(service.description || "");
+    setPrice(service.price);
+    setDuration(service.duration);
+    setCategory(service.category || "");
   };
 
-  const ServiceForm = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
-    <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
-      <div>
-        <label className="text-sm font-medium text-slate-700 mb-1 block">Nome do servico *</label>
-        <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-          placeholder="Ex: Botox, Limpeza de Pele..." className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-      </div>
-      <div>
-        <label className="text-sm font-medium text-slate-700 mb-1 block">Descricao</label>
-        <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2}
-          placeholder="Descricao do servico..." className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <label className="text-sm font-medium text-slate-700 mb-1 block">Valor (R$)</label>
-          <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))}
-            min={0} step={10} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-700 mb-1 block">Duracao (min)</label>
-          <input type="number" value={form.duration} onChange={e => setForm(f => ({ ...f, duration: Number(e.target.value) }))}
-            min={5} step={5} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-700 mb-1 block">Categoria</label>
-          <input type="text" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-            placeholder="Ex: Estetica" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-        </div>
-      </div>
-      <div className="flex gap-2 justify-end">
-        <button onClick={resetForm} className="px-4 py-1.5 text-sm text-slate-500 hover:text-slate-700">Cancelar</button>
-        <button onClick={onSubmit} disabled={saving}
-          className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50">
-          {saving ? "Salvando..." : submitLabel}
-        </button>
-      </div>
-    </div>
-  );
+  const formVisible = showCreate || editingId;
 
   return (
     <div className="space-y-4">
-      {/* Service list */}
       {services.length === 0 && !showCreate && (
         <div className="text-center py-8 text-slate-400">
           <DollarSign className="h-8 w-8 mx-auto mb-2 text-slate-300" />
@@ -120,10 +84,42 @@ export function ServicesManager({ initialServices }: { initialServices: Service[
         </div>
       )}
 
-      {services.map(service => (
+      {services.map((service: Service) => (
         <div key={service.id}>
           {editingId === service.id ? (
-            <ServiceForm onSubmit={() => handleUpdate(service.id)} submitLabel="Atualizar" />
+            <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">Nome do servico *</label>
+                <input type="text" value={name} onChange={e => setName(e.target.value)}
+                  placeholder="Ex: Botox, Limpeza de Pele..." className={inputClass} autoFocus />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">Descricao</label>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
+                  placeholder="Descricao do servico..." className={`${inputClass} resize-none`} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">Valor (R$)</label>
+                  <input type="number" value={price} onChange={e => setPrice(Number(e.target.value))} min={0} step={10} className={inputClass} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">Duracao (min)</label>
+                  <input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} min={5} step={5} className={inputClass} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">Categoria</label>
+                  <input type="text" value={category} onChange={e => setCategory(e.target.value)} placeholder="Ex: Estetica" className={inputClass} />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button onClick={resetForm} className="px-4 py-1.5 text-sm text-slate-500 hover:text-slate-700">Cancelar</button>
+                <button onClick={() => handleUpdate(service.id)} disabled={saving}
+                  className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+                  {saving ? "Salvando..." : "Atualizar"}
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl hover:border-slate-200 transition-colors">
               <div className="flex-1 min-w-0">
@@ -156,10 +152,43 @@ export function ServicesManager({ initialServices }: { initialServices: Service[
         </div>
       ))}
 
-      {/* Create form */}
-      {showCreate ? (
-        <ServiceForm onSubmit={handleCreate} submitLabel="Criar Servico" />
-      ) : (
+      {showCreate && (
+        <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1 block">Nome do servico *</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)}
+              placeholder="Ex: Botox, Limpeza de Pele..." className={inputClass} autoFocus />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1 block">Descricao</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
+              placeholder="Descricao do servico..." className={`${inputClass} resize-none`} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-1 block">Valor (R$)</label>
+              <input type="number" value={price} onChange={e => setPrice(Number(e.target.value))} min={0} step={10} className={inputClass} />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-1 block">Duracao (min)</label>
+              <input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} min={5} step={5} className={inputClass} />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-1 block">Categoria</label>
+              <input type="text" value={category} onChange={e => setCategory(e.target.value)} placeholder="Ex: Estetica" className={inputClass} />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={resetForm} className="px-4 py-1.5 text-sm text-slate-500 hover:text-slate-700">Cancelar</button>
+            <button onClick={handleCreate} disabled={saving}
+              className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+              {saving ? "Salvando..." : "Criar Servico"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!showCreate && !editingId && (
         <button onClick={() => { resetForm(); setShowCreate(true); }}
           className="w-full py-2.5 border-2 border-dashed border-slate-200 text-slate-500 text-sm font-medium rounded-xl hover:border-indigo-300 hover:text-indigo-600 transition-colors flex items-center justify-center gap-2">
           <Plus className="h-4 w-4" /> Adicionar Servico
