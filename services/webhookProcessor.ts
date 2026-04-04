@@ -29,6 +29,8 @@ export async function processIncomingMessage(params: {
 }) {
   const { userId, phone, text, pushName, attribution, sendReply } = params;
 
+  console.log(`[webhook] Processando msg de ${phone} para userId ${userId}: "${text.slice(0, 50)}"`);
+
   // ── Deduplication (content + 60s window) ──────────────────
   const existingMsg = await prisma.message.findFirst({
     where: {
@@ -38,10 +40,15 @@ export async function processIncomingMessage(params: {
       createdAt: { gte: new Date(Date.now() - 60_000) },
     },
   });
-  if (existingMsg) return;
+  if (existingMsg) {
+    console.log(`[webhook] Msg duplicada ignorada para ${phone}`);
+    return;
+  }
 
   // ── Find or create lead ───────────────────────────────────
   let isNewLead = false;
+
+  // Try exact match first, then suffix match for phone format variations
   let lead = await prisma.lead.findFirst({
     where: { userId, phone },
     include: {
@@ -49,6 +56,21 @@ export async function processIncomingMessage(params: {
       stage: true,
     },
   });
+
+  // Fallback: try suffix match (last 9 digits) if exact match fails
+  if (!lead && phone.length >= 9) {
+    const phoneSuffix = phone.slice(-9);
+    lead = await prisma.lead.findFirst({
+      where: { userId, phone: { endsWith: phoneSuffix } },
+      include: {
+        messages: { orderBy: { createdAt: "asc" }, take: 30 },
+        stage: true,
+      },
+    });
+    if (lead) {
+      console.log(`[webhook] Lead encontrado por sufixo: ${lead.phone} -> ${phone}`);
+    }
+  }
 
   if (!lead) {
     const firstStage = await prisma.stage.findFirst({
@@ -91,7 +113,9 @@ export async function processIncomingMessage(params: {
 
         return created;
       });
-    } catch {
+      console.log(`[webhook] Novo lead criado: ${lead.id} (${phone})`);
+    } catch (err) {
+      console.error(`[webhook] Erro criando lead para ${phone}:`, err);
       // Race condition fallback
       lead = await prisma.lead.findFirst({
         where: { userId, phone },
@@ -137,11 +161,19 @@ export async function processIncomingMessage(params: {
     }),
   ]);
 
-  if (!lead.aiEnabled) return;
+  if (!lead.aiEnabled) {
+    console.log(`[webhook] IA desabilitada para lead ${lead.id} (${phone})`);
+    return;
+  }
 
   // ── Generate AI reply ─────────────────────────────────────
   const aiConfig = await getAIConfigByUserId(userId);
-  if (!aiConfig?.apiKey) return;
+  if (!aiConfig?.apiKey) {
+    console.error(`[webhook] AI config sem apiKey para userId ${userId} — IA nao vai responder`);
+    return;
+  }
+
+  console.log(`[webhook] Gerando resposta IA (${aiConfig.provider}/${aiConfig.model}) para lead ${lead.id}`);
 
   const history = [
     ...lead.messages.map((m) => ({
@@ -163,6 +195,8 @@ export async function processIncomingMessage(params: {
     }
   );
 
+  console.log(`[webhook] Resposta IA gerada: "${reply.slice(0, 80)}..." stage=${newStageEventName}`);
+
   // ── Save AI reply ─────────────────────────────────────────
   await prisma.message.create({
     data: { leadId: lead.id, role: "assistant", content: reply },
@@ -172,6 +206,8 @@ export async function processIncomingMessage(params: {
   const sendResult = await sendReply(phone, reply);
   if (!sendResult.success) {
     console.error(`[webhook] Falha ao enviar msg para ${phone}:`, sendResult.error);
+  } else {
+    console.log(`[webhook] Resposta enviada com sucesso para ${phone}`);
   }
 
   // ── Update stage if AI determined a new one ───────────────

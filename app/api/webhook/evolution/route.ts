@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as UazapiPayload;
 
+    console.log(`[uazapi webhook] event=${body.event} fromMe=${body.fromMe} chatid=${body.chatid?.slice(0, 20)} type=${body.type} body=${body.body?.slice(0, 30)}`);
+
     if (body.fromMe || !body.body?.trim() || !body.chatid) {
       return NextResponse.json({ ok: true });
     }
