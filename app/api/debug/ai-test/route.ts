@@ -206,6 +206,15 @@ export async function POST(req: NextRequest) {
       results.instanceStatus = { status: statusRes.status, body: await statusRes.json().catch(() => statusRes.text()) };
     } catch (err) { results.instanceStatus = { error: String(err) }; }
 
+    // Step 6: Restart instance to force webhook reload
+    try {
+      const restartRes = await fetch(`${serverUrl}/instance/restart`, {
+        method: "POST",
+        headers: { token },
+      });
+      results.restart = { status: restartRes.status, body: await restartRes.json().catch(() => restartRes.text()) };
+    } catch (err) { results.restart = { error: String(err) }; }
+
     return NextResponse.json(results);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
