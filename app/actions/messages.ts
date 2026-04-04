@@ -63,6 +63,10 @@ export async function sendManualMessage(
     await sendMessage(whatsappConfig, lead.phone, content);
   }
 
+  // Pause AI for this lead if human intervention is enabled
+  const { onManualMessageSent } = await import("@/services/webhookProcessor");
+  await onManualMessageSent(user.id, leadId);
+
   revalidatePath("/dashboard/chat");
   return { success: true };
 }

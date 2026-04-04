@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building, Plug, Zap, Kanban, Brain, Palette, User } from "lucide-react";
+import { Building, Plug, Zap, Kanban, Brain, User, Briefcase } from "lucide-react";
 
 const tabs = [
   { href: "/dashboard/settings", label: "Negocio", icon: Building, exact: true },
   { href: "/dashboard/settings/integrations", label: "Integracoes", icon: Plug },
+  { href: "/dashboard/settings/ai", label: "IA Chat", icon: Brain },
+  { href: "/dashboard/settings/services", label: "Servicos", icon: Briefcase },
   { href: "/dashboard/settings/automations", label: "Automacoes", icon: Zap },
   { href: "/dashboard/settings/pipeline", label: "Pipeline", icon: Kanban },
   { href: "/dashboard/settings/account", label: "Conta", icon: User },

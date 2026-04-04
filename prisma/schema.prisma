@@ -39,6 +39,8 @@ model User {
   checklistCompleted String[]         // IDs of completed checklist items
   agencyId          String?
   agency            Agency?          @relation(fields: [agencyId], references: [id])
+  services          Service[]
+  workflows         Workflow[]
 }
 
 model AIConfig {
@@ -54,6 +56,37 @@ model AIConfig {
   apiKey       String?                         // user's own API key
   voiceClonePrompt String?                     // prompt for voice cloning audio sample
   openaiKey    String?                         // legacy, kept for TTS
+  // ── AI Response Config (Zap GPT style) ──
+  keepUnread         Boolean  @default(true)   // Manter não lida ao responder
+  singleMessage      Boolean  @default(true)   // Enviar resposta em 1 mensagem
+  includeContactName Boolean  @default(false)  // Incluir nome do contato na resposta
+  cancelOnNewMsg     Boolean  @default(true)   // Cancelar se nova msg chegar
+  pauseAfterManual   Boolean  @default(true)   // Não responder após msg manual
+  // ── Timers Humanizados ──
+  delayPerChar       Int      @default(120)    // Delay por caractere (ms)
+  delayMax           Int      @default(10000)  // Delay máximo (ms)
+  waitBeforeReply    Int      @default(7)      // Aguardar resposta (segundos)
+  // ── Intervenção Humana ──
+  humanIntervention  Boolean  @default(true)   // Pausar IA quando humano intervém
+  humanPauseHours    Int      @default(2)      // Horas para reativar IA
+  // ── Filtros de Número ──
+  whitelist          String[] // Somente responder estes números
+  blacklist          String[] // Não responder estes números
+  ignoreGroups       Boolean  @default(true)   // Ignorar mensagens de grupo
+  // ── Follow-Up ──
+  followUpEnabled    Boolean  @default(false)
+  followUpMessages   Int      @default(1)      // Qtd de mensagens de follow-up
+  followUpCheckMins  Int      @default(10)     // Verificar a cada X minutos
+  followUpIntervalH  Int      @default(25)     // Intervalo entre follow-ups (hrs)
+  followUpUseAI      Boolean  @default(true)   // Gerar mensagens por IA
+  followUpRespectBH  Boolean  @default(false)  // Respeitar horário comercial
+  // ── Mensagem para tipos desconhecidos ──
+  unknownTypeMsg     String?  @default("Você pode me dar mais detalhes?")
+  // ── Audio com IA ──
+  audioVoice         String?  @default("alloy") // OpenAI voice: alloy, echo, fable, onyx, nova, shimmer
+  audioMinChars      Int      @default(50)      // Mínimo de caracteres para gerar áudio
+  audioAutoReply     Boolean  @default(false)   // Responder com áudio automaticamente
+  audioReplaceText   Boolean  @default(false)   // Substituir texto por áudio
   // ── Brand Identity ──
   brandIdentity   Json?    // { logo_url, primary_color, secondary_color, font, business_type, default_tone, target_audience }
   // ── AI Content Generation providers ──
@@ -112,7 +145,9 @@ model Lead {
   stage        Stage?             @relation(fields: [stageId], references: [id])
   stageHistory LeadStageHistory[]
   messages     Message[]
-  aiEnabled    Boolean            @default(true)
+  aiEnabled         Boolean            @default(true)
+  humanPausedUntil  DateTime?          // IA pausada até esta data (intervenção humana)
+  lastFollowUpAt    DateTime?          // última msg de follow-up enviada
   source         String?            // "meta", "google", "whatsapp", "manual"
   medium         String?            // "cpc", "organic", "social", "referral"
   campaign       String?            // campaign name
@@ -425,9 +460,26 @@ model BroadcastCampaign {
 
 // ── Automações Visuais (Workflows) ───────────────────────────
 
+model Service {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String                         // Ex: "Botox", "Limpeza de Pele"
+  description String?                        // Descricao do servico
+  price       Float    @default(0)           // Valor em R$
+  duration    Int      @default(60)          // Duracao em minutos
+  isActive    Boolean  @default(true)
+  category    String?                        // Categoria do servico
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
 model Workflow {
   id          String   @id @default(cuid())
   userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   description String?
   isActive    Boolean  @default(true)
