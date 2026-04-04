@@ -19,10 +19,13 @@ async function uazapiRequest(
   path: string,
   body?: unknown,
 ) {
-  const headers: Record<string, string> = { token };
+  // Clean serverUrl — remove trailing whitespace/newlines
+  const cleanUrl = serverUrl.trim().replace(/\/+$/, "");
+  const cleanToken = token.trim();
+  const headers: Record<string, string> = { token: cleanToken };
   if (body) headers["Content-Type"] = "application/json";
 
-  const res = await fetch(`${serverUrl}${path}`, {
+  const res = await fetch(`${cleanUrl}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,

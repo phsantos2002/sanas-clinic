@@ -70,11 +70,11 @@ async function getUazapiConfig() {
     return null;
   }
 
-  return { serverUrl: config.uazapiServerUrl, token: config.uazapiInstanceToken };
+  return { serverUrl: config.uazapiServerUrl.trim().replace(/\/+$/, ""), token: config.uazapiInstanceToken.trim() };
 }
 
 async function uazapi(serverUrl: string, token: string, method: string, path: string, body?: unknown) {
-  const headers: Record<string, string> = { token };
+  const headers: Record<string, string> = { token: token.trim() };
   if (body) headers["Content-Type"] = "application/json";
 
   const res = await fetch(`${serverUrl}${path}`, {

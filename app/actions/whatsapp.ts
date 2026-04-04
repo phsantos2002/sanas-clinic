@@ -56,8 +56,8 @@ export async function saveUazapiConfig(): Promise<ActionResult<{ qrcode?: string
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
-    const serverUrl = process.env.UAZAPI_SERVER_URL;
-    const adminToken = process.env.UAZAPI_ADMIN_TOKEN;
+    const serverUrl = (process.env.UAZAPI_SERVER_URL || "").trim().replace(/\/+$/, "");
+    const adminToken = (process.env.UAZAPI_ADMIN_TOKEN || "").trim();
 
     if (!serverUrl || !adminToken) {
       return { success: false, error: "Uazapi não configurado no servidor. Contate o administrador." };

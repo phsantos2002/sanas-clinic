@@ -151,12 +151,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "WhatsApp not configured" });
     }
 
-    const serverUrl = waConfig.uazapiServerUrl;
-    const token = waConfig.uazapiInstanceToken;
-    const instanceName = waConfig.uazapiInstanceName || "";
-    const adminToken = process.env.UAZAPI_ADMIN_TOKEN || "";
+    const rawServerUrl = waConfig.uazapiServerUrl || "";
+    const serverUrl = rawServerUrl.trim().replace(/\/+$/, "");
+    const token = (waConfig.uazapiInstanceToken || "").trim();
+    const instanceName = (waConfig.uazapiInstanceName || "").trim();
+    const adminToken = (process.env.UAZAPI_ADMIN_TOKEN || "").trim();
     const webhookUrl = "https://sanas-clinic-l235.vercel.app/api/webhook/evolution";
     const results: Record<string, unknown> = { serverUrl, instanceName, webhookUrl };
+
+    // Fix: Clean serverUrl in DB if it has whitespace/newlines
+    if (rawServerUrl !== serverUrl) {
+      await prisma.whatsAppConfig.update({
+        where: { id: waConfig.id },
+        data: { uazapiServerUrl: serverUrl },
+      });
+      results.fixedServerUrl = { old: JSON.stringify(rawServerUrl), new: serverUrl };
+    }
 
     // --- Try OLD format (header: token) ---
     try {
