@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
 /**
  * Debug endpoint to test the AI response pipeline.
- * GET /api/debug/ai-test
- * Returns diagnostic info about webhook, AI config, and lead status.
+ * GET  /api/debug/ai-test — Returns diagnostic info
+ * POST /api/debug/ai-test — Fix webhook URL
  */
 export async function GET() {
   const diagnostics: Record<string, unknown> = {};
@@ -49,17 +49,21 @@ export async function GET() {
       instanceName: waConfig?.uazapiInstanceName ?? "N/A",
     };
 
-    // 5. Check webhook URL
+    // 5. Check webhook URL from Uazapi
     if (waConfig?.uazapiServerUrl && waConfig?.uazapiInstanceToken) {
       try {
         const webhookRes = await fetch(`${waConfig.uazapiServerUrl}/webhook`, {
           headers: { token: waConfig.uazapiInstanceToken },
         });
         const webhookData = await webhookRes.json().catch(() => ({}));
+        // Uazapi returns the full webhook config — try multiple paths
+        const webhookUrl = webhookData?.url || webhookData?.webhook?.url || webhookData?.webhookUrl || null;
+        const webhookEnabled = webhookData?.enabled ?? webhookData?.webhook?.enabled ?? null;
         diagnostics.webhook = {
           status: webhookRes.status,
-          url: webhookData?.url ?? webhookData?.webhook?.url ?? "N/A",
-          enabled: webhookData?.enabled ?? webhookData?.webhook?.enabled ?? "N/A",
+          url: webhookUrl ?? "NOT SET",
+          enabled: webhookEnabled,
+          rawResponse: webhookData,
         };
       } catch (err) {
         diagnostics.webhook = { error: String(err) };
@@ -127,5 +131,63 @@ export async function GET() {
     return NextResponse.json(diagnostics);
   } catch (err) {
     return NextResponse.json({ ...diagnostics, error: String(err) }, { status: 500 });
+  }
+}
+
+/**
+ * POST /api/debug/ai-test — Fix webhook URL in Uazapi
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+    const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
+    if (!dbUser) return NextResponse.json({ error: "DB user not found" });
+
+    const waConfig = await prisma.whatsAppConfig.findFirst({ where: { userId: dbUser.id } });
+    if (!waConfig?.uazapiServerUrl || !waConfig?.uazapiInstanceToken) {
+      return NextResponse.json({ error: "WhatsApp not configured" });
+    }
+
+    // Determine the base URL
+    const host = req.headers.get("host") || "sanas-clinic-l235.vercel.app";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    const baseUrl = `${protocol}://${host}`;
+    const webhookUrl = `${baseUrl}/api/webhook/evolution`;
+
+    // Set the webhook in Uazapi
+    const res = await fetch(`${waConfig.uazapiServerUrl}/webhook`, {
+      method: "POST",
+      headers: {
+        token: waConfig.uazapiInstanceToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        enabled: true,
+        url: webhookUrl,
+        events: ["messages", "connection", "message_ack", "group_update", "call"],
+        excludeMessages: ["wasSentByApi"],
+        addUrlEvents: true,
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    // Verify it was set
+    const verifyRes = await fetch(`${waConfig.uazapiServerUrl}/webhook`, {
+      headers: { token: waConfig.uazapiInstanceToken },
+    });
+    const verifyData = await verifyRes.json().catch(() => ({}));
+
+    return NextResponse.json({
+      success: res.ok,
+      webhookUrl,
+      setResponse: data,
+      verifyResponse: verifyData,
+    });
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
