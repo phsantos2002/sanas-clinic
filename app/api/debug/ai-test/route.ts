@@ -153,16 +153,46 @@ export async function POST(req: NextRequest) {
 
     const serverUrl = waConfig.uazapiServerUrl;
     const token = waConfig.uazapiInstanceToken;
+    const instanceName = waConfig.uazapiInstanceName || "";
+    const adminToken = process.env.UAZAPI_ADMIN_TOKEN || "";
     const webhookUrl = "https://sanas-clinic-l235.vercel.app/api/webhook/evolution";
-    const results: Record<string, unknown> = { serverUrl, webhookUrl };
+    const results: Record<string, unknown> = { serverUrl, instanceName, webhookUrl };
 
-    // Step 1: GET current webhook config
+    // --- Try OLD format (header: token) ---
     try {
       const getRes = await fetch(`${serverUrl}/webhook`, { headers: { token } });
-      results.getCurrentWebhook = { status: getRes.status, body: await getRes.json().catch(() => getRes.text()) };
-    } catch (err) { results.getCurrentWebhook = { error: String(err) }; }
+      results.oldFormat_GET = { status: getRes.status, body: await getRes.json().catch(() => getRes.text()) };
+    } catch (err) { results.oldFormat_GET = { error: String(err) }; }
 
-    // Step 2: Try setting webhook with standard format
+    // --- Try NEW format (Authorization: Bearer, /instance/NAME/webhook) ---
+    if (instanceName) {
+      // GET webhook via new format
+      try {
+        const getRes = await fetch(`${serverUrl}/instance/${instanceName}/webhook`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        results.newFormat_GET = { status: getRes.status, body: await getRes.json().catch(() => getRes.text()) };
+      } catch (err) { results.newFormat_GET = { error: String(err) }; }
+
+      // SET webhook via new format
+      try {
+        const setRes = await fetch(`${serverUrl}/instance/${instanceName}/webhook`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            enabled: true,
+            url: webhookUrl,
+            events: ["messages"],
+            excludeEvents: ["wasSentByApi", "isGroupYes"],
+          }),
+        });
+        results.newFormat_SET = { status: setRes.status, body: await setRes.json().catch(() => setRes.text()) };
+      } catch (err) { results.newFormat_SET = { error: String(err) }; }
+    } else {
+      results.newFormat = "SKIP — no instanceName stored in DB";
+    }
+
+    // --- Also try SET with old format ---
     try {
       const setRes = await fetch(`${serverUrl}/webhook`, {
         method: "POST",
@@ -170,66 +200,44 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           enabled: true,
           url: webhookUrl,
-          events: ["messages", "connection", "message_ack", "group_update", "call"],
+          events: ["messages"],
           excludeMessages: ["wasSentByApi"],
-          addUrlEvents: true,
         }),
       });
-      results.setWebhookStandard = { status: setRes.status, body: await setRes.json().catch(() => setRes.text()) };
-    } catch (err) { results.setWebhookStandard = { error: String(err) }; }
+      results.oldFormat_SET = { status: setRes.status, body: await setRes.json().catch(() => setRes.text()) };
+    } catch (err) { results.oldFormat_SET = { error: String(err) }; }
 
-    // Step 3: Try alternative format (some Uazapi versions use "webhook" key)
-    try {
-      const setRes2 = await fetch(`${serverUrl}/webhook`, {
-        method: "PUT",
-        headers: { token, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          webhook: {
+    // --- Try with admin token if available ---
+    if (adminToken && instanceName) {
+      try {
+        const setRes = await fetch(`${serverUrl}/instance/${instanceName}/webhook`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
             enabled: true,
             url: webhookUrl,
             events: ["messages"],
-          },
-        }),
-      });
-      results.setWebhookAlt = { status: setRes2.status, body: await setRes2.json().catch(() => setRes2.text()) };
-    } catch (err) { results.setWebhookAlt = { error: String(err) }; }
-
-    // Step 4: Verify final state
-    try {
-      const verRes = await fetch(`${serverUrl}/webhook`, { headers: { token } });
-      results.finalState = { status: verRes.status, body: await verRes.json().catch(() => verRes.text()) };
-    } catch (err) { results.finalState = { error: String(err) }; }
-
-    // Step 5: Check instance status
-    try {
-      const statusRes = await fetch(`${serverUrl}/instance/status`, { headers: { token } });
-      results.instanceStatus = { status: statusRes.status, body: await statusRes.json().catch(() => statusRes.text()) };
-    } catch (err) { results.instanceStatus = { error: String(err) }; }
-
-    // Step 6: Try restart with admin token from env
-    const adminToken = process.env.UAZAPI_ADMIN_TOKEN || "";
-    if (adminToken) {
-      try {
-        const restartRes = await fetch(`${serverUrl}/instance/restart`, {
-          method: "POST",
-          headers: { token: adminToken, "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
+            excludeEvents: ["wasSentByApi"],
+          }),
         });
-        results.restartAdmin = { status: restartRes.status, body: await restartRes.json().catch(() => restartRes.text()) };
-      } catch (err) { results.restartAdmin = { error: String(err) }; }
+        results.adminFormat_SET = { status: setRes.status, body: await setRes.json().catch(() => setRes.text()) };
+      } catch (err) { results.adminFormat_SET = { error: String(err) }; }
     }
 
-    // Step 7: Try reconnect
+    // --- Instance status ---
     try {
-      const reconnRes = await fetch(`${serverUrl}/instance/reconnect`, {
-        method: "POST",
-        headers: { token },
-      });
-      results.reconnect = { status: reconnRes.status, body: await reconnRes.json().catch(() => reconnRes.text()) };
-    } catch (err) { results.reconnect = { error: String(err) }; }
+      const statusRes = await fetch(`${serverUrl}/instance/status`, { headers: { token } });
+      results.instanceStatus_old = await statusRes.json().catch(() => statusRes.text());
+    } catch (err) { results.instanceStatus_old = { error: String(err) }; }
 
-    // Step 8: Check if our webhook URL is reachable from the server
-    results.ourWebhookTest = "Send a test message via WhatsApp and check /api/debug/webhook-log";
+    if (instanceName) {
+      try {
+        const statusRes = await fetch(`${serverUrl}/instance/${instanceName}/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        results.instanceStatus_new = await statusRes.json().catch(() => statusRes.text());
+      } catch (err) { results.instanceStatus_new = { error: String(err) }; }
+    }
 
     return NextResponse.json(results);
   } catch (err) {
