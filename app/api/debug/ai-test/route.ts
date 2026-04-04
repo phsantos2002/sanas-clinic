@@ -135,7 +135,7 @@ export async function GET() {
 }
 
 /**
- * POST /api/debug/ai-test — Fix webhook URL in Uazapi
+ * POST /api/debug/ai-test — Fix webhook URL in Uazapi (tries multiple formats)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -151,42 +151,62 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "WhatsApp not configured" });
     }
 
-    // Determine the base URL
-    const host = req.headers.get("host") || "sanas-clinic-l235.vercel.app";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const baseUrl = `${protocol}://${host}`;
-    const webhookUrl = `${baseUrl}/api/webhook/evolution`;
+    const serverUrl = waConfig.uazapiServerUrl;
+    const token = waConfig.uazapiInstanceToken;
+    const webhookUrl = "https://sanas-clinic-l235.vercel.app/api/webhook/evolution";
+    const results: Record<string, unknown> = { serverUrl, webhookUrl };
 
-    // Set the webhook in Uazapi
-    const res = await fetch(`${waConfig.uazapiServerUrl}/webhook`, {
-      method: "POST",
-      headers: {
-        token: waConfig.uazapiInstanceToken,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        enabled: true,
-        url: webhookUrl,
-        events: ["messages", "connection", "message_ack", "group_update", "call"],
-        excludeMessages: ["wasSentByApi"],
-        addUrlEvents: true,
-      }),
-    });
+    // Step 1: GET current webhook config
+    try {
+      const getRes = await fetch(`${serverUrl}/webhook`, { headers: { token } });
+      results.getCurrentWebhook = { status: getRes.status, body: await getRes.json().catch(() => getRes.text()) };
+    } catch (err) { results.getCurrentWebhook = { error: String(err) }; }
 
-    const data = await res.json().catch(() => ({}));
+    // Step 2: Try setting webhook with standard format
+    try {
+      const setRes = await fetch(`${serverUrl}/webhook`, {
+        method: "POST",
+        headers: { token, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled: true,
+          url: webhookUrl,
+          events: ["messages", "connection", "message_ack", "group_update", "call"],
+          excludeMessages: ["wasSentByApi"],
+          addUrlEvents: true,
+        }),
+      });
+      results.setWebhookStandard = { status: setRes.status, body: await setRes.json().catch(() => setRes.text()) };
+    } catch (err) { results.setWebhookStandard = { error: String(err) }; }
 
-    // Verify it was set
-    const verifyRes = await fetch(`${waConfig.uazapiServerUrl}/webhook`, {
-      headers: { token: waConfig.uazapiInstanceToken },
-    });
-    const verifyData = await verifyRes.json().catch(() => ({}));
+    // Step 3: Try alternative format (some Uazapi versions use "webhook" key)
+    try {
+      const setRes2 = await fetch(`${serverUrl}/webhook`, {
+        method: "PUT",
+        headers: { token, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          webhook: {
+            enabled: true,
+            url: webhookUrl,
+            events: ["messages"],
+          },
+        }),
+      });
+      results.setWebhookAlt = { status: setRes2.status, body: await setRes2.json().catch(() => setRes2.text()) };
+    } catch (err) { results.setWebhookAlt = { error: String(err) }; }
 
-    return NextResponse.json({
-      success: res.ok,
-      webhookUrl,
-      setResponse: data,
-      verifyResponse: verifyData,
-    });
+    // Step 4: Verify final state
+    try {
+      const verRes = await fetch(`${serverUrl}/webhook`, { headers: { token } });
+      results.finalState = { status: verRes.status, body: await verRes.json().catch(() => verRes.text()) };
+    } catch (err) { results.finalState = { error: String(err) }; }
+
+    // Step 5: Check instance status
+    try {
+      const statusRes = await fetch(`${serverUrl}/instance/status`, { headers: { token } });
+      results.instanceStatus = { status: statusRes.status, body: await statusRes.json().catch(() => statusRes.text()) };
+    } catch (err) { results.instanceStatus = { error: String(err) }; }
+
+    return NextResponse.json(results);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
