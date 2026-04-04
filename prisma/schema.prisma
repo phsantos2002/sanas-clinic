@@ -41,6 +41,7 @@ model User {
   agency            Agency?          @relation(fields: [agencyId], references: [id])
   services          Service[]
   workflows         Workflow[]
+  googleCalendar    GoogleCalendar?
 }
 
 model AIConfig {
@@ -474,6 +475,24 @@ model Service {
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
+}
+
+model GoogleCalendar {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken     String                      // OAuth2 access token
+  refreshToken    String                      // OAuth2 refresh token
+  tokenExpiry     DateTime                    // When access token expires
+  calendarId      String   @default("primary") // Calendar ID to use
+  email           String?                     // Google account email
+  // Business hours config
+  businessHoursStart String @default("09:00") // HH:mm
+  businessHoursEnd   String @default("18:00") // HH:mm
+  workDays           Int[]  @default([1,2,3,4,5,6]) // 0=Sun, 1=Mon, ..., 6=Sat
+  timezone           String @default("America/Sao_Paulo")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Workflow {

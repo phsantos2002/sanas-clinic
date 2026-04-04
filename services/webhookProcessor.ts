@@ -181,6 +181,13 @@ export async function processIncomingMessage(params: {
   // ── Build context with services ───────────────────────────
   const servicesContext = await getServicesContext(userId);
 
+  // ── Build context with calendar ───────────────────────────
+  let calendarContext: string | null = null;
+  try {
+    const { getCalendarContextForAI } = await import("@/services/googleCalendar");
+    calendarContext = await getCalendarContextForAI(userId);
+  } catch {};
+
   const history = [
     ...lead.messages.map((m) => ({
       role: m.role as "user" | "assistant",
@@ -196,6 +203,9 @@ export async function processIncomingMessage(params: {
   }
   if (servicesContext) {
     enrichedSystemPrompt += `\n\n${servicesContext}`;
+  }
+  if (calendarContext) {
+    enrichedSystemPrompt += `\n\n${calendarContext}`;
   }
 
   const { reply, newStageEventName } = await generateAIReply(
@@ -214,6 +224,30 @@ export async function processIncomingMessage(params: {
   let finalReply = reply;
   if (aiConfig.includeContactName && lead.name && !reply.includes(lead.name)) {
     finalReply = reply;
+  }
+
+  // ── Process calendar booking commands ─────────────────────
+  const bookingMatch = finalReply.match(/\[AGENDAR:\s*(.+?)\s*\|\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*\|\s*(.+?)\s*\|\s*(\d+)\s*\]/);
+  if (bookingMatch) {
+    try {
+      const { createCalendarEvent } = await import("@/services/googleCalendar");
+      const [, serviceName, dateTime, clientName, durationStr] = bookingMatch;
+      const result = await createCalendarEvent(userId, {
+        summary: `${serviceName} — ${clientName}`,
+        description: `Agendamento via WhatsApp\nCliente: ${clientName}\nTelefone: ${phone}`,
+        startDateTime: new Date(dateTime.replace(" ", "T") + ":00-03:00").toISOString(),
+        durationMinutes: parseInt(durationStr) || 60,
+      });
+      if (result.success) {
+        console.log(`[webhook] Evento criado no Google Calendar: ${result.eventId}`);
+      } else {
+        console.error(`[webhook] Erro criando evento: ${result.error}`);
+      }
+    } catch (err) {
+      console.error("[webhook] Erro processando agendamento:", err);
+    }
+    // Remove the booking tag from the reply sent to user
+    finalReply = finalReply.replace(/\[AGENDAR:.*?\]/g, "").trim();
   }
 
   console.log(`[webhook] Resposta IA gerada: "${finalReply.slice(0, 80)}..." stage=${newStageEventName}`);
