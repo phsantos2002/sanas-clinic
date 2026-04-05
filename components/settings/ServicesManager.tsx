@@ -101,7 +101,7 @@ export function ServicesManager({ initialServices }: { initialServices: Service[
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-sm font-medium text-slate-700 mb-1 block">Valor (R$)</label>
-                  <input type="text" inputMode="numeric" value={price || ""} onChange={e => setPrice(Number(e.target.value.replace(/\D/g, "")) || 0)} placeholder="0" className={inputClass} />
+                  <input type="text" inputMode="decimal" value={price || ""} onChange={e => setPrice(Number(e.target.value.replace(",", ".").replace(/[^\d.]/g, "")) || 0)} placeholder="0,00" className={inputClass} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-slate-700 mb-1 block">Duracao (min)</label>
@@ -167,7 +167,7 @@ export function ServicesManager({ initialServices }: { initialServices: Service[
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-sm font-medium text-slate-700 mb-1 block">Valor (R$)</label>
-              <input type="text" inputMode="numeric" value={price || ""} onChange={e => setPrice(Number(e.target.value.replace(/\D/g, "")) || 0)} placeholder="0" className={inputClass} />
+              <input type="text" inputMode="decimal" value={price || ""} onChange={e => setPrice(Number(e.target.value.replace(",", ".").replace(/[^\d.]/g, "")) || 0)} placeholder="0,00" className={inputClass} />
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700 mb-1 block">Duracao (min)</label>
