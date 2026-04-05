@@ -1,21 +1,16 @@
 import { getPixel } from "@/app/actions/pixel";
 import { getAIConfig } from "@/app/actions/aiConfig";
 import { getWhatsAppConfig } from "@/app/actions/whatsapp";
-import { getContentGenSettings, getAIUsageStats } from "@/app/actions/brandSettings";
 import { getSocialConnections } from "@/app/actions/social";
 import { FacebookPixelForm } from "@/components/forms/FacebookPixelForm";
 import { WhatsAppConfigForm } from "@/components/forms/WhatsAppConfigForm";
-import { AIConfigForm } from "@/components/settings/AIConfigForm";
-import { ContentGenKeysForm } from "@/components/settings/ContentGenKeysForm";
 import { SetupProgress } from "@/components/settings/SetupProgress";
 
 export default async function IntegrationsPage() {
-  const [pixel, aiConfig, whatsappConfig, contentGen, usage, connections] = await Promise.all([
+  const [pixel, aiConfig, whatsappConfig, connections] = await Promise.all([
     getPixel(),
     getAIConfig(),
     getWhatsAppConfig(),
-    getContentGenSettings(),
-    getAIUsageStats(),
     getSocialConnections(),
   ]);
 
@@ -57,36 +52,6 @@ export default async function IntegrationsPage() {
         <WhatsAppConfigForm config={whatsappConfig} />
       </div>
 
-      {/* IA Provider */}
-      <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Inteligencia Artificial</h2>
-          <p className="text-sm text-slate-400 mt-0.5">Provider principal para chat, roteiros e analises</p>
-        </div>
-        <AIConfigForm config={aiConfig ?? {
-          clinicName: "Sanas Pulse", systemPrompt: "", sendAudio: false,
-          provider: "openai", model: "gpt-4o-mini", capabilities: "text",
-          apiKey: "", voiceClonePrompt: "", openaiKey: "",
-        }} />
-      </div>
-
-      {/* Content Generation APIs */}
-      <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Geracao de Conteudo (Imagem & Video)</h2>
-          <p className="text-sm text-slate-400 mt-0.5">Providers para gerar imagens, videos e voz com IA</p>
-        </div>
-        <ContentGenKeysForm
-          initial={{
-            aiImageProvider: contentGen?.aiImageProvider ?? "openai",
-            aiImageApiKey: contentGen?.aiImageApiKey ?? "",
-            aiVideoProvider: contentGen?.aiVideoProvider ?? "none",
-            aiVideoApiKey: contentGen?.aiVideoApiKey ?? "",
-          }}
-          usage={usage}
-        />
-      </div>
-
       {/* Social Connections */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6">
         <div className="flex items-center justify-between">
@@ -109,6 +74,10 @@ export default async function IntegrationsPage() {
           </div>
         )}
       </div>
+
+      <p className="text-xs text-slate-400 text-center pt-2">
+        Procurando configuracoes de IA? Elas estao na aba <a href="/dashboard/settings/ai" className="text-indigo-600 font-medium">IA Chat</a>
+      </p>
     </div>
   );
 }
