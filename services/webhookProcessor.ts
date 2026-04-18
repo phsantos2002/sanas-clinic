@@ -3,6 +3,8 @@ import { generateAIReply } from "@/services/aiChat";
 import { sendFacebookEvent } from "@/services/facebookEvents";
 import { getAIConfigByUserId } from "@/app/actions/aiConfig";
 import { fireTrigger } from "@/services/workflowEngine";
+import { logger } from "@/lib/logger";
+import { normalizePhone, phonesMatch } from "@/lib/phone";
 
 type AdAttribution = {
   adId?: string | null;
@@ -35,45 +37,63 @@ export async function processIncomingMessage(params: {
   sendAudio?: SendAudioFn;
   markUnread?: MarkUnreadFn;
   chatId?: string;
+  /** Sprint 2: ID da mensagem no provider para idempotência */
+  externalMessageId?: string;
 }) {
-  const { userId, phone, text, pushName, messageType, attribution, sendReply, sendMedia, sendAudio, markUnread, chatId } = params;
+  const { userId, phone, text, pushName, messageType, attribution, sendReply, sendMedia, sendAudio, markUnread, chatId, externalMessageId } = params;
 
-  console.log(`[webhook] Processando msg de ${phone} para userId ${userId}: "${text.slice(0, 50)}"`);
+  const log = logger.child({ userId, phone: phone.slice(-4), externalMessageId });
+  log.debug("webhook_processing_start", { text: text.slice(0, 50) });
 
   // ── Load AI config ────────────────────────────────────────
   const aiConfig = await getAIConfigForWebhook(userId);
 
   // ── Whitelist / Blacklist check ───────────────────────────
   if (aiConfig) {
-    const cleanPhone = phone.replace(/\D/g, "");
+    const cleanPhone = normalizePhone(phone);
     if (aiConfig.whitelist && aiConfig.whitelist.length > 0) {
-      const inWhitelist = aiConfig.whitelist.some(w => cleanPhone.endsWith(w.replace(/\D/g, "").slice(-9)));
+      const inWhitelist = aiConfig.whitelist.some(w => phonesMatch(cleanPhone, w));
       if (!inWhitelist) {
-        console.log(`[webhook] Phone ${phone} not in whitelist, skipping`);
+        log.info("webhook_whitelist_skip", { phone: phone.slice(-4) });
         return;
       }
     }
     if (aiConfig.blacklist && aiConfig.blacklist.length > 0) {
-      const inBlacklist = aiConfig.blacklist.some(b => cleanPhone.endsWith(b.replace(/\D/g, "").slice(-9)));
+      const inBlacklist = aiConfig.blacklist.some(b => phonesMatch(cleanPhone, b));
       if (inBlacklist) {
-        console.log(`[webhook] Phone ${phone} in blacklist, skipping`);
+        log.info("webhook_blacklist_skip", { phone: phone.slice(-4) });
         return;
       }
     }
   }
 
-  // ── Deduplication (content + 60s window) ──────────────────
-  const existingMsg = await prisma.message.findFirst({
-    where: {
-      content: text,
-      role: "user",
-      lead: { userId, phone },
-      createdAt: { gte: new Date(Date.now() - 60_000) },
-    },
-  });
-  if (existingMsg) {
-    console.log(`[webhook] Msg duplicada ignorada para ${phone}`);
-    return;
+  // ── Deduplication ─────────────────────────────────────────
+  // Primary: externalMessageId — reliable, provider-guaranteed unique
+  if (externalMessageId) {
+    const existingLead = await findLead(userId, phone);
+    if (existingLead) {
+      const existingMsg = await prisma.message.findFirst({
+        where: { leadId: existingLead.id, externalId: externalMessageId },
+      });
+      if (existingMsg) {
+        log.info("webhook_duplicate_external_id_skip", { externalMessageId });
+        return;
+      }
+    }
+  } else {
+    // Fallback: content+60s window for providers without message IDs
+    const existingMsg = await prisma.message.findFirst({
+      where: {
+        content: text,
+        role: "user",
+        lead: { userId, phone },
+        createdAt: { gte: new Date(Date.now() - 60_000) },
+      },
+    });
+    if (existingMsg) {
+      log.info("webhook_duplicate_content_skip");
+      return;
+    }
   }
 
   // ── Handle unknown message types ──────────────────────────
@@ -85,7 +105,12 @@ export async function processIncomingMessage(params: {
     const lead = await findLead(userId, phone);
     if (lead) {
       await prisma.message.create({
-        data: { leadId: lead.id, role: "user", content: `[${messageType}] ${text || ""}`.trim() },
+        data: {
+          leadId: lead.id,
+          role: "user",
+          content: `[${messageType}] ${text || ""}`.trim(),
+          externalId: externalMessageId ?? null,
+        },
       });
     }
     return;
@@ -98,7 +123,7 @@ export async function processIncomingMessage(params: {
   if (!lead) {
     lead = await createLead(userId, phone, pushName, attribution);
     isNewLead = true;
-    console.log(`[webhook] Novo lead criado: ${lead.id} (${phone})`);
+    log.info("webhook_lead_created", { leadId: lead.id });
   }
 
   // Fire new_lead workflow trigger (non-blocking)
@@ -126,7 +151,12 @@ export async function processIncomingMessage(params: {
   // ── Save incoming message + update lastInteractionAt ─────
   await prisma.$transaction([
     prisma.message.create({
-      data: { leadId: lead.id, role: "user", content: text },
+      data: {
+        leadId: lead.id,
+        role: "user",
+        content: text,
+        externalId: externalMessageId ?? null,
+      },
     }),
     prisma.lead.update({
       where: { id: lead.id },
@@ -136,18 +166,18 @@ export async function processIncomingMessage(params: {
 
   // ── Check if AI should respond ────────────────────────────
   if (!lead.aiEnabled) {
-    console.log(`[webhook] IA desabilitada para lead ${lead.id} (${phone})`);
+    log.debug("webhook_ai_disabled", { leadId: lead.id });
     return;
   }
 
   // Check human intervention pause
   if (lead.humanPausedUntil && new Date() < new Date(lead.humanPausedUntil)) {
-    console.log(`[webhook] IA pausada por intervenção humana até ${lead.humanPausedUntil}`);
+    log.debug("webhook_ai_human_paused", { pausedUntil: lead.humanPausedUntil });
     return;
   }
 
   if (!aiConfig?.apiKey) {
-    console.error(`[webhook] AI config sem apiKey para userId ${userId} — IA nao vai responder`);
+    log.warn("webhook_ai_no_api_key", { userId });
     return;
   }
 
@@ -167,16 +197,13 @@ export async function processIncomingMessage(params: {
         },
       });
       if (newerMsg) {
-        console.log(`[webhook] Nova msg recebida durante espera, cancelando resposta anterior`);
+        log.info("webhook_cancelled_newer_msg");
         return;
       }
     }
   }
 
-  console.log(`[webhook] Gerando resposta IA (${aiConfig.provider}/${aiConfig.model}) para lead ${lead.id}`);
-
-  // ── Build context with vault media ────────────────────────
-  const vaultContext = await getVaultContext(userId);
+  log.info("webhook_ai_generating", { provider: aiConfig.provider, model: aiConfig.model, leadId: lead.id });
 
   // ── Build context with services ───────────────────────────
   const servicesContext = await getServicesContext(userId);
@@ -196,11 +223,8 @@ export async function processIncomingMessage(params: {
     { role: "user" as const, content: text },
   ];
 
-  // Append vault + services context to system prompt
+  // Append services context to system prompt
   let enrichedSystemPrompt = aiConfig.systemPrompt || "";
-  if (vaultContext) {
-    enrichedSystemPrompt += `\n\n${vaultContext}`;
-  }
   if (servicesContext) {
     enrichedSystemPrompt += `\n\n${servicesContext}`;
   }
@@ -239,18 +263,18 @@ export async function processIncomingMessage(params: {
         durationMinutes: parseInt(durationStr) || 60,
       });
       if (result.success) {
-        console.log(`[webhook] Evento criado no Google Calendar: ${result.eventId}`);
+        log.info("webhook_calendar_event_created", { eventId: result.eventId });
       } else {
-        console.error(`[webhook] Erro criando evento: ${result.error}`);
+        log.error("webhook_calendar_event_failed", { error: result.error });
       }
     } catch (err) {
-      console.error("[webhook] Erro processando agendamento:", err);
+      log.error("webhook_calendar_error", { err });
     }
     // Remove the booking tag from the reply sent to user
     finalReply = finalReply.replace(/\[AGENDAR:.*?\]/g, "").trim();
   }
 
-  console.log(`[webhook] Resposta IA gerada: "${finalReply.slice(0, 80)}..." stage=${newStageEventName}`);
+  log.info("webhook_ai_reply_generated", { replyLength: finalReply.length, newStageEventName });
 
   // ── Save AI reply ─────────────────────────────────────────
   await prisma.message.create({
@@ -269,9 +293,9 @@ export async function processIncomingMessage(params: {
   // ── Send reply (text and/or audio) ────────────────────────
   const sendResult = await sendReply(phone, finalReply);
   if (!sendResult.success) {
-    console.error(`[webhook] Falha ao enviar msg para ${phone}:`, sendResult.error);
+    log.error("webhook_send_failed", { error: sendResult.error });
   } else {
-    console.log(`[webhook] Resposta enviada com sucesso para ${phone}`);
+    log.info("webhook_send_success");
   }
 
   // ── Send audio if configured ──────────────────────────────
@@ -283,10 +307,10 @@ export async function processIncomingMessage(params: {
       const audioUrl = audioBuffer ? null : null; // TODO: upload buffer to get URL
       if (audioUrl) {
         await sendAudio(phone, audioUrl);
-        console.log(`[webhook] Audio enviado para ${phone}`);
+        log.info("webhook_audio_sent");
       }
     } catch (err) {
-      console.error(`[webhook] Erro gerando audio:`, err);
+      log.error("webhook_audio_error", { err });
     }
   }
 
@@ -343,7 +367,7 @@ export async function onManualMessageSent(userId: string, leadId: string) {
     data: { humanPausedUntil: pauseUntil },
   });
 
-  console.log(`[webhook] IA pausada para lead ${leadId} até ${pauseUntil.toISOString()}`);
+  logger.info("webhook_ai_human_pause_set", { leadId, pauseUntil: pauseUntil.toISOString() });
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -357,27 +381,35 @@ async function getAIConfigForWebhook(userId: string) {
 }
 
 async function findLead(userId: string, phone: string) {
+  const normalizedIncoming = normalizePhone(phone);
+
+  // Primary: exact normalized match
   let lead = await prisma.lead.findFirst({
-    where: { userId, phone },
+    where: { userId, phone: normalizedIncoming },
     include: {
       messages: { orderBy: { createdAt: "asc" }, take: 30 },
       stage: true,
     },
   });
+  if (lead) return lead;
 
-  // Fallback: suffix match
-  if (!lead && phone.length >= 9) {
-    const phoneSuffix = phone.slice(-9);
-    lead = await prisma.lead.findFirst({
-      where: { userId, phone: { endsWith: phoneSuffix } },
-      include: {
-        messages: { orderBy: { createdAt: "asc" }, take: 30 },
-        stage: true,
-      },
+  // Secondary: try with +55 prefix variants (55XX vs XX)
+  const altPhone = normalizedIncoming.startsWith("55")
+    ? normalizedIncoming.slice(2)  // strip country code
+    : `55${normalizedIncoming}`;   // add country code
+
+  lead = await prisma.lead.findFirst({
+    where: { userId, phone: altPhone },
+    include: {
+      messages: { orderBy: { createdAt: "asc" }, take: 30 },
+      stage: true,
+    },
+  });
+  if (lead) {
+    logger.debug("webhook_lead_found_alt_phone", {
+      stored: lead.phone.slice(-4),
+      incoming: phone.slice(-4),
     });
-    if (lead) {
-      console.log(`[webhook] Lead encontrado por sufixo: ${lead.phone} -> ${phone}`);
-    }
   }
 
   return lead;
@@ -434,26 +466,6 @@ async function createLead(userId: string, phone: string, pushName: string, attri
     if (!fallback) throw new Error("Failed to find or create lead");
     return fallback;
   }
-}
-
-async function getVaultContext(userId: string): Promise<string | null> {
-  const assets = await prisma.assetVault.findMany({
-    where: { userId },
-    select: { id: true, name: true, description: true, category: true, fileUrl: true, fileType: true },
-    take: 20,
-  });
-
-  if (assets.length === 0) return null;
-
-  const mediaList = assets
-    .filter(a => a.description)
-    .map(a => `- ${a.name} (${a.category}): ${a.description} [URL: ${a.fileUrl}]`)
-    .join("\n");
-
-  return `MÍDIAS DISPONÍVEIS NO ACERVO (você pode sugerir enviar quando relevante, mencionando o nome):
-${mediaList}
-
-Quando for relevante enviar uma mídia, inclua no final da resposta: [ENVIAR_MIDIA: nome_da_midia]`;
 }
 
 async function getServicesContext(userId: string): Promise<string | null> {

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
+import { saveWorkflowVersion } from "@/services/workflowEngine";
 import type { ActionResult } from "@/types";
 
 // ── Types ────────────────────────────────────────────────────
@@ -138,6 +139,9 @@ export async function updateWorkflow(
       });
     }
 
+    // Sprint 7: snapshot this version after saving (non-blocking)
+    saveWorkflowVersion(id, undefined, user.id).catch(() => {});
+
     revalidatePath("/dashboard");
     return { success: true };
   } catch {
@@ -219,6 +223,9 @@ export async function saveWorkflowCanvas(workflowId: string, canvas: { nodes: un
     where: { id: workflowId, userId: user.id },
     data: { canvas: canvas as never },
   });
+
+  // Sprint 7: snapshot canvas version (non-blocking)
+  saveWorkflowVersion(workflowId, "canvas save", user.id).catch(() => {});
 
   revalidatePath("/dashboard/workflows");
   return { success: true };

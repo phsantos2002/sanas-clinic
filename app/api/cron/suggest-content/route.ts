@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { logger } from "@/lib/logger";
+import { validateCronAuth } from "@/lib/validateCronAuth";
 import { prisma } from "@/lib/prisma";
 import { generateWeeklyContentSuggestions } from "@/services/contentSuggestion";
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const deny = validateCronAuth(req);
+  if (deny) return deny;
 
   try {
-    // Find all users with AI config (have API key set up)
     const configs = await prisma.aIConfig.findMany({
       where: { apiKey: { not: null } },
       select: { userId: true },
@@ -22,13 +22,10 @@ export async function GET(req: NextRequest) {
       results.push({ userId: config.userId, generated: result.generated });
     }
 
-    return NextResponse.json({
-      ok: true,
-      users: results.length,
-      results,
-    });
+    logger.info("cron_suggest_content_done", { users: results.length });
+    return NextResponse.json({ ok: true, users: results.length, results });
   } catch (error) {
-    console.error("[cron/suggest-content] Error:", error);
+    logger.error("cron_suggest_content_failed", {}, error);
     return NextResponse.json({ error: "Erro ao gerar sugestoes" }, { status: 500 });
   }
 }

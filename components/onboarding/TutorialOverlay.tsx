@@ -6,6 +6,7 @@ import {
   X, ArrowRight, ArrowLeft, MessageCircle, BarChart3, Zap,
   Briefcase, Brain, Kanban, CalendarDays, Megaphone, Sparkles,
 } from "lucide-react";
+
 import { markTutorialSeen } from "@/app/actions/tutorial";
 
 const STEPS = [
@@ -56,14 +57,6 @@ const STEPS = [
     subtitle: "Agende posts automaticos",
     desc: "Agende posts para Instagram, Facebook e YouTube. A IA gera legendas, hashtags e sugere horarios ideais.",
     action: "/dashboard/posts",
-  },
-  {
-    icon: Brain,
-    color: "from-orange-500 to-red-500",
-    title: "Estudio de IA",
-    subtitle: "Gere videos e imagens",
-    desc: "Crie videos com IA (Reels, Shorts, Stories), imagens personalizadas e acervos de midia para a IA usar nas conversas.",
-    action: "/dashboard/studio",
   },
   {
     icon: Briefcase,

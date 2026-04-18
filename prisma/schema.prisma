@@ -30,10 +30,6 @@ model User {
   attendants        Attendant[]
   messageTemplates  MessageTemplate[]
   broadcastCampaigns BroadcastCampaign[]
-  stories           Story[]
-  assets            AssetVault[]
-  studioProjects    StudioProject[]
-  generatedPosts    GeneratedPost[]
   whatsappCampaigns WhatsAppCampaign[]
   notifications     Notification[]
   checklistCompleted String[]         // IDs of completed checklist items
@@ -42,6 +38,7 @@ model User {
   services          Service[]
   workflows         Workflow[]
   googleCalendar    GoogleCalendar?
+  autonomousAgents  AutonomousAgent[]
 }
 
 model AIConfig {
@@ -180,15 +177,20 @@ model Lead {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  leadId    String
-  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  role      String   // "user" | "assistant"
-  content   String
-  createdAt DateTime @default(now())
+  id               String   @id @default(cuid())
+  leadId           String
+  lead             Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  role             String   // "user" | "assistant"
+  content          String
+  // Sprint 2: externalId = ID da mensagem no provider (Meta/Uazapi/Evolution)
+  // Usado para idempotência — previne duplicatas por reenvio de webhook.
+  externalId       String?  // ex: "wamid.HBgNNTUxMTk4..." ou "BAE5..."
+  createdAt        DateTime @default(now())
 
   @@index([leadId])
   @@index([leadId, createdAt])
+  // Unique por lead + provider message id (previne duplicatas)
+  @@unique([leadId, externalId])
 }
 
 model Stage {
@@ -225,6 +227,7 @@ model WhatsAppConfig {
   phoneNumberId String   @default("")
   accessToken   String   @default("")
   verifyToken   String   @default("")
+  metaAppSecret String?  // App Secret do Meta for Developers — usado para verificar HMAC dos webhooks
   // --- Uazapi fields ---
   uazapiServerUrl    String?  // URL do servidor Uazapi (ex: https://sanas.uazapi.com)
   uazapiAdminToken   String?  // Admin token do Uazapi
@@ -506,11 +509,29 @@ model Workflow {
   canvas      Json?    // { nodes: WorkflowNode[], edges: WorkflowEdge[] } — visual canvas data
   steps       WorkflowStep[]
   executions  WorkflowExecution[]
+  // Sprint 7: versionamento de canvas
+  versions    WorkflowVersion[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
   @@index([userId, isActive])
+}
+
+// Sprint 7: histórico de versões do canvas/steps para cada workflow
+model WorkflowVersion {
+  id         String   @id @default(cuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  version    Int                          // Número incremental da versão
+  canvas     Json?                        // Snapshot do canvas no momento do save
+  steps      Json?                        // Snapshot dos steps em formato JSON
+  label      String?                      // Ex: "Antes de adicionar delay 24h"
+  createdBy  String?                      // userId de quem salvou (auditoria)
+  createdAt  DateTime @default(now())
+
+  @@index([workflowId])
+  @@unique([workflowId, version])
 }
 
 model WorkflowStep {
@@ -558,222 +579,99 @@ model AIAgentChat {
   @@index([userId, agentType])
 }
 
-// ── Video Storyboard Pipeline ────────────────────────────────
+// ── Agentes Autônomos (Autonomous Multi-Agent System) ───────
+// Extensão do AIAgentChat: enquanto aquele é conversacional (usuário pergunta, agente responde),
+// este roda sozinho, analisa dados, toma decisões e executa ações.
 
-model Story {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title           String
-  description     String?
-  status          String   @default("draft")     // draft|scripting|script_review|characters|char_review|storyboarding|storyboard_review|video_generating|video_review|concatenating|completed|published|failed
-  currentStage    String   @default("script")    // script|characters|storyboard|video|concat|publish
-  videoType       String   @default("reel")      // reel|story|tiktok|youtube_short|carousel|post
-  targetDuration  Int      @default(30)
-  tone            String?                         // educativo|vendas|bastidores|humor|autoridade
-  targetAudience  String?
-  niche           String   @default("clinica_estetica")
-  scriptRaw       String?
-  scriptJson      Json?
-  finalVideoUrl   String?
-  thumbnailUrl    String?
-  caption         String?
-  hashtags        String?
-  platforms       String[]                        // ["instagram","facebook","tiktok"]
-  scheduledAt     DateTime?
-  publishedAt     DateTime?
-  // Metricas pos-publicacao
-  likes           Int      @default(0)
-  comments        Int      @default(0)
-  shares          Int      @default(0)
-  views           Int      @default(0)
-  saves           Int      @default(0)
-  reach           Int      @default(0)
-  // Relacoes
-  chatMessages    StoryChatMessage[]
-  characters      StoryCharacter[]
-  frames          StoryboardFrame[]
-  videoClips      VideoClip[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([userId])
-  @@index([userId, status])
-}
-
-model StoryChatMessage {
-  id        String   @id @default(cuid())
-  storyId   String
-  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  role      String   // "user"|"assistant"|"system"
-  content   String
-  createdAt DateTime @default(now())
-
-  @@index([storyId, createdAt])
-}
-
-model StoryCharacter {
-  id          String   @id @default(cuid())
-  storyId     String
-  story       Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  name        String
-  description String
-  role        String?  // "protagonista"|"paciente"|"narrador"
-  imageUrl    String?
-  imagePrompt String?
-  imageStatus String   @default("pending") // "pending"|"generating"|"done"|"error"
-  isApproved  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([storyId])
-}
-
-model StoryboardFrame {
-  id                String   @id @default(cuid())
-  storyId           String
-  story             Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  order             Int
-  sceneTitle        String
-  narration         String
-  visualDescription String
-  duration          Int      @default(3)
-  cameraDirection   String?  // "close-up"|"wide"|"POV"|"detail"|"aerial"
-  transition        String?  // "cut"|"fade"|"zoom-in"|"swipe"
-  textOverlay       String?
-  imageUrl          String?
-  imagePrompt       String?
-  imageStatus       String   @default("pending") // "pending"|"generating"|"done"|"error"
-  imageProvider     String?
-  isApproved        Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@index([storyId, order])
-}
-
-model VideoClip {
-  id             String   @id @default(cuid())
-  storyId        String
-  story          Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  order          Int
-  startFrameId   String
-  endFrameId     String
-  videoUrl       String?
-  clipStatus     String   @default("pending") // "pending"|"generating"|"done"|"error"
-  provider       String?  // "kling"|"runway"|"luma"
-  model          String?
-  mode           String?  // "standard"|"pro"
-  duration       Int      @default(5)
-  externalTaskId String?
-  isApproved     Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@index([storyId, order])
-}
-
-// ── Acervo (Asset Vault) ─────────────────────────────────────
-
-model AssetVault {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category        String   // "person"|"space"|"procedure"|"brand"|"reference"
-  subcategory     String?
-  name            String
-  description     String?
-  fileUrl         String?
-  fileType        String?
-  fileName        String?
-  fileSize        Int?
-  metadata        Json?
-  isVoiceSample   Boolean  @default(false)
-  voiceId         String?
-  isFaceReference Boolean  @default(false)
-  personName      String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([userId, category])
-}
-
-// ── Estudio (Studio Projects) ────────────────────────────────
-
-model StudioProject {
+model AutonomousAgent {
   id            String   @id @default(cuid())
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title         String
-  type          String   @default("single_post")
-  status        String   @default("draft")
-  chatMessages  StudioChatMessage[]
-  posts         GeneratedPost[]
+  type          String   // "commercial" | "strategist" | "analyst" | "retention" | "creative"
+  name          String   // Nome visível (ex: "Agente de Vendas")
+  isActive      Boolean  @default(true)
+  // Nível de autonomia
+  autonomyLevel String   @default("full") // "full" (executa) | "assisted" (pede aprovação) | "suggest" (só recomenda)
+  // Agendamento
+  schedule      String?  // cron expression (null = só event-driven ou manual)
+  lastRunAt     DateTime?
+  nextRunAt     DateTime?
+  // Configuração específica do agente (thresholds, preferências)
+  config        Json     @default("{}")
+  // Estatísticas agregadas
+  totalRuns     Int      @default(0)
+  totalActions  Int      @default(0)
+  totalReports  Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@index([userId])
+  executions AutonomousAgentExecution[]
+  actions    AutonomousAgentAction[]
+  reports    AutonomousAgentReport[]
+
+  @@unique([userId, type])
+  @@index([userId, isActive])
 }
 
-model StudioChatMessage {
-  id        String        @id @default(cuid())
-  projectId String
-  project   StudioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  role      String
-  content   String
-  toolsUsed Json?
-  createdAt DateTime      @default(now())
+model AutonomousAgentExecution {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       AutonomousAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  status      String   @default("running") // "running" | "completed" | "failed"
+  trigger     String   // "scheduled" | "manual" | "event"
+  triggeredBy String?  // event name ou userId (audit)
+  summary     String?  // resumo curto do que foi feito
+  metrics     Json     @default("{}") // métricas coletadas (leads analisados, ações tomadas, etc)
+  error       String?  // mensagem de erro se falhou
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
 
-  @@index([projectId, createdAt])
+  actions AutonomousAgentAction[]
+  reports AutonomousAgentReport[]
+
+  @@index([agentId, startedAt])
+  @@index([status])
 }
 
-model GeneratedPost {
-  id              String         @id @default(cuid())
-  userId          String
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projectId       String?
-  project         StudioProject? @relation(fields: [projectId], references: [id])
-  title           String
-  type            String         @default("post")
-  status          String         @default("draft")
-  scriptJson      Json?
-  mediaUrls       Json           @default("[]")
-  thumbnailUrl    String?
-  captions        Json           @default("{}")
-  hashtags        Json?
-  voiceoverUrl    String?
-  scenes          Json?
-  finalVideoUrl   String?
-  scheduledAt     DateTime?
-  publishedAt     DateTime?
-  platforms       GeneratedPostPlatform[]
-  likes           Int            @default(0)
-  comments        Int            @default(0)
-  shares          Int            @default(0)
-  views           Int            @default(0)
-  saves           Int            @default(0)
-  reach           Int            @default(0)
-  productionCost  Float          @default(0)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+model AutonomousAgentAction {
+  id           String   @id @default(cuid())
+  agentId      String
+  agent        AutonomousAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  executionId  String?
+  execution    AutonomousAgentExecution? @relation(fields: [executionId], references: [id], onDelete: SetNull)
+  type         String   // "send_message" | "move_stage" | "add_tag" | "pause_campaign" | "change_budget" | ...
+  targetType   String   // "lead" | "campaign" | "post" | "stage"
+  targetId     String
+  targetName   String?
+  reasoning    String   // Por que o agente tomou essa ação (explicabilidade)
+  payload      Json     // Dados da ação (ex: { message: "...", toStage: "..." })
+  status       String   @default("executed") // "executed" | "failed" | "reverted" | "pending_approval"
+  errorMessage String?
+  executedAt   DateTime @default(now())
 
-  @@index([userId])
-  @@index([userId, status])
-  @@index([userId, scheduledAt])
+  @@index([agentId, executedAt])
+  @@index([targetType, targetId])
+  @@index([status])
 }
 
-model GeneratedPostPlatform {
-  id              String        @id @default(cuid())
-  postId          String
-  post            GeneratedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  platform        String
-  captionOverride String?
-  platformPostId  String?
-  status          String        @default("pending")
-  publishedAt     DateTime?
-  errorMessage    String?
+model AutonomousAgentReport {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       AutonomousAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  executionId String?
+  execution   AutonomousAgentExecution? @relation(fields: [executionId], references: [id], onDelete: SetNull)
+  type        String   // "daily" | "weekly" | "alert" | "insight"
+  title       String
+  summary     String   // Markdown curto
+  details     Json     // Dados estruturados (charts, tabelas, recomendações)
+  severity    String   @default("info") // "info" | "warning" | "critical"
+  isRead      Boolean  @default(false)
+  isPinned    Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
-  @@unique([postId, platform])
+  @@index([agentId, createdAt])
+  @@index([agentId, isRead])
+  @@index([severity])
 }
 
 // ── WhatsApp Campaigns (com anti-ban) ────────────────────────

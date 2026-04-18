@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
@@ -149,7 +150,7 @@ RETORNE OBRIGATORIAMENTE em JSON valido:
 
     return NextResponse.json(content);
   } catch (error) {
-    console.error("Caption generation error:", error);
+    logger.error("caption_generation_error", { err: error });
     return NextResponse.json(
       { error: "Erro ao gerar caption. Verifique sua chave de API." },
       { status: 500 }

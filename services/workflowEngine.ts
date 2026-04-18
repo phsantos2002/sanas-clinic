@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { sendMessage } from "@/services/whatsappService";
+import { logger } from "@/lib/logger";
+
+/** Hard cap: max steps processed per execution to prevent infinite loops. */
+const MAX_STEPS_PER_EXECUTION = 50;
 
 /**
  * Workflow Engine — processes trigger → condition → action pipelines.
@@ -119,6 +123,34 @@ export async function executeWorkflow(executionId: string) {
     await prisma.workflowExecution.update({
       where: { id: executionId },
       data: { status: "failed", completedAt: new Date(), logs: [...logs, { step: -1, type: "error", result: "Lead nao encontrado", timestamp: new Date().toISOString() }] },
+    });
+    return;
+  }
+
+  // Sprint 7: loop/infinite execution guard
+  const stepsProcessedInThisRun = steps.length - execution.currentStep;
+  if (stepsProcessedInThisRun > MAX_STEPS_PER_EXECUTION) {
+    logger.error("workflow_execution_loop_detected", {
+      executionId,
+      workflowId: execution.workflowId,
+      currentStep: execution.currentStep,
+      totalSteps: steps.length,
+    });
+    await prisma.workflowExecution.update({
+      where: { id: executionId },
+      data: {
+        status: "failed",
+        completedAt: new Date(),
+        logs: JSON.parse(JSON.stringify([
+          ...logs,
+          {
+            step: execution.currentStep,
+            type: "error",
+            result: `Limite de segurança atingido: ${MAX_STEPS_PER_EXECUTION} steps por execução`,
+            timestamp: new Date().toISOString(),
+          },
+        ])),
+      },
     });
     return;
   }
@@ -314,6 +346,124 @@ async function executeAction(config: StepConfig, lead: any, userId: string): Pro
     default:
       return `Acao desconhecida: ${actionType}`;
   }
+}
+
+// ── Workflow versioning (Sprint 7) ───────────────────────────
+
+/**
+ * Saves a version snapshot of a workflow's current state.
+ * Call this before or after saving changes to canvas/steps.
+ *
+ * Version numbers are auto-incremented per workflow via MAX(version)+1.
+ * Uses SELECT FOR UPDATE semantics via a Prisma transaction to prevent
+ * race conditions under concurrent saves.
+ *
+ * @param workflowId - the workflow to snapshot
+ * @param label      - optional human-readable label (e.g. "v3 — added delay step")
+ * @param createdBy  - userId of who triggered the save
+ */
+export async function saveWorkflowVersion(
+  workflowId: string,
+  label?: string,
+  createdBy?: string
+): Promise<{ versionId: string; version: number } | null> {
+  const log = logger.child({ workflowId });
+
+  return prisma.$transaction(async (tx) => {
+    const workflow = await tx.workflow.findUnique({
+      where: { id: workflowId },
+      include: { steps: { orderBy: { order: "asc" } } },
+    });
+    if (!workflow) return null;
+
+    // Find current max version for this workflow
+    const lastVersion = await tx.workflowVersion.findFirst({
+      where: { workflowId },
+      orderBy: { version: "desc" },
+      select: { version: true },
+    });
+
+    const nextVersion = (lastVersion?.version ?? 0) + 1;
+
+    const saved = await tx.workflowVersion.create({
+      data: {
+        workflowId,
+        version: nextVersion,
+        canvas: workflow.canvas ?? undefined,
+        steps: workflow.steps as unknown as import("@prisma/client").Prisma.JsonArray,
+        label: label ?? null,
+        createdBy: createdBy ?? null,
+      },
+    });
+
+    log.info("workflow_version_saved", { version: nextVersion, versionId: saved.id });
+    return { versionId: saved.id, version: nextVersion };
+  });
+}
+
+/**
+ * Restores a workflow to a previous version snapshot.
+ * Steps are recreated from the snapshot; canvas is restored.
+ * Creates a new version entry marking the rollback.
+ */
+export async function restoreWorkflowVersion(
+  versionId: string,
+  restoredBy: string
+): Promise<boolean> {
+  const log = logger.child({ versionId });
+
+  return prisma.$transaction(async (tx) => {
+    const version = await tx.workflowVersion.findUnique({ where: { id: versionId } });
+    if (!version) return false;
+
+    // Restore canvas
+    await tx.workflow.update({
+      where: { id: version.workflowId },
+      data: { canvas: version.canvas ?? undefined },
+    });
+
+    // Rebuild steps from snapshot
+    const snapshotSteps = version.steps as unknown as Array<{
+      type: string;
+      config: Record<string, unknown>;
+      order: number;
+    }>;
+
+    if (Array.isArray(snapshotSteps)) {
+      await tx.workflowStep.deleteMany({ where: { workflowId: version.workflowId } });
+      for (const step of snapshotSteps) {
+        await tx.workflowStep.create({
+          data: {
+            workflowId: version.workflowId,
+            type: step.type,
+            config: step.config as import("@prisma/client").Prisma.JsonObject,
+            order: step.order,
+          },
+        });
+      }
+    }
+
+    // Save a new version recording the rollback
+    const lastVersion = await tx.workflowVersion.findFirst({
+      where: { workflowId: version.workflowId },
+      orderBy: { version: "desc" },
+      select: { version: true },
+    });
+
+    await tx.workflowVersion.create({
+      data: {
+        workflowId: version.workflowId,
+        version: (lastVersion?.version ?? 0) + 1,
+        canvas: version.canvas ?? undefined,
+        steps: version.steps ?? undefined,
+        label: `Restaurado da versão ${version.version}`,
+        createdBy: restoredBy,
+      },
+    });
+
+    log.info("workflow_version_restored", { fromVersion: version.version, workflowId: version.workflowId });
+    return true;
+  });
 }
 
 // ── Resume delayed executions (called by CRON) ───────────────

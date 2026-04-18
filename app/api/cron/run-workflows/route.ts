@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { logger } from "@/lib/logger";
+import { validateCronAuth } from "@/lib/validateCronAuth";
 import { resumeDelayedExecutions } from "@/services/workflowEngine";
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const deny = validateCronAuth(req);
+  if (deny) return deny;
 
   try {
     const result = await resumeDelayedExecutions();
+    logger.info("cron_run_workflows_done", { resumed: result.resumed });
     return NextResponse.json({ ok: true, resumed: result.resumed });
   } catch (error) {
-    console.error("[cron/run-workflows] Error:", error);
+    logger.error("cron_run_workflows_failed", {}, error);
     return NextResponse.json({ error: "Erro ao executar workflows" }, { status: 500 });
   }
 }

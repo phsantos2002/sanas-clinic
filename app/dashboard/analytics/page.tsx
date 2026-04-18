@@ -5,22 +5,24 @@ import { listCampaignsForSelector } from "@/app/actions/meta";
 import { getAllCampaignConfigs } from "@/app/actions/pixel";
 import { getAdvancedFunnel, getLTVBySource, getCACByChannel, getScoreDistribution, getAIUsageReport } from "@/app/actions/advancedAnalytics";
 import { prisma } from "@/lib/prisma";
-import { AnalyticsClient } from "@/components/dashboard/AnalyticsClient";
-import { AdCreativeReportTable } from "@/components/dashboard/AdCreativeReportTable";
-import { AdvancedAnalyticsSection } from "@/components/dashboard/AdvancedAnalyticsSection";
-import { AnalyticsNarrative } from "@/components/dashboard/AnalyticsNarrative";
+import {
+  AnalyticsClient,
+  AdCreativeReportTable,
+  AdvancedAnalyticsSection,
+  AnalyticsNarrative,
+} from "@/components/dashboard/AnalyticsDynamic";
 
 export default async function AnalyticsPage() {
   const [data, sourceStats, creatives, user, funnel, ltv, cac, scores, aiUsage] = await Promise.all([
-    getAnalytics(),
-    getLeadSourceStats(),
-    getAdCreativeReport(),
-    getCurrentUser(),
-    getAdvancedFunnel(),
-    getLTVBySource(),
-    getCACByChannel(),
-    getScoreDistribution(),
-    getAIUsageReport(),
+    getAnalytics().catch(() => null),
+    getLeadSourceStats().catch(() => null),
+    getAdCreativeReport().catch(() => []),
+    getCurrentUser().catch(() => null),
+    getAdvancedFunnel().catch(() => null),
+    getLTVBySource().catch(() => []),
+    getCACByChannel().catch(() => []),
+    getScoreDistribution().catch(() => []),
+    getAIUsageReport().catch(() => null),
   ]);
 
   if (!data) {
@@ -47,8 +49,8 @@ export default async function AnalyticsPage() {
   } | null = null;
 
   const [campaignsList, campaignConfigs] = await Promise.all([
-    listCampaignsForSelector(),
-    getAllCampaignConfigs(),
+    listCampaignsForSelector().catch(() => []),
+    getAllCampaignConfigs().catch(() => []),
   ]);
 
   if (user) {
@@ -81,7 +83,7 @@ export default async function AnalyticsPage() {
       <AnalyticsNarrative />
       <AnalyticsClient
         data={data}
-        sourceStats={sourceStats}
+        sourceStats={sourceStats ?? { total: 0, meta: 0, google: 0, whatsapp: 0, manual: 0, unknown: 0 }}
         pixelConfig={pixelConfig}
         campaignsList={campaignsList}
         campaignConfigMap={configMap}
@@ -90,11 +92,11 @@ export default async function AnalyticsPage() {
 
       {/* Advanced Analytics */}
       <AdvancedAnalyticsSection
-        funnel={funnel}
+        funnel={funnel ?? []}
         ltv={ltv}
         cac={cac}
-        scores={scores}
-        aiUsage={aiUsage}
+        scores={Array.isArray(scores) ? { frio: 0, morno: 0, quente: 0, vip: 0, avgScore: 0 } : scores}
+        aiUsage={aiUsage ?? { totalOperations: 0, totalCostUsd: 0, byOperation: [], byProvider: [], dailyCost: [] }}
       />
     </div>
   );

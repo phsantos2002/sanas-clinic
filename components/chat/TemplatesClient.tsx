@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, FileText, Trash2, Hash } from "lucide-react";
 import { toast } from "sonner";
 import { createMessageTemplate, deleteMessageTemplate, type TemplateData } from "@/app/actions/whatsappHub";
@@ -14,6 +15,7 @@ const CATEGORIES = [
 ];
 
 export function TemplatesClient({ templates }: { templates: TemplateData[] }) {
+  const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [content, setContent] = useState("");
@@ -28,14 +30,14 @@ export function TemplatesClient({ templates }: { templates: TemplateData[] }) {
       name: name.trim(), content: content.trim(), category, shortcut: shortcut.trim() || undefined,
     });
     setCreating(false);
-    if (result.success) { toast.success("Template criado!"); setShowCreate(false); setName(""); setContent(""); window.location.reload(); }
+    if (result.success) { toast.success("Template criado!"); setShowCreate(false); setName(""); setContent(""); router.refresh(); }
     else toast.error(result.success ? "Erro" : result.error);
   };
 
   const handleDelete = async (id: string) => {
     await deleteMessageTemplate(id);
     toast.success("Template excluido");
-    window.location.reload();
+    router.refresh();
   };
 
   return (

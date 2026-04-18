@@ -5,13 +5,15 @@ import { DashboardClient } from "@/components/dashboard/DashboardClient";
 import type { KanbanColumn } from "@/types";
 
 export default async function PipelinePage() {
-  const [leadsResult, stages, stats] = await Promise.all([
-    getLeads(),
-    getStages(),
-    getLeadSourceStats(),
+  const [leadsResult, stagesRaw, statsRaw] = await Promise.all([
+    getLeads().catch(() => ({ leads: [], total: 0 })),
+    getStages().catch(() => []),
+    getLeadSourceStats().catch(() => null),
   ]);
 
-  const leads = leadsResult.leads;
+  const leads = leadsResult?.leads ?? [];
+  const stages = stagesRaw ?? [];
+  const stats = statsRaw ?? { total: 0, meta: 0, google: 0, whatsapp: 0, manual: 0, unknown: 0 };
 
   const columns: KanbanColumn[] = stages.map((stage) => ({
     ...stage,

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -252,7 +253,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ imageUrl });
   } catch (error) {
-    console.error("Image generation error:", error);
+    logger.error("ai_error", { err: error });
     return NextResponse.json(
       { error: "Erro ao gerar imagem. Verifique sua chave de API." },
       { status: 500 }

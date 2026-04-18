@@ -31,16 +31,31 @@ export async function getWhatsAppConfigByUserId(userId: string) {
 export async function saveWhatsAppConfig(
   phoneNumberId: string,
   accessToken: string,
-  verifyToken: string
+  verifyToken: string,
+  metaAppSecret?: string
 ): Promise<ActionResult<void>> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
+    // Only update metaAppSecret if a non-empty value was provided;
+    // if the field is omitted or blank, keep the existing value (upsert will overwrite
+    // only the fields passed in `update`, so we conditionally include it).
+    const secretUpdate = metaAppSecret?.trim()
+      ? { metaAppSecret: metaAppSecret.trim() }
+      : {};
+
     await prisma.whatsAppConfig.upsert({
       where: { userId: dbUser.id },
-      update: { provider: "official", phoneNumberId, accessToken, verifyToken },
-      create: { userId: dbUser.id, provider: "official", phoneNumberId, accessToken, verifyToken },
+      update: { provider: "official", phoneNumberId, accessToken, verifyToken, ...secretUpdate },
+      create: {
+        userId: dbUser.id,
+        provider: "official",
+        phoneNumberId,
+        accessToken,
+        verifyToken,
+        metaAppSecret: metaAppSecret?.trim() || null,
+      },
     });
 
     return { success: true, data: undefined };

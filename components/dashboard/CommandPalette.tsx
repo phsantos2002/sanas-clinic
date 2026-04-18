@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, User, FileText, MessageSquare, Plus, LayoutDashboard, Zap, X } from "lucide-react";
+import { Search, User, FileText, MessageSquare, Plus, LayoutDashboard, Zap, Bot, X } from "lucide-react";
 import { globalSearch, type SearchResult } from "@/app/actions/search";
 import { useRouter } from "next/navigation";
 
@@ -10,6 +10,7 @@ const QUICK_ACTIONS = [
   { label: "Ir para pipeline", icon: LayoutDashboard, url: "/dashboard/pipeline" },
   { label: "Abrir chat", icon: MessageSquare, url: "/dashboard/chat" },
   { label: "Nova automacao", icon: Zap, url: "/dashboard/workflows" },
+  { label: "Agentes autonomos", icon: Bot, url: "/dashboard/agents" },
 ];
 
 const TYPE_ICONS: Record<string, typeof User> = {

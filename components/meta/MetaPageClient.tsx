@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { AlertCircle, Plus, PauseCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export function MetaPageClient({
   accountPhase, bidStrategy, conversionDestination,
   userId, campaignConfigs: initialConfigs,
 }: Props) {
+  const router = useRouter();
   const [configMap, setConfigMap] = useState<Record<string, CampaignConfig>>(() => {
     const map: Record<string, CampaignConfig> = {};
     for (const cfg of initialConfigs ?? []) {
@@ -71,11 +73,9 @@ export function MetaPageClient({
     // Config is now set during campaign creation, no live editing needed
   }, []);
 
-  const handleCampaignCreated = useCallback((campaignId: string) => {
-    // The page will need to be refreshed to see the new campaign from the API
-    // For now, redirect to force SSR re-fetch
-    window.location.reload();
-  }, []);
+  const handleCampaignCreated = useCallback((_campaignId: string) => {
+    router.refresh();
+  }, [router]);
 
   // ─── Not configured ───
   if (!hasConfig) {

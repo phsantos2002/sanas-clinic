@@ -7,27 +7,29 @@ import { getCurrentUser } from "@/app/actions/user";
  * Retorna null se não pertence ou não existe.
  */
 export async function ensureOwnership(
-  model: "lead" | "stage" | "workflow" | "socialPost" | "messageTemplate" | "broadcastCampaign" | "story" | "assetVault" | "studioProject" | "notification",
+  model: "lead" | "stage" | "workflow" | "socialPost" | "messageTemplate" | "broadcastCampaign" | "notification",
   resourceId: string
 ) {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const modelMap: Record<string, unknown> = {
+  // Each model delegate has a compatible `findFirst` signature for this use case.
+  // We use a minimal interface instead of `any` to preserve type safety on the call.
+  type ModelDelegate = {
+    findFirst(args: { where: { id: string; userId: string } }): Promise<unknown>;
+  };
+
+  const modelMap: Record<string, ModelDelegate> = {
     lead: prisma.lead,
     stage: prisma.stage,
     workflow: prisma.workflow,
     socialPost: prisma.socialPost,
     messageTemplate: prisma.messageTemplate,
     broadcastCampaign: prisma.broadcastCampaign,
-    story: prisma.story,
-    assetVault: prisma.assetVault,
-    studioProject: prisma.studioProject,
     notification: prisma.notification,
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const prismaModel = modelMap[model] as any;
+  const prismaModel = modelMap[model];
   if (!prismaModel) return null;
 
   const resource = await prismaModel.findFirst({

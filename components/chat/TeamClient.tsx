@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Users, Trash2, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createAttendant, deleteAttendant, type AttendantData } from "@/app/actions/whatsappHub";
 
 export function TeamClient({ attendants }: { attendants: AttendantData[] }) {
+  const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -17,14 +19,14 @@ export function TeamClient({ attendants }: { attendants: AttendantData[] }) {
     setCreating(true);
     const result = await createAttendant({ name: name.trim(), email: email.trim() || undefined, phone: phone.trim() || undefined });
     setCreating(false);
-    if (result.success) { toast.success("Atendente adicionado!"); setShowCreate(false); setName(""); setEmail(""); setPhone(""); window.location.reload(); }
+    if (result.success) { toast.success("Atendente adicionado!"); setShowCreate(false); setName(""); setEmail(""); setPhone(""); router.refresh(); }
     else toast.error(result.success ? "Erro" : result.error);
   };
 
   const handleDelete = async (id: string) => {
     await deleteAttendant(id);
     toast.success("Atendente removido");
-    window.location.reload();
+    router.refresh();
   };
 
   return (

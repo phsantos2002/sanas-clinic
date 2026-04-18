@@ -44,27 +44,28 @@ export async function getAnalytics(): Promise<FullAnalytics | null> {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [stages, leads, pixel] = await Promise.all([
+  // Sprint 4: replaced findMany + JS filter with DB-side aggregates.
+  // Before: loaded ALL leads into memory → O(n) JS reduce.
+  // After: 4 parallel DB queries with COUNT/GROUP BY → O(1) memory.
+  const [stages, totalLeads, leadsWithConversation, stageGroups, pixel] = await Promise.all([
     prisma.stage.findMany({
       where: { userId: user.id },
       orderBy: { order: "asc" },
     }),
-    prisma.lead.findMany({
-      where: { userId: user.id },
-      select: {
-        stageId: true,
-        messages: { select: { id: true }, take: 1 },
-      },
+    prisma.lead.count({ where: { userId: user.id } }),
+    prisma.lead.count({
+      where: { userId: user.id, messages: { some: {} } },
     }),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    prisma.pixel.findUnique({ where: { userId: user.id } }) as any,
+    prisma.lead.groupBy({
+      by: ["stageId"],
+      where: { userId: user.id, stageId: { not: null } },
+      _count: { stageId: true },
+    }),
+    prisma.pixel.findUnique({ where: { userId: user.id } }),
   ]);
 
-  const totalLeads = leads.length;
-  const leadsWithConversation = leads.filter((l) => l.messages.length > 0).length;
-
-  const countByStage = leads.reduce<Record<string, number>>((acc, lead) => {
-    if (lead.stageId) acc[lead.stageId] = (acc[lead.stageId] ?? 0) + 1;
+  const countByStage = stageGroups.reduce<Record<string, number>>((acc, g) => {
+    if (g.stageId) acc[g.stageId] = g._count.stageId;
     return acc;
   }, {});
 
@@ -107,14 +108,16 @@ export async function getAnalytics(): Promise<FullAnalytics | null> {
   let selectedCampaignName: string | null = null;
 
   if (hasMetaConfig) {
+    const adAccountId = pixel!.adAccountId!;
+    const metaAdsToken = pixel!.metaAdsToken!;
     // If a campaign is selected, fetch insights for that campaign only
     const insightsPromise = selectedCampaignId
-      ? fetchCampaignInsightsDetailed(selectedCampaignId, pixel.metaAdsToken)
-      : fetchMetaAdsInsightsDetailed(pixel.adAccountId, pixel.metaAdsToken);
+      ? fetchCampaignInsightsDetailed(selectedCampaignId, metaAdsToken)
+      : fetchMetaAdsInsightsDetailed(adAccountId, metaAdsToken);
 
     const [insightsResult, fetchedCampaigns] = await Promise.all([
       insightsPromise,
-      fetchMetaCampaigns(pixel.adAccountId, pixel.metaAdsToken),
+      fetchMetaCampaigns(adAccountId, metaAdsToken),
     ]);
     campaigns = fetchedCampaigns;
 

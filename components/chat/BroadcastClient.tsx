@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Megaphone, Play, Trash2, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createBroadcast, executeBroadcast, deleteBroadcast, type BroadcastData } from "@/app/actions/whatsappHub";
@@ -14,6 +15,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
 };
 
 export function BroadcastClient({ broadcasts, stages }: { broadcasts: BroadcastData[]; stages: Stage[] }) {
+  const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
@@ -33,7 +35,7 @@ export function BroadcastClient({ broadcasts, stages }: { broadcasts: BroadcastD
 
     const result = await createBroadcast({ name: name.trim(), message: message.trim(), filters: Object.keys(filters).length > 0 ? filters as { tags?: string[]; scoreMin?: number; stageIds?: string[] } : undefined });
     setCreating(false);
-    if (result.success) { toast.success("Campanha criada!"); setShowCreate(false); window.location.reload(); }
+    if (result.success) { toast.success("Campanha criada!"); setShowCreate(false); router.refresh(); }
     else toast.error(result.success ? "Erro" : result.error);
   };
 
@@ -44,14 +46,14 @@ export function BroadcastClient({ broadcasts, stages }: { broadcasts: BroadcastD
     setExecuting(null);
     if (result.success && result.data) {
       toast.success(`Enviadas: ${result.data.sent}, Falhas: ${result.data.failed}`);
-      window.location.reload();
+      router.refresh();
     } else toast.error(result.success ? "Erro" : result.error);
   };
 
   const handleDelete = async (id: string) => {
     await deleteBroadcast(id);
     toast.success("Campanha excluida");
-    window.location.reload();
+    router.refresh();
   };
 
   return (

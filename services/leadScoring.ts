@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 /**
  * Lead Scoring Engine — calculates a 0-100 score based on:
@@ -66,7 +67,10 @@ function calculateScore(lead: ScoringLead): { score: number; label: string } {
 }
 
 /**
- * Recalculate scores for all leads of a user
+ * Recalculate scores for all leads of a user.
+ *
+ * Sprint 4: replaced N individual `update` calls with a single batched
+ * `$transaction`. Round-trips: N+1 → 2 (one SELECT, one transaction).
  */
 export async function recalculateScores(userId: string): Promise<number> {
   const leads = await prisma.lead.findMany({
@@ -84,19 +88,21 @@ export async function recalculateScores(userId: string): Promise<number> {
     },
   });
 
-  let updated = 0;
-  for (const lead of leads) {
-    const { score, label } = calculateScore(lead);
+  if (leads.length === 0) return 0;
 
-    // Only update if score changed
-    await prisma.lead.update({
+  const updates = leads.map((lead) => {
+    const { score, label } = calculateScore(lead);
+    return prisma.lead.update({
       where: { id: lead.id },
       data: { score, scoreLabel: label },
     });
-    updated++;
-  }
+  });
 
-  return updated;
+  // Single round-trip for all updates
+  await prisma.$transaction(updates);
+
+  logger.info("lead_scores_recalculated", { userId, count: leads.length });
+  return leads.length;
 }
 
 /**

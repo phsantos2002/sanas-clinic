@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit3, Clock, DollarSign } from "lucide-react";
 import { createService, updateService, deleteService, type ServiceData } from "@/app/actions/services";
@@ -11,6 +12,7 @@ type Service = any;
 const inputClass = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500";
 
 export function ServicesManager({ initialServices }: { initialServices: Service[] }) {
+  const router = useRouter();
   const [services, setServices] = useState(initialServices);
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export function ServicesManager({ initialServices }: { initialServices: Service[
     if (result.success) {
       toast.success("Servico criado!");
       resetForm();
-      window.location.reload();
+      router.refresh();
     } else {
       toast.error(result.error);
     }
@@ -47,7 +49,7 @@ export function ServicesManager({ initialServices }: { initialServices: Service[
     if (result.success) {
       toast.success("Servico atualizado!");
       setEditingId(null);
-      window.location.reload();
+      router.refresh();
     } else {
       toast.error(result.error);
     }

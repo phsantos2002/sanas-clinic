@@ -21,6 +21,7 @@ type WhatsAppConfig = {
   phoneNumberId: string;
   accessToken: string;
   verifyToken: string;
+  metaAppSecret: string | null;
   uazapiServerUrl: string | null;
   uazapiAdminToken: string | null;
   uazapiInstanceToken: string | null;
@@ -40,6 +41,7 @@ export function WhatsAppConfigForm({ config }: Props) {
   const [phoneNumberId, setPhoneNumberId] = useState(config?.phoneNumberId ?? "");
   const [accessToken, setAccessToken] = useState(config?.accessToken ?? "");
   const [verifyToken, setVerifyToken] = useState(config?.verifyToken ?? "");
+  const [metaAppSecret, setMetaAppSecret] = useState(config?.metaAppSecret ?? "");
 
   // State
   const [loading, setLoading] = useState(false);
@@ -78,7 +80,7 @@ export function WhatsAppConfigForm({ config }: Props) {
     e.preventDefault();
     if (!phoneNumberId.trim() || !accessToken.trim() || !verifyToken.trim()) return;
     setLoading(true);
-    const result = await saveWhatsAppConfig(phoneNumberId, accessToken, verifyToken);
+    const result = await saveWhatsAppConfig(phoneNumberId, accessToken, verifyToken, metaAppSecret || undefined);
     setLoading(false);
     if (result.success) {
       toast.success("Configurações do WhatsApp salvas");
@@ -209,6 +211,21 @@ export function WhatsAppConfigForm({ config }: Props) {
             <Label htmlFor="verifyToken">Verify Token</Label>
             <Input id="verifyToken" placeholder="Crie uma senha secreta qualquer" value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} required />
             <p className="text-xs text-zinc-400">Você define este valor e usa o mesmo ao configurar o webhook na Meta.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="metaAppSecret">App Secret <span className="text-zinc-400 font-normal">(opcional)</span></Label>
+            <Input
+              id="metaAppSecret"
+              type="password"
+              placeholder="App Secret do Meta for Developers"
+              value={metaAppSecret}
+              onChange={(e) => setMetaAppSecret(e.target.value)}
+              autoComplete="new-password"
+            />
+            <p className="text-xs text-zinc-400">
+              Encontre em <span className="font-mono">Meta for Developers → Seu App → Configurações → Básico → Segredo do Aplicativo</span>.
+              Usado para validar a assinatura HMAC dos webhooks recebidos — aumenta a segurança da integração.
+            </p>
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={loading}>{loading ? "Salvando..." : "Salvar WhatsApp"}</Button>

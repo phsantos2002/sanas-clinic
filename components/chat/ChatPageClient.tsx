@@ -761,7 +761,7 @@ export function ChatPageClient() {
                   <img src={selectedChat.imagePreview || selectedChat.image} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-sm font-bold text-slate-500">
-                    {getInitials(selectedChat.wa_contactName || selectedChat.phone)}
+                    {getInitials(selectedChat.wa_contactName || selectedChat.wa_groupSubject || selectedChat.phone || "?")}
                   </span>
                 )}
               </div>

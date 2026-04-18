@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { logger } from "@/lib/logger";
+import { validateCronAuth } from "@/lib/validateCronAuth";
 import { prisma } from "@/lib/prisma";
 import { findLeadsForReactivation } from "@/services/leadScoring";
 import { sendMessage } from "@/services/whatsappService";
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const deny = validateCronAuth(req);
+  if (deny) return deny;
 
   try {
     // Find all users with WhatsApp + AI config
@@ -60,9 +61,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    logger.info("cron_reactivate_leads_done", { sent: totalSent });
     return NextResponse.json({ ok: true, sent: totalSent });
   } catch (error) {
-    console.error("[cron/reactivate-leads] Error:", error);
+    logger.error("cron_reactivate_leads_failed", {}, error);
     return NextResponse.json({ error: "Erro na reativacao" }, { status: 500 });
   }
 }

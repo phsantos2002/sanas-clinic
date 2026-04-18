@@ -98,15 +98,6 @@ const tools: Anthropic.Tool[] = [
     description: "Retorna posts agendados para os proximos dias",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
-  {
-    name: "get_assets",
-    description: "Retorna assets do Acervo do Estudio (fotos, procedimentos, marca)",
-    input_schema: {
-      type: "object" as const,
-      properties: { category: { type: "string", description: "Filtro: 'person', 'space', 'procedure', 'brand', 'reference'" } },
-      required: [],
-    },
-  },
 ];
 
 // ── Tool execution ───────────────────────────────────────────
@@ -308,22 +299,6 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
       return JSON.stringify(posts.map((p) => ({
         titulo: p.title, tipo: p.mediaType, plataformas: p.platforms,
         agendadoPara: p.scheduledAt?.toISOString(),
-      })));
-    }
-
-    case "get_assets": {
-      const category = input.category as string | undefined;
-      const where: Record<string, unknown> = { userId };
-      if (category) where.category = category;
-      const assets = await prisma.assetVault.findMany({
-        where,
-        select: { name: true, category: true, description: true, personName: true, metadata: true, isVoiceSample: true, isFaceReference: true },
-        take: 20,
-      });
-      return JSON.stringify(assets.map((a) => ({
-        nome: a.name, categoria: a.category, descricao: a.description,
-        pessoa: a.personName, temVoz: a.isVoiceSample, temRosto: a.isFaceReference,
-        dados: a.metadata,
       })));
     }
 

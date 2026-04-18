@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Workflow, Plus, Play, Pause, Trash2, ChevronRight, PenTool,
   Zap, Clock, MessageCircle, Tag, Users, ArrowRight, BarChart3,
@@ -32,6 +33,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 export function WorkflowsClient({ workflows, stages }: { workflows: WorkflowData[]; stages: Stage[] }) {
+  const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -68,7 +70,7 @@ export function WorkflowsClient({ workflows, stages }: { workflows: WorkflowData
       toast.success("Automacao criada!");
       setShowCreate(false);
       setName("");
-      window.location.reload();
+      router.refresh();
     } else {
       toast.error(result.success ? "Erro" : result.error);
     }
@@ -76,13 +78,13 @@ export function WorkflowsClient({ workflows, stages }: { workflows: WorkflowData
 
   const handleToggle = async (id: string) => {
     await toggleWorkflow(id);
-    window.location.reload();
+    router.refresh();
   };
 
   const handleDelete = async (id: string) => {
     await deleteWorkflow(id);
     toast.success("Automacao excluida");
-    window.location.reload();
+    router.refresh();
   };
 
   return (

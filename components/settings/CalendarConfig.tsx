@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Calendar, Check, ExternalLink, Clock, X } from "lucide-react";
 import { saveCalendarConfig, disconnectCalendar } from "@/app/actions/calendar";
@@ -26,6 +27,7 @@ const DAYS = [
 ];
 
 export function CalendarConfig({ config }: { config: CalendarConfigData }) {
+  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [hoursStart, setHoursStart] = useState(config?.businessHoursStart || "09:00");
   const [hoursEnd, setHoursEnd] = useState(config?.businessHoursEnd || "18:00");
@@ -51,7 +53,7 @@ export function CalendarConfig({ config }: { config: CalendarConfigData }) {
     const result = await disconnectCalendar();
     if (result.success) {
       toast.success("Google Calendar desconectado");
-      window.location.reload();
+      router.refresh();
     } else {
       toast.error(result.error);
     }

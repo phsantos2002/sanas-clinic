@@ -80,8 +80,7 @@ async function getMetaConfig(): Promise<(MetaConfig & { selectedCampaignId: stri
   const user = await getCurrentUser();
   if (!user) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pixel = (await prisma.pixel.findUnique({ where: { userId: user.id } })) as any;
+  const pixel = await prisma.pixel.findUnique({ where: { userId: user.id } });
   if (!pixel?.adAccountId || !pixel?.metaAdsToken) return null;
 
   return {

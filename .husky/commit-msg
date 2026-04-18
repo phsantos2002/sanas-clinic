@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+# Valida formato da mensagem de commit (Conventional Commits)
+# Exemplos válidos: feat: add kanban, fix: webhook dedup, chore: update deps
+
+commit_msg=$(cat "$1")
+pattern="^(feat|fix|chore|docs|style|refactor|perf|test|ci|revert|hotfix)(\(.+\))?: .{1,100}$"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo ""
+  echo "❌ Mensagem de commit inválida: \"$commit_msg\""
+  echo ""
+  echo "Use o formato Conventional Commits:"
+  echo "  <tipo>(<escopo-opcional>): <descrição curta>"
+  echo ""
+  echo "Tipos aceitos: feat, fix, chore, docs, style, refactor, perf, test, ci, revert, hotfix"
+  echo ""
+  echo "Exemplos:"
+  echo "  feat: add lead scoring dashboard"
+  echo "  fix(webhook): prevent duplicate messages"
+  echo "  chore(deps): update prisma to 5.23"
+  echo ""
+  exit 1
+fi

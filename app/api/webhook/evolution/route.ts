@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { sendUazapiMessage } from "@/services/whatsappUazapi";
 import { processIncomingMessage } from "@/services/webhookProcessor";
 import { logWebhook } from "@/app/api/debug/webhook-log/route";
+import { logger } from "@/lib/logger";
+import { webhookQueue } from "@/lib/queue";
 
 /**
  * Uazapi Webhook Handler
@@ -49,6 +51,7 @@ function extractMessageData(payload: any): {
   isGroup: boolean;
   token: string;
   wasSentByApi: boolean;
+  messageId?: string;
 } | null {
   // Format 1: New Uazapi format (EventType + message object)
   if (payload.message && payload.chat) {
@@ -62,6 +65,7 @@ function extractMessageData(payload: any): {
       isGroup: msg.isGroup === true || chat.wa_isGroup === true,
       token: payload.token || "",
       wasSentByApi: msg.wasSentByApi === true,
+      messageId: msg.id || msg.messageId || undefined,
     };
   }
 
@@ -75,6 +79,7 @@ function extractMessageData(payload: any): {
       isGroup: (payload.chatid || "").includes("@g.us"),
       token: payload.instancetoken || payload.token || "",
       wasSentByApi: false,
+      messageId: payload.id || undefined,
     };
   }
 
@@ -82,9 +87,10 @@ function extractMessageData(payload: any): {
 }
 
 export async function POST(req: NextRequest) {
+  const log = logger.child({ route: "uazapi_webhook" });
   try {
     const raw = await req.text();
-    console.log(`[uazapi webhook RAW] ${raw.slice(0, 500)}`);
+    log.debug("uazapi_raw_received", { length: raw.length });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let payload: any;
@@ -92,7 +98,7 @@ export async function POST(req: NextRequest) {
       payload = JSON.parse(raw);
       logWebhook(payload);
     } catch {
-      console.error("[uazapi webhook] JSON parse error");
+      log.error("uazapi_json_parse_error");
       logWebhook({ error: "JSON parse error", raw: raw.slice(0, 500) });
       return NextResponse.json({ ok: true });
     }
@@ -100,21 +106,32 @@ export async function POST(req: NextRequest) {
     const msgData = extractMessageData(payload);
 
     if (!msgData) {
-      console.log(`[uazapi webhook] Payload nao reconhecido, EventType=${payload.EventType}`);
+      log.debug("uazapi_unrecognized_payload", { eventType: payload.EventType });
       return NextResponse.json({ ok: true });
     }
 
-    console.log(`[uazapi webhook] fromMe=${msgData.fromMe} wasSentByApi=${msgData.wasSentByApi} isGroup=${msgData.isGroup} chatId=${msgData.chatId?.slice(0, 20)} text="${msgData.text.slice(0, 30)}"`);
+    log.debug("uazapi_msg_extracted", {
+      fromMe: msgData.fromMe,
+      wasSentByApi: msgData.wasSentByApi,
+      isGroup: msgData.isGroup,
+      hasText: !!msgData.text,
+      messageId: msgData.messageId,
+    });
 
     // Skip: own messages, API-sent messages, empty text, group messages
     if (msgData.fromMe || msgData.wasSentByApi || !msgData.text || msgData.isGroup) {
-      console.log(`[uazapi webhook] Skipped: fromMe=${msgData.fromMe} wasSentByApi=${msgData.wasSentByApi} isGroup=${msgData.isGroup} empty=${!msgData.text}`);
+      log.debug("uazapi_msg_skipped", {
+        fromMe: msgData.fromMe,
+        wasSentByApi: msgData.wasSentByApi,
+        isGroup: msgData.isGroup,
+        empty: !msgData.text,
+      });
       return NextResponse.json({ ok: true });
     }
 
     const phone = extractPhoneFromChatId(msgData.chatId);
     if (!phone) {
-      console.log("[uazapi webhook] No phone extracted from chatId");
+      log.warn("uazapi_no_phone_from_chatid", { chatId: msgData.chatId });
       return NextResponse.json({ ok: true });
     }
 
@@ -136,11 +153,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (!whatsappConfig) {
-      console.error(`[uazapi webhook] Config not found for token=${instanceToken?.slice(0, 8)} name=${instanceName}`);
+      log.error("uazapi_config_not_found", { tokenPrefix: instanceToken?.slice(0, 8), instanceName });
       return NextResponse.json({ ok: true });
     }
 
-    console.log(`[uazapi webhook] Config found for userId=${whatsappConfig.userId}, processing...`);
+    log.info("uazapi_processing", { userId: whatsappConfig.userId });
 
     // Resolve tracking code attribution
     const refCode = extractRefCode(msgData.text);
@@ -169,18 +186,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    try {
-      await processIncomingMessage({
-        userId: whatsappConfig.userId,
+    // Sprint 3: enqueue for async processing — returns 200 immediately
+    const capturedConfig = whatsappConfig;
+    webhookQueue.enqueue(() =>
+      processIncomingMessage({
+        userId: capturedConfig.userId,
         phone,
-        text: msgData.text,
-        pushName: msgData.senderName,
+        text: msgData!.text,
+        pushName: msgData!.senderName,
         attribution,
+        externalMessageId: msgData!.messageId,
         sendReply: async (replyPhone, replyText) => {
-          if (whatsappConfig!.uazapiServerUrl && whatsappConfig!.uazapiInstanceToken) {
+          if (capturedConfig.uazapiServerUrl && capturedConfig.uazapiInstanceToken) {
             const res = await sendUazapiMessage(
-              whatsappConfig!.uazapiServerUrl!,
-              whatsappConfig!.uazapiInstanceToken!,
+              capturedConfig.uazapiServerUrl!,
+              capturedConfig.uazapiInstanceToken!,
               replyPhone,
               replyText,
             );
@@ -188,14 +208,12 @@ export async function POST(req: NextRequest) {
           }
           return { success: false, error: "Uazapi nao configurado" };
         },
-      });
-    } catch (err) {
-      console.error(`[uazapi webhook] Erro processando msg:`, err);
-    }
+      })
+    ).catch((err) => log.error("uazapi_queue_error", { err }));
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("[uazapi webhook] Erro geral:", err);
+    log.error("uazapi_general_error", { err });
     return NextResponse.json({ ok: true });
   }
 }

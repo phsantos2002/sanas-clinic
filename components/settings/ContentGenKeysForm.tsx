@@ -155,53 +155,6 @@ export function ContentGenKeysForm({ initial, usage }: Props) {
         </div>
       )}
 
-      {/* Video Pipeline Keys */}
-      <div className="border-t border-slate-100 pt-4 mt-2">
-        <h4 className="font-medium text-slate-700 text-sm mb-3">
-          Chaves do Video Studio (opcional)
-        </h4>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">
-              Kling AI (video direto)
-            </label>
-            <input
-              type="password"
-              defaultValue=""
-              placeholder="Cole sua chave Kling AI"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-            <p className="text-[10px] text-slate-400 mt-0.5">Para geracao de video clips no Studio</p>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">
-              Runway ML (alternativa video)
-            </label>
-            <input
-              type="password"
-              defaultValue=""
-              placeholder="Cole sua chave Runway ML"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">
-              Shotstack (concatenacao de video)
-            </label>
-            <input
-              type="password"
-              defaultValue=""
-              placeholder="Cole sua chave Shotstack"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-            <p className="text-[10px] text-slate-400 mt-0.5">Opcional — para juntar clips em video final</p>
-          </div>
-        </div>
-      </div>
-
       {/* Usage stats */}
       {usage && (
         <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">

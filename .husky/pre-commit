@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+# Husky pre-commit hook — Sanas Pulse
+# Executa: typecheck + lint-staged (lint + prettier) nos arquivos staged
+
+echo "🔍 Verificando TypeScript..."
+npm run typecheck
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript check falhou. Corrija os erros antes de commitar."
+  exit 1
+fi
+
+echo "🧹 Executando lint-staged..."
+npx lint-staged
+if [ $? -ne 0 ]; then
+  echo "❌ Lint/Prettier falhou. Corrija os erros antes de commitar."
+  exit 1
+fi
+
+echo "✅ Pre-commit passou!"
