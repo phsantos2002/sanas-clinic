@@ -57,7 +57,7 @@ export function IntelligentDashboard({ data }: { data: { alerts: DashboardAlert[
           { label: "Leads hoje", value: kpis.leadsToday, icon: Users, color: "text-blue-600 bg-blue-50", href: "/dashboard/pipeline" },
           { label: "Leads quentes", value: kpis.hotLeads, icon: Flame, color: "text-red-600 bg-red-50", href: "/dashboard/pipeline" },
           { label: "Clientes (mes)", value: kpis.clientsThisMonth, icon: TrendingUp, color: "text-green-600 bg-green-50", href: "/dashboard/analytics" },
-          { label: "Posts (semana)", value: kpis.publishedPostsWeek, icon: PenTool, color: "text-violet-600 bg-violet-50", href: "/dashboard/posts/library" },
+          { label: "Posts (semana)", value: kpis.publishedPostsWeek, icon: PenTool, color: "text-violet-600 bg-violet-50", href: "/dashboard/posts" },
         ].map((kpi) => (
           <Link key={kpi.label} href={kpi.href} className="bg-white border border-slate-100 rounded-xl p-3 hover:shadow-sm transition-all group">
             <div className="flex items-center justify-between mb-1">

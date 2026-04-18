@@ -71,7 +71,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       type: "post",
       title: post.title || "Post sem titulo",
       subtitle: `${post.mediaType || "post"} · ${post.status}`,
-      url: "/dashboard/posts/library",
+      url: "/dashboard/posts",
     });
   }
 

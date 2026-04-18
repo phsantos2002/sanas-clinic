@@ -361,7 +361,7 @@ export async function getActivityFeed(limit = 20) {
       type: "post_published",
       text: "Post publicado:",
       entityName: p.title || "Sem titulo",
-      entityUrl: "/dashboard/posts/library",
+      entityUrl: "/dashboard/posts",
       createdAt: (p.publishedAt || new Date()).toISOString(),
     });
   }
