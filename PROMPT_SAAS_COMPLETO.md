@@ -28,33 +28,33 @@ O objetivo é ser revendido como white-label para agências e profissionais de m
 
 ## 2. STACK TECNOLÓGICA
 
-| Camada | Tecnologia |
-|--------|-----------|
-| Framework | Next.js 16.1.6 (App Router) |
-| UI | React 19.2.3 |
-| Estilização | Tailwind CSS 4 (via @tailwindcss/postcss) |
-| Componentes UI | Radix UI (Dialog, Dropdown, Label, Progress, Separator, Toast, Slot) |
-| Ícones | Lucide React |
-| Toasts | Sonner |
-| Drag & Drop | @dnd-kit (core, sortable, utilities) |
-| Gráficos | Recharts |
-| Mapas | Leaflet + react-leaflet |
-| Validação | Zod |
-| ORM | Prisma 5 |
-| Banco de Dados | PostgreSQL (Supabase) |
-| Auth | Supabase Auth (email/senha + OAuth) |
-| Storage | Vercel Blob |
-| Deploy | Vercel (projeto: sanas-clinic-l235) |
-| IA — LLM | OpenAI (gpt-4o-mini), Google Gemini, Anthropic Claude (claude-sonnet-4-20250514) |
-| IA — Imagem | OpenAI DALL-E 3, Fal.ai (Flux Schnell), Replicate (Flux Schnell) |
-| IA — Vídeo | Fal.ai (Kling), Replicate (Minimax) |
-| IA — TTS | OpenAI TTS (voz "nova") |
-| WhatsApp | Uazapi (principal), WhatsApp Cloud API (oficial), Evolution API/WAHA (legado) |
-| Ads | Meta Graph API v18.0 |
-| Social | Meta Graph API (Instagram/Facebook), Google Business Profile API v4 |
-| Variantes CSS | class-variance-authority (CVA) |
-| Class merge | clsx + tailwind-merge |
-| Temas | next-themes |
+| Camada         | Tecnologia                                                                       |
+| -------------- | -------------------------------------------------------------------------------- |
+| Framework      | Next.js 16.1.6 (App Router)                                                      |
+| UI             | React 19.2.3                                                                     |
+| Estilização    | Tailwind CSS 4 (via @tailwindcss/postcss)                                        |
+| Componentes UI | Radix UI (Dialog, Dropdown, Label, Progress, Separator, Toast, Slot)             |
+| Ícones         | Lucide React                                                                     |
+| Toasts         | Sonner                                                                           |
+| Drag & Drop    | @dnd-kit (core, sortable, utilities)                                             |
+| Gráficos       | Recharts                                                                         |
+| Mapas          | Leaflet + react-leaflet                                                          |
+| Validação      | Zod                                                                              |
+| ORM            | Prisma 5                                                                         |
+| Banco de Dados | PostgreSQL (Supabase)                                                            |
+| Auth           | Supabase Auth (email/senha + OAuth)                                              |
+| Storage        | Vercel Blob                                                                      |
+| Deploy         | Vercel (projeto: sanas-clinic-l235)                                              |
+| IA — LLM       | OpenAI (gpt-4o-mini), Google Gemini, Anthropic Claude (claude-sonnet-4-20250514) |
+| IA — Imagem    | OpenAI DALL-E 3, Fal.ai (Flux Schnell), Replicate (Flux Schnell)                 |
+| IA — Vídeo     | Fal.ai (Kling), Replicate (Minimax)                                              |
+| IA — TTS       | OpenAI TTS (voz "nova")                                                          |
+| WhatsApp       | Uazapi (principal), WhatsApp Cloud API (oficial), Evolution API/WAHA (legado)    |
+| Ads            | Meta Graph API v18.0                                                             |
+| Social         | Meta Graph API (Instagram/Facebook), Google Business Profile API v4              |
+| Variantes CSS  | class-variance-authority (CVA)                                                   |
+| Class merge    | clsx + tailwind-merge                                                            |
+| Temas          | next-themes                                                                      |
 
 ---
 
@@ -112,10 +112,12 @@ projeto-lux/
 ### 4.1 Core CRM
 
 **User** — Entidade principal
+
 - `id` (cuid), `email` (unique), `name`, `photoUrl`, `facebookId` (unique), `createdAt`, `updatedAt`
 - Relações com todos os outros modelos
 
 **Lead** — Lead/contato do CRM
+
 - `id`, `name`, `phone`, `email`, `cpf`, `address`, `city`, `notes`, `photoUrl`
 - `userId`, `stageId` (FK → Stage)
 - `aiEnabled` (boolean — IA responde automaticamente)
@@ -127,19 +129,23 @@ projeto-lux/
 - Índices: userId, userId+phone, stageId, userId+createdAt, userId+score
 
 **Stage** — Etapas do pipeline
+
 - `id`, `name`, `order`, `eventName` (ex: "Lead", "Contact", "QualifiedLead", "Schedule", "Purchase"), `userId`
 - Constraint: unique(userId, order)
 
 **Message** — Mensagens de chat
+
 - `id`, `leadId`, `role` ("user" | "assistant"), `content`, `createdAt`
 - Índices: leadId, leadId+createdAt
 
 **LeadStageHistory** — Trilha de auditoria de mudanças de estágio
+
 - `id`, `leadId`, `stageId`, `createdAt`
 
 ### 4.2 Configuração
 
 **AIConfig** — Configurações de IA por usuário
+
 - `id`, `userId` (unique), `clinicName`, `systemPrompt`, `sendAudio`, `provider` (default: "openai"), `model` (default: "gpt-4o-mini"), `capabilities`, `apiKey`, `voiceClonePrompt`, `openaiKey`
 - `brandIdentity` (Json): logo_url, primary_color, secondary_color, font, business_type, default_tone, target_audience
 - Providers de geração: `aiImageProvider`, `aiImageApiKey`, `aiVideoProvider`, `aiVideoApiKey`, `klingApiKey`, `runwayApiKey`, `shotstackApiKey`
@@ -147,20 +153,24 @@ projeto-lux/
 - `automations` (Json): 16 toggles booleanos organizados em 5 categorias
 
 **WhatsAppConfig** — Configuração multi-provider
+
 - Oficial: `phoneNumberId`, `accessToken`, `verifyToken`
 - Uazapi: `uazapiServerUrl`, `uazapiAdminToken`, `uazapiInstanceToken`, `uazapiInstanceName`
 - `provider` (default: "official"), `userId` (unique)
 
 **Pixel** — Configuração Meta Pixel + Ads
+
 - `pixelId`, `accessToken`, `adAccountId`, `metaAdsToken`, `selectedCampaignId`
 - `campaignObjective`, `conversionDestination`, `accountPhase`
 - `monthlyBudget`, `bidStrategy`, `businessSegment`, `coverageArea`
 - `conversionValue`, `maxCostPerResult`, `bidValue`, `userId`
 
 **GoogleBusinessConfig** — Google Business Profile
+
 - `apiKey`, `placeId`, `whatsappMsg`, `userId` (unique)
 
 **CampaignConfig** — Configuração por campanha Meta
+
 - `campaignId`, `campaignName`, `campaignObjective`, `conversionDestination`, `businessSegment`
 - `conversionValue`, `maxCostPerResult`, `monthlyBudget`, `bidStrategy`, `bidValue`
 - Constraint: unique(campaignId, userId)
@@ -168,30 +178,36 @@ projeto-lux/
 ### 4.3 Meta Ads & Tracking
 
 **PixelEvent** — Eventos do Pixel
+
 - `leadId`, `eventName`, `stageName`, `platform` (default: "facebook"), `success`
 
 **Alert** — Alertas de campanha
+
 - `type`: HIGH_FREQUENCY | LOW_CTR | BUDGET_EXHAUSTED | PAYMENT_ERROR | HIGH_CPM | LEARNING_LIMITED | CREATIVE_FATIGUE
 - `severity`: WARNING | CRITICAL
 - `message`, `suggestion`, `campaignId`, `adSetId`, `adId`, `resolved`
 
 **CampaignAction** — Log de auditoria de ações
+
 - `type`: PAUSE | ACTIVATE | BUDGET_CHANGE | BID_CHANGE | STRATEGY_CHANGE | AD_CREATED | CREATE
 - `entityType`: CAMPAIGN | ADSET | AD
 - `entityId`, `entityName`, `before`, `after`
 
 **AdTrackingCode** — Códigos UTM/referência
+
 - `code`, `campaignId`, `campaignName`, `adSetId`, `adSetName`, `adId`, `adName`
 - Constraint: unique(code, userId)
 
 ### 4.4 Social Media
 
 **SocialConnection** — Conexões OAuth
+
 - `platform`: "instagram" | "facebook" | "tiktok" | "linkedin" | "pinterest" | "google_business"
 - `accessToken`, `refreshToken`, `pageId`, `profileName`, `profilePicture`, `tokenExpiresAt`, `isActive`
 - Constraint: unique(userId, platform)
 
 **SocialPost** — Posts de conteúdo
+
 - `title`, `caption`, `hashtags[]`, `mediaUrls[]`
 - `mediaType`: "image" | "video" | "carousel" | "reels" | "story"
 - `platforms[]`, `platformSpecific` (Json)
@@ -200,19 +216,23 @@ projeto-lux/
 - `scheduledAt`, `publishedAt`
 
 **SocialPostVersion** — Versões por plataforma
+
 - `postId`, `platform`, `caption`, `mediaUrl`, `aspectRatio` ("1:1" | "9:16" | "16:9" | "4:5"), `specs` (Json)
 
 ### 4.5 WhatsApp Hub
 
 **Attendant** — Atendentes da equipe
+
 - `name`, `email`, `phone`, `role` ("admin" | "attendant"), `isActive`, `avatar`
 
 **MessageTemplate** — Templates de mensagem
+
 - `name`, `category` ("saudacao" | "follow_up" | "agendamento" | "promo" | "geral")
 - `content` (com placeholders {{nome}}, {{clinica}}), `shortcut`, `usageCount`
 - Constraint: unique(userId, shortcut)
 
 **BroadcastCampaign** — Campanhas de broadcast
+
 - `name`, `message` (com {{nome}}), `filters` (Json: tags[], scoreMin, stageIds[], source)
 - `totalLeads`, `sentCount`, `failedCount`
 - `status`: "draft" | "sending" | "completed" | "failed"
@@ -220,24 +240,29 @@ projeto-lux/
 ### 4.6 Automações
 
 **Workflow** — Definição do workflow
+
 - `name`, `description`, `isActive`
 - `trigger` (Json): type + config
 
 **WorkflowStep** — Passos sequenciais
+
 - `workflowId`, `order`, `type` ("condition" | "action" | "delay"), `config` (Json)
 
 **WorkflowExecution** — Execução em runtime
+
 - `workflowId`, `leadId`, `status` ("running" | "completed" | "failed" | "skipped")
 - `currentStep`, `logs` (Json), `startedAt`, `completedAt`
 
 ### 4.7 IA & Agentes
 
 **AIAgentChat** — Conversas com agentes especializados
+
 - `agentType`: "strategist" | "creative" | "commercial" | "analyst" | "retention"
 - `title`, `messages` (Json: [{role, content, timestamp}])
 - `feedback`: "approved" | "rejected" | "edited"
 
 **AiUsageLog** — Tracking de custos
+
 - `operation`: "caption" | "image" | "video" | "carousel"
 - `provider`: "openai" | "replicate" | "fal"
 - `model`, `inputTokens`, `outputTokens`, `costUsd`
@@ -245,6 +270,7 @@ projeto-lux/
 ### 4.8 Pipeline de Vídeo
 
 **Story** — Projeto de vídeo
+
 - `status`: "draft" | "scripting" | "script_review" | "characters" | "char_review" | "storyboarding" | "storyboard_review" | "video_generating" | "video_review" | "concatenating" | "completed" | "published" | "failed"
 - `currentStage`: "script" | "characters" | "storyboard" | "video" | "concat" | "publish"
 - `videoType`: "reel" | "story" | "tiktok" | "youtube_short" | "carousel" | "post"
@@ -253,16 +279,19 @@ projeto-lux/
 - Métricas: likes, comments, shares, views, saves, reach
 
 **StoryCharacter** — Personagens IA
+
 - `name`, `description`, `role` ("protagonista" | "paciente" | "narrador")
 - `imageUrl`, `imagePrompt`, `imageStatus` ("pending" | "generating" | "done" | "error")
 - `isApproved`
 
 **StoryboardFrame** — Frames do storyboard
+
 - `order`, `sceneTitle`, `narration`, `visualDescription`
 - `duration`, `cameraDirection`, `transition`, `textOverlay`
 - `imageUrl`, `imagePrompt`, `imageStatus`, `imageProvider`
 
 **VideoClip** — Clipes de vídeo gerados
+
 - `order`, `startFrameId`, `endFrameId`, `videoUrl`
 - `clipStatus`, `provider` ("kling" | "runway" | "luma"), `model`, `mode` ("standard" | "pro")
 - `duration`, `externalTaskId`
@@ -270,32 +299,39 @@ projeto-lux/
 ### 4.9 Assets & Estúdio
 
 **AssetVault** — Biblioteca de ativos
+
 - `category`: "person" | "space" | "procedure" | "brand" | "reference"
 - `name`, `description`, `fileUrl`, `fileType`, `fileName`, `fileSize`
 - `metadata` (Json), `isVoiceSample`, `voiceId`, `isFaceReference`, `personName`
 
 **StudioProject** — Projetos de criação
+
 - `title`, `type` (default: "single_post"), `status` (default: "draft")
 
 **StudioChatMessage** — Chat dentro do projeto
+
 - `projectId`, `role`, `content`, `toolsUsed` (Json)
 
 **GeneratedPost** — Posts gerados por IA
+
 - `title`, `type`, `status`, `scriptJson`, `mediaUrls`, `thumbnailUrl`
 - `captions` (Json), `hashtags` (Json), `voiceoverUrl`, `scenes` (Json), `finalVideoUrl`
 - Métricas e `productionCost`
 
 **GeneratedPostPlatform** — Publicação por plataforma
+
 - `postId`, `platform`, `captionOverride`, `platformPostId`, `status`, `errorMessage`
 
 ### 4.10 Campanhas WhatsApp
 
 **WhatsAppCampaign** — Campanhas avançadas
+
 - `name`, `type`, `status`, `baseMessage`, `variations` (Json), `filters` (Json)
 - `antiBanConfig` (Json), `riskScore`
 - Métricas: totalLeads, sentCount, deliveredCount, readCount, repliedCount, optOutCount, leadsConverted
 
 **WACampaignMessage** — Mensagens individuais
+
 - `campaignId`, `leadId`, `variationIndex`, `messageText`
 - `status` ("queued" | ...), `sentAt`, `deliveredAt`, `readAt`, `repliedAt`, `optedOut`
 
@@ -304,6 +340,7 @@ projeto-lux/
 ## 5. SERVIÇOS DE NEGÓCIO (18 services)
 
 ### 5.1 aiChat.ts — Chat IA com Leads
+
 - Suporte dual-provider: OpenAI (gpt-4o-mini) e Google Gemini
 - System prompt dinâmico baseado em clinicName + instruções customizadas
 - Detecção automática de estágio via marcador `STAGE: <EventName>` na resposta da IA
@@ -313,6 +350,7 @@ projeto-lux/
 - Parsing: extrai marcador STAGE via regex, remove da resposta, retorna `{reply, newStageEventName}`
 
 ### 5.2 aiAgents.ts — 5 Agentes IA Especializados
+
 Cada agente tem system prompt específico e coleta de contexto própria:
 
 1. **Estrategista** (🎯) — Análise de leads, taxa de conversão, distribuição por estágio/fonte, score médio. Recomenda alocação de budget, prioridades estratégicas, oportunidades de crescimento
@@ -325,6 +363,7 @@ Cada agente tem system prompt específico e coleta de contexto própria:
 **Custos:** inputTokens × $0.00000015 + outputTokens × $0.0000006
 
 ### 5.3 storyboardAI.ts — Pipeline de Vídeo IA
+
 Pipeline completa de produção de vídeo em 7 etapas:
 
 1. `chatForScript()` — Refinamento iterativo via chat
@@ -343,6 +382,7 @@ Pipeline completa de produção de vídeo em 7 etapas:
 ### 5.4 workflowEngine.ts — Motor de Automações
 
 **5 Triggers:**
+
 - `new_lead` — quando lead é criado
 - `stage_change` — quando lead muda para estágio específico (config: {stageId})
 - `inactivity` — sem interação por X dias (config: {days})
@@ -350,6 +390,7 @@ Pipeline completa de produção de vídeo em 7 etapas:
 - `score_change` — score cruza threshold (config: {direction: "above"|"below", threshold})
 
 **3 Tipos de Step:**
+
 - `condition` — avalia campo do lead contra operador/valor; se falso, para execução
 - `action` — executa efeito colateral
 - `delay` — pausa X minutos, retomado por cron
@@ -358,6 +399,7 @@ Pipeline completa de produção de vídeo em 7 etapas:
 **6 Campos avaliáveis:** score, source, stage, tags, aiEnabled, scoreLabel
 
 **7 Tipos de Ação:**
+
 1. `send_whatsapp` — mensagem com {{nome}}, {{clinica}}
 2. `move_stage` — move lead para estágio
 3. `add_tag` / `remove_tag` — gerencia tags
@@ -370,6 +412,7 @@ Pipeline completa de produção de vídeo em 7 etapas:
 ### 5.5 webhookProcessor.ts — Pipeline de Processamento de Mensagens WhatsApp
 
 Pipeline de 9 passos para cada mensagem recebida:
+
 1. **Deduplicação** — conteúdo + janela de 60 segundos
 2. **Find/Create Lead** — upsert com atribuição (source, medium, campaign, Meta IDs)
 3. **Fire trigger new_lead** — non-blocking
@@ -383,6 +426,7 @@ Pipeline de 9 passos para cada mensagem recebida:
 ### 5.6 leadScoring.ts — Sistema de Pontuação de Leads
 
 **Fórmula (0-100):**
+
 - Progressão de estágio: min(stageHistory.count × 15, 60)
 - Contagem de mensagens: min(messages.count × 2, 20)
 - Recência: 0 dias = +20, 1-7 dias = +10, 8-30 dias = +5, >30 dias = 0
@@ -393,6 +437,7 @@ Pipeline de 9 passos para cada mensagem recebida:
 **Labels:** 80-100 = "vip", 50-79 = "quente", 25-49 = "morno", 0-24 = "frio"
 
 **Funções:**
+
 - `recalculateScores(userId)` — batch de todos os leads
 - `recalculateLeadScore(leadId)` — lead individual
 - `findLeadsForReactivation(userId, inactiveDays=7)` — leads inativos com aiEnabled, excluindo Purchase e reativados há <3 dias, limite 20, ordenados por score desc
@@ -400,6 +445,7 @@ Pipeline de 9 passos para cada mensagem recebida:
 ### 5.7 socialPublisher.ts — Publicação Multi-Plataforma
 
 **Plataformas suportadas:**
+
 - **Instagram** — imagem única, carousel, reels (Meta Graph API v18.0, com poll de processamento)
 - **Facebook** — foto, vídeo, álbum multi-foto, reels
 - **Google Business** — post com mídia única (MyBusiness API v4, pt-BR)
@@ -411,12 +457,14 @@ Pipeline de 9 passos para cada mensagem recebida:
 ### 5.8 attribution.ts — Atribuição Multi-Touch
 
 **4 Modelos:**
+
 1. **first_touch** — 100% crédito à primeira interação
 2. **last_touch** — 100% crédito à última interação
 3. **linear** — crédito igual entre todos os touchpoints
 4. **time_decay** — mais peso para touchpoints recentes (half-life: 7 dias, peso = 0.5^(idade/halfLife))
 
 **Funções adicionais:**
+
 - `buildUTMUrl()` — constrói URLs com utm_source, utm_medium, utm_campaign, etc.
 - `hashForCAPI()` — SHA256 para Conversions API
 - `sendEnhancedConversion()` — Meta CAPI com dados hasheados (ph, em, fn, ln, country="br")
@@ -424,11 +472,13 @@ Pipeline de 9 passos para cada mensagem recebida:
 ### 5.9 contentSuggestion.ts — Sugestões de Conteúdo
 
 **Benchmarks por setor (SECTOR_BENCHMARKS):**
+
 - clinica_estetica/instagram: dias [2,3,4], horas [10,12,19]
 - clinica_odontologica, salao_beleza, restaurante, default
 - Cada setor × plataforma (instagram, facebook, tiktok)
 
 **Funções:**
+
 - `suggestBestTimes()` — 7 slots semanais otimizados por engajamento histórico (últimos 50 posts)
 - `generateWeeklyContentSuggestions()` — plano de 5 posts com IA (OpenAI, temperature 0.9)
   - Output: [{day_offset, time, type, platforms, title, caption, hashtags}]
@@ -492,42 +542,42 @@ Pipeline de 9 passos para cada mensagem recebida:
 
 ### 6.1 AI (5 endpoints) — Auth: Supabase + API key, Rate: 20/min
 
-| Rota | Método | Função |
-|------|--------|--------|
-| `/api/ai/assistant` | POST | Assistente IA Claude com 12 ferramentas (ver seção 7) |
-| `/api/ai/generate-caption` | POST | Legendas para redes sociais (prompt, contentType, platforms, tone) |
-| `/api/ai/generate-carousel` | POST | Slides de carousel (topic, slideCount 3-10, tone, platforms) |
-| `/api/ai/generate-image` | POST | Geração de imagem (DALL-E ou Replicate) → Vercel Blob |
-| `/api/ai/generate-video` | POST | Geração de vídeo (Kling ou FAL) → Vercel Blob |
+| Rota                        | Método | Função                                                             |
+| --------------------------- | ------ | ------------------------------------------------------------------ |
+| `/api/ai/assistant`         | POST   | Assistente IA Claude com 12 ferramentas (ver seção 7)              |
+| `/api/ai/generate-caption`  | POST   | Legendas para redes sociais (prompt, contentType, platforms, tone) |
+| `/api/ai/generate-carousel` | POST   | Slides de carousel (topic, slideCount 3-10, tone, platforms)       |
+| `/api/ai/generate-image`    | POST   | Geração de imagem (DALL-E ou Replicate) → Vercel Blob              |
+| `/api/ai/generate-video`    | POST   | Geração de vídeo (Kling ou FAL) → Vercel Blob                      |
 
 ### 6.2 CRON (6 endpoints) — Auth: Bearer CRON_SECRET, Rate: 300/min
 
-| Rota | Método | Função |
-|------|--------|--------|
-| `/api/cron/collect-metrics` | GET | Coleta métricas de engajamento de posts publicados |
-| `/api/cron/publish-posts` | GET | Publica posts agendados cuja hora passou |
-| `/api/cron/reactivate-leads` | GET | Envia mensagens de reativação para leads inativos (7+ dias) |
-| `/api/cron/run-workflows` | GET | Retoma execuções de workflow pausadas/atrasadas |
-| `/api/cron/score-leads` | GET | Recalcula scoring de todos os leads |
-| `/api/cron/suggest-content` | GET | Gera sugestões semanais de conteúdo por IA |
+| Rota                         | Método | Função                                                      |
+| ---------------------------- | ------ | ----------------------------------------------------------- |
+| `/api/cron/collect-metrics`  | GET    | Coleta métricas de engajamento de posts publicados          |
+| `/api/cron/publish-posts`    | GET    | Publica posts agendados cuja hora passou                    |
+| `/api/cron/reactivate-leads` | GET    | Envia mensagens de reativação para leads inativos (7+ dias) |
+| `/api/cron/run-workflows`    | GET    | Retoma execuções de workflow pausadas/atrasadas             |
+| `/api/cron/score-leads`      | GET    | Recalcula scoring de todos os leads                         |
+| `/api/cron/suggest-content`  | GET    | Gera sugestões semanais de conteúdo por IA                  |
 
 ### 6.3 WhatsApp (3 endpoints)
 
-| Rota | Método | Auth | Função |
-|------|--------|------|--------|
-| `/api/whatsapp` | GET | Supabase | Proxy: chats, messages, details, status da instância Uazapi |
-| `/api/whatsapp/send` | POST | Supabase | Envia mensagem via Uazapi (30/min) |
-| `/api/webhook/whatsapp` | GET/POST | Meta verify | Webhook Meta Cloud API (verificação + incoming messages) |
+| Rota                    | Método   | Auth        | Função                                                      |
+| ----------------------- | -------- | ----------- | ----------------------------------------------------------- |
+| `/api/whatsapp`         | GET      | Supabase    | Proxy: chats, messages, details, status da instância Uazapi |
+| `/api/whatsapp/send`    | POST     | Supabase    | Envia mensagem via Uazapi (30/min)                          |
+| `/api/webhook/whatsapp` | GET/POST | Meta verify | Webhook Meta Cloud API (verificação + incoming messages)    |
 
 ### 6.4 Outros
 
-| Rota | Método | Auth | Função |
-|------|--------|------|--------|
-| `/api/leads` | POST | x-api-key (Pixel token) | Criação pública de leads com UTM tracking |
-| `/api/webhook/evolution` | POST | Nenhuma | Webhook Evolution API para WhatsApp |
-| `/api/webhook/kling` | POST | Nenhuma | Callback de geração de vídeo Kling |
-| `/api/upload` | POST | Supabase | Upload multipart para Vercel Blob (JPEG, PNG, WebP, GIF, MP4, MOV, WebM; max 100MB) |
-| `/auth/callback` | POST | Supabase OAuth | Troca token + cria usuário + stages padrão |
+| Rota                     | Método | Auth                    | Função                                                                              |
+| ------------------------ | ------ | ----------------------- | ----------------------------------------------------------------------------------- |
+| `/api/leads`             | POST   | x-api-key (Pixel token) | Criação pública de leads com UTM tracking                                           |
+| `/api/webhook/evolution` | POST   | Nenhuma                 | Webhook Evolution API para WhatsApp                                                 |
+| `/api/webhook/kling`     | POST   | Nenhuma                 | Callback de geração de vídeo Kling                                                  |
+| `/api/upload`            | POST   | Supabase                | Upload multipart para Vercel Blob (JPEG, PNG, WebP, GIF, MP4, MOV, WebM; max 100MB) |
+| `/auth/callback`         | POST   | Supabase OAuth          | Troca token + cria usuário + stages padrão                                          |
 
 ---
 
@@ -555,11 +605,13 @@ O assistente usa Claude (claude-sonnet-4-20250514) com max_tokens 2000 e 12 tool
 ## 8. PÁGINAS E FUNCIONALIDADES DA UI
 
 ### 8.1 Login (`/login`)
+
 - Formulário email/senha com tabs Login/Cadastro
 - Recuperação de senha
 - Background gradiente estilizado
 
 ### 8.2 Onboarding (`/dashboard/onboarding`) — 4 etapas
+
 - **Passo 0:** Boas-vindas + nome do negócio
 - **Passo 1:** Seleção de nicho (12 opções com emojis: Clínica de Estética, Odontológica, Salão, Restaurante, Academia, Pet Shop, Imobiliária, Advocacia, Contabilidade, Educação, Saúde, Outro)
 - **Passo 2:** Detalhes (cidade, serviços, ticket médio, público-alvo)
@@ -567,34 +619,41 @@ O assistente usa Claude (claude-sonnet-4-20250514) com max_tokens 2000 e 12 tool
 - Ao finalizar: cria businessProfile, brandIdentity, stages padrão
 
 ### 8.3 Overview (`/dashboard/overview`)
+
 - **IntelligentDashboard:** Alertas coloridos (urgente, warning, positivo) + KPIs (leads hoje, leads quentes, clientes mês, posts semana, chats ativos, agendados, rascunhos, score médio) + Agenda do dia + Quick Actions (Perguntar IA, Criar Post, Ver Pipeline, Broadcast)
 - **DashboardOverviewClient:** Date range picker + filtro de fonte + gráfico donut de conversas + bar chart de origens + export CSV
 
 ### 8.4 Chat (`/dashboard/chat`) — 5 sub-abas
 
 **WhatsApp (principal):**
+
 - Split view: sidebar (lista de chats com busca, tabs Pessoal/Grupos, refresh) + área de chat (header com nome/telefone, thread de mensagens, input)
 - Envio com optimistic updates
 - Sync em tempo real via `/api/whatsapp` proxy
 
 **Assistente IA:**
+
 - Chat com Claude + 6 quick actions pré-definidas ("Como estão meus ads?", "Quantos leads entraram hoje?", etc.)
 - Histórico de 10 mensagens enviado ao assistant
 
 **Templates:**
+
 - CRUD de templates com nome, conteúdo, categoria (Saudação, Follow-up, Agendamento, Promoção, Geral), shortcut, contagem de uso
 
 **Broadcast:**
+
 - Criar campanhas com nome, mensagem (com {{nome}}), filtros (tags, score mínimo, estágio)
 - Executar com confirmação
 - Status: Draft, Sending, Completed, Failed
 
 **Equipe:**
+
 - CRUD de atendentes (nome, email, telefone)
 - Distribuição round-robin de leads
 - Status ativo/inativo
 
 ### 8.5 Pipeline (`/dashboard/pipeline`)
+
 - **Kanban board** com drag-and-drop (dnd-kit)
 - **Table view** alternativa
 - Cards de fonte com contagem (Meta Ads, WhatsApp, Manual, Desconhecido)
@@ -604,6 +663,7 @@ O assistente usa Claude (claude-sonnet-4-20250514) com max_tokens 2000 e 12 tool
 - Modal de detalhe do lead (mensagens, histórico de estágio, eventos pixel)
 
 ### 8.6 Meta Ads (`/dashboard/meta`)
+
 - Card de fase da conta (LEARNING, STABILIZING, SCALING, MATURE)
 - Tabs de campanhas (ACTIVE/PAUSED)
 - Painel de campanha com insights, ad sets, budget
@@ -616,11 +676,13 @@ O assistente usa Claude (claude-sonnet-4-20250514) com max_tokens 2000 e 12 tool
 **Projetos:** Lista de projetos de criação com contagem de mensagens e posts
 
 **Acervo (Vault):**
+
 - Grid de assets por categoria (Pessoas, Espaço, Procedimentos, Marca, Referências)
 - Upload com metadata (nome, descrição, face reference, voice sample)
 - Filtro por categoria com contagem
 
 **Chat IA:**
+
 - Interface de chat para criação de conteúdo
 - 6 quick prompts (ideias de post, scripts de Reels, etc.)
 - Cria projeto automaticamente na primeira mensagem
@@ -630,12 +692,14 @@ O assistente usa Claude (claude-sonnet-4-20250514) com max_tokens 2000 e 12 tool
 ### 8.8 Posts (`/dashboard/posts`) — 4 sub-abas
 
 **Calendário:**
+
 - Grid mensal com navegação por mês
 - Indicadores de posts por dia (hora, tipo, status com cores)
 - Stats: Agendados, Rascunhos, Publicados, IA Gerados
 - Botões: "Agendar Post" e "Gerar com IA"
 
 **Biblioteca:**
+
 - Grid de posts com thumbnails
 - Filtros: status, tipo de mídia, plataforma
 - Ações: visualizar, editar, deletar
@@ -643,6 +707,7 @@ O assistente usa Claude (claude-sonnet-4-20250514) com max_tokens 2000 e 12 tool
 **Campanhas WhatsApp:** Gestão de campanhas avançadas
 
 **Métricas:**
+
 - Stats cards (Total Posts, Alcance, Engajamento, Conexões, Agendados)
 - Performance por plataforma (bar chart com percentuais)
 - Tipos de conteúdo (Image, Video, Carousel, Reels, Story)
@@ -650,6 +715,7 @@ O assistente usa Claude (claude-sonnet-4-20250514) com max_tokens 2000 e 12 tool
 - Plataformas conectadas com status
 
 ### 8.9 Analytics (`/dashboard/analytics`)
+
 - Seletor de campanha (todas ou individual)
 - Cards de campanha com KPIs (CTR, CPM, CPC com indicadores de qualidade)
 - Métricas: Gasto (R$), Leads, Taxa de conversão, ROI, Score médio
@@ -659,6 +725,7 @@ O assistente usa Claude (claude-sonnet-4-20250514) com max_tokens 2000 e 12 tool
 - Performance por plataforma
 
 **Advanced Analytics:**
+
 - Funil de conversão (bar chart com estágios, percentual, dias médios, dropoff)
 - LTV por fonte (leads, clientes, conversão%, LTV estimado R$)
 - CAC & ROAS por canal (gasto, CPL, CPA, ROAS)
@@ -675,6 +742,7 @@ O assistente usa Claude (claude-sonnet-4-20250514) com max_tokens 2000 e 12 tool
 **Integrações:** WhatsApp (Uazapi), Facebook Pixel, Meta Ads, Google Business, chaves de geração (imagem/vídeo)
 
 **Automações:** 16 toggles em 5 categorias:
+
 - WhatsApp: Boas-vindas, Follow-up 24h, Confirmação agendamento, Lembretes, Reativação, Pesquisa NPS
 - Conteúdo: Sugestões semanais IA, Auto-publicar, Coletar métricas
 - Engajamento: Coletar comentários, Sugestões IA de resposta, Auto-like, Classificar seguidores
@@ -684,6 +752,7 @@ O assistente usa Claude (claude-sonnet-4-20250514) com max_tokens 2000 e 12 tool
 **Pipeline:** Gerenciamento de estágios (criar, editar, reordenar, excluir)
 
 ### 8.11 Workflows (`/dashboard/workflows`)
+
 - Lista de workflows com trigger icon/badge, action badges, contagem de execuções
 - Play/Pause toggle, Delete
 - Modal de criação: nome → trigger (5 tipos com ícones) → configuração do trigger → ação (7 tipos) → configuração da ação
@@ -694,35 +763,35 @@ O assistente usa Claude (claude-sonnet-4-20250514) com max_tokens 2000 e 12 tool
 
 Todas as operações de banco passam por Server Actions em `app/actions/`. Principais:
 
-| Arquivo | Funções Principais |
-|---------|--------------------|
-| `auth.ts` | signIn (email/Facebook), signUp, signOut, resetPassword, updatePassword |
-| `leads.ts` | CRUD completo, moveLead, addTag, removeTag, getLeadTimeline, refreshLeadScore, getDashboardStats, deleteLead |
-| `messages.ts` | getLeadsWithMessages, toggleAI, sendManualMessage |
-| `stages.ts` | CRUD de estágios com reordenação |
-| `aiConfig.ts` | get/save AIConfig (com mascaramento de chaves) |
-| `aiAgents.ts` | sendAgentMessage, getAgentChats, setAgentFeedback |
-| `pixel.ts` | get/save Pixel, saveSelectedCampaign, saveCampaignObjective |
-| `meta.ts` | getMetaCampaigns, getMetaAdSets, getMetaAds, updateCampaignStatus |
-| `alerts.ts` | generateAlerts (6 regras), resolveAlert, getAlerts |
-| `analytics.ts` | getAnalytics, getAdCreativeReport |
-| `advancedAnalytics.ts` | getFunnel, getLTV, getCAC, getCohort, getScoreDistribution, getAIUsageReport, exportCSV/JSON |
-| `social.ts` | getSocialConnections, saveSocialConnection |
-| `dashboard.ts` | getDashboardIntelligence (alertas, KPIs, agenda) |
-| `brandSettings.ts` | get/save BrandIdentity, ContentGenKeys, BusinessProfile, Automations, AIUsageStats |
-| `whatsapp.ts` | get/save configs (oficial + Uazapi) |
-| `whatsappHub.ts` | CRUD atendentes, assignLead, autoAssign (round-robin) |
-| `tracking.ts` | getAttributionReport, generateUTMLink |
-| `accountPhase.ts` | diagnoseAccountPhase, saveAccountPhase |
-| `onboarding.ts` | isOnboardingComplete, saveOnboardingData |
-| `workflows.ts` | CRUD workflows com steps |
-| `story.ts` | CRUD stories, pipeline de vídeo |
-| `vault.ts` | CRUD assets, getAssetStats |
-| `studioChat.ts` | CRUD projetos, sendStudioMessage |
-| `lgpd.ts` | exportLeadData, anonymizeLeadData, eraseLeadData, anonymizeOldLeads |
-| `account.ts` | get/update nome, email, foto, senha; deleteAccount (cascade) |
-| `campaignActions.ts` | recordCampaignAction, getCampaignActions |
-| `googleBusiness.ts` | get/save config, getGoogleBusinessData (Places API) |
+| Arquivo                | Funções Principais                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `auth.ts`              | signIn (email/Facebook), signUp, signOut, resetPassword, updatePassword                                      |
+| `leads.ts`             | CRUD completo, moveLead, addTag, removeTag, getLeadTimeline, refreshLeadScore, getDashboardStats, deleteLead |
+| `messages.ts`          | getLeadsWithMessages, toggleAI, sendManualMessage                                                            |
+| `stages.ts`            | CRUD de estágios com reordenação                                                                             |
+| `aiConfig.ts`          | get/save AIConfig (com mascaramento de chaves)                                                               |
+| `aiAgents.ts`          | sendAgentMessage, getAgentChats, setAgentFeedback                                                            |
+| `pixel.ts`             | get/save Pixel, saveSelectedCampaign, saveCampaignObjective                                                  |
+| `meta.ts`              | getMetaCampaigns, getMetaAdSets, getMetaAds, updateCampaignStatus                                            |
+| `alerts.ts`            | generateAlerts (6 regras), resolveAlert, getAlerts                                                           |
+| `analytics.ts`         | getAnalytics, getAdCreativeReport                                                                            |
+| `advancedAnalytics.ts` | getFunnel, getLTV, getCAC, getCohort, getScoreDistribution, getAIUsageReport, exportCSV/JSON                 |
+| `social.ts`            | getSocialConnections, saveSocialConnection                                                                   |
+| `dashboard.ts`         | getDashboardIntelligence (alertas, KPIs, agenda)                                                             |
+| `brandSettings.ts`     | get/save BrandIdentity, ContentGenKeys, BusinessProfile, Automations, AIUsageStats                           |
+| `whatsapp.ts`          | get/save configs (oficial + Uazapi)                                                                          |
+| `whatsappHub.ts`       | CRUD atendentes, assignLead, autoAssign (round-robin)                                                        |
+| `tracking.ts`          | getAttributionReport, generateUTMLink                                                                        |
+| `accountPhase.ts`      | diagnoseAccountPhase, saveAccountPhase                                                                       |
+| `onboarding.ts`        | isOnboardingComplete, saveOnboardingData                                                                     |
+| `workflows.ts`         | CRUD workflows com steps                                                                                     |
+| `story.ts`             | CRUD stories, pipeline de vídeo                                                                              |
+| `vault.ts`             | CRUD assets, getAssetStats                                                                                   |
+| `studioChat.ts`        | CRUD projetos, sendStudioMessage                                                                             |
+| `lgpd.ts`              | exportLeadData, anonymizeLeadData, eraseLeadData, anonymizeOldLeads                                          |
+| `account.ts`           | get/update nome, email, foto, senha; deleteAccount (cascade)                                                 |
+| `campaignActions.ts`   | recordCampaignAction, getCampaignActions                                                                     |
+| `googleBusiness.ts`    | get/save config, getGoogleBusinessData (Places API)                                                          |
 
 ---
 
@@ -746,41 +815,44 @@ Todas as operações de banco passam por Server Actions em `app/actions/`. Princ
 
 ## 11. NÚMEROS DO PROJETO
 
-| Métrica | Valor |
-|---------|-------|
-| Arquivos .tsx | 125 |
-| Arquivos .ts | 81 |
-| Total de arquivos | ~209 |
-| Dependências npm | 53 |
-| Modelos Prisma | 37 |
-| Linhas do schema | 747 |
-| Páginas (page.tsx) | 27 |
-| Layouts (layout.tsx) | 6 |
-| Componentes | 90+ |
-| Serviços | 18 |
-| API Routes | 19 |
-| Server Actions | 25+ arquivos, 100+ funções |
-| CRON jobs | 6 |
-| Tools do Assistente IA | 12 |
-| Agentes IA | 5 |
-| Automações configuráveis | 16 |
-| Triggers de workflow | 5 |
-| Ações de workflow | 7 |
+| Métrica                  | Valor                      |
+| ------------------------ | -------------------------- |
+| Arquivos .tsx            | 125                        |
+| Arquivos .ts             | 81                         |
+| Total de arquivos        | ~209                       |
+| Dependências npm         | 53                         |
+| Modelos Prisma           | 37                         |
+| Linhas do schema         | 747                        |
+| Páginas (page.tsx)       | 27                         |
+| Layouts (layout.tsx)     | 6                          |
+| Componentes              | 90+                        |
+| Serviços                 | 18                         |
+| API Routes               | 19                         |
+| Server Actions           | 25+ arquivos, 100+ funções |
+| CRON jobs                | 6                          |
+| Tools do Assistente IA   | 12                         |
+| Agentes IA               | 5                          |
+| Automações configuráveis | 16                         |
+| Triggers de workflow     | 5                          |
+| Ações de workflow        | 7                          |
 
 ---
 
 ## 12. VARIÁVEIS DE AMBIENTE
 
 **Obrigatórias:**
+
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase
 - `DATABASE_URL`, `DIRECT_URL` — PostgreSQL (connection pooling)
 - `NEXT_PUBLIC_APP_URL` — URL da aplicação
 
 **Produção:**
+
 - `CRON_SECRET` — autenticação dos cron jobs
 - `BLOB_READ_WRITE_TOKEN` — Vercel Blob (auto-configurado)
 
 **Opcionais (configuráveis via Settings UI):**
+
 - `UAZAPI_SERVER_URL`, `UAZAPI_ADMIN_TOKEN` — WhatsApp Uazapi
 - `ANTHROPIC_API_KEY` — Claude (assistente)
 - OpenAI, Gemini, Replicate, Fal.ai, Meta Pixel, Meta Ads, Google Business — via AIConfig no banco

@@ -34,7 +34,7 @@ export default async function LoginPage({
             <Image src="/logo.png" alt="Sanas Pulse" width={64} height={64} className="mx-auto rounded-2xl" />
             <h1 className="text-xl font-bold text-slate-900">Bem-vindo</h1>
             <p className="text-slate-400 text-sm">
-              CRM de conversão automática
+              CRM de Performance para quem anuncia no Meta
             </p>
           </div>
 

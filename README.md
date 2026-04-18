@@ -1,33 +1,35 @@
-# Sanas Pulse — SaaS de Marketing 360 com IA
+# Sanas Pulse — CRM de Performance para quem anuncia no Meta
 
-CRM integrado ao WhatsApp com IA para micro empreendedores brasileiros.
-O cliente abre o sistema, a IA cuida de tudo: atende leads, agenda, produz conteúdo e monitora anúncios.
+Do clique no Meta Ads ao cliente agendado, em uma tela só.
+SaaS B2C focado em **clínicas** (estética, odontológica, saúde) e **serviços locais** (academia, restaurante, imobiliária) que rodam Meta Ads e convertem no WhatsApp. Pixel + CAPI nativos, atribuição multi-touch, IA que atende no WhatsApp, pipeline que dispara eventos de conversão automaticamente.
 
 ## Stack
 
-| Camada | Tecnologia |
-|--------|-----------|
-| Framework | Next.js App Router, React 19, TypeScript strict |
-| Banco | PostgreSQL (Supabase) via Prisma 5 |
-| Auth | Supabase Auth (Email + OAuth) |
-| IA | Anthropic Claude (Assistente), OpenAI/Gemini (conteúdo), Replicate/Fal.ai (imagens) |
-| WhatsApp | Meta Cloud API + Uazapi + Evolution API |
-| Ads | Meta Graph API v18.0 |
-| Storage | Vercel Blob |
-| Deploy | Vercel (Serverless + Edge + Cron) |
+| Camada    | Tecnologia                                                                          |
+| --------- | ----------------------------------------------------------------------------------- |
+| Framework | Next.js App Router, React 19, TypeScript strict                                     |
+| Banco     | PostgreSQL (Supabase) via Prisma 5                                                  |
+| Auth      | Supabase Auth (Email + OAuth)                                                       |
+| IA        | Anthropic Claude (Assistente), OpenAI/Gemini (conteúdo), Replicate/Fal.ai (imagens) |
+| WhatsApp  | Meta Cloud API + Uazapi + Evolution API                                             |
+| Ads       | Meta Graph API v18.0                                                                |
+| Storage   | Vercel Blob                                                                         |
+| Deploy    | Vercel (Serverless + Edge + Cron)                                                   |
 
-## Módulos
+## Módulos (ordem da nav)
 
-| Módulo | Descrição |
-|--------|-----------|
-| Dashboard | Alertas IA + KPIs + Agenda + Atalhos |
-| Chat | WhatsApp + Assistente IA (Claude) + Templates + Broadcast + Equipe |
-| Pipeline | Kanban drag-and-drop + Lead Scoring + Tags + Filtros |
-| Ads | Meta Ads completo — campanhas, KPIs, alertas, otimização |
-| Estúdio | Acervo de assets + Chat criativo IA + Projetos |
-| Postagens | Calendário + Biblioteca + Campanhas WA + Métricas |
-| Analytics | Funil + LTV + CAC + ROAS + Scores + IA Insights |
-| Config | Negócio + Integrações + Automações + Pipeline + Conta |
+| Módulo     | Descrição                                                                          |
+| ---------- | ---------------------------------------------------------------------------------- |
+| Dashboard  | Alertas IA + KPIs + Agenda + Atalhos                                               |
+| Ads        | Meta Ads completo — Pixel + CAPI, campanhas, KPIs, diagnóstico de fase, alertas IA |
+| Chat       | WhatsApp (oficial ou Uazapi) + Assistente IA + Templates + Broadcast + Equipe      |
+| Pipeline   | Kanban drag-and-drop + Lead Scoring + Eventos Meta automáticos                     |
+| Postagens  | Calendário editorial + publicação multi-plataforma                                 |
+| Analytics  | Funil + LTV + CAC + ROAS + Atribuição multi-touch + IA Insights                    |
+| Prospecção | CSV import + cadências (secundário — foco do produto é inbound via Meta Ads)       |
+| Config     | Negócio + Integrações + Automações + Pipeline + Conta                              |
+
+> Módulos como Estúdio de vídeo IA e white-label Agency existem no schema e podem ser ativados sob demanda, mas não fazem parte do pitch atual.
 
 ## Setup Local
 
@@ -58,6 +60,7 @@ npm run dev               # http://localhost:3000
 Ver `.env.example` para documentação completa.
 
 **Obrigatórias no servidor:**
+
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Auth
 - `DATABASE_URL` / `DIRECT_URL` — PostgreSQL (Supabase Pooler)
 - `CRON_SECRET` — Protege endpoints `/api/cron/*`
@@ -68,14 +71,14 @@ OpenAI, Gemini, Replicate, Fal.ai, Meta Pixel, Meta Ads, Google Business
 
 ## CRON Jobs (vercel.json)
 
-| Schedule | Rota | Função |
-|----------|------|--------|
-| `*/5 * * * *` | `/api/cron/run-workflows` | Retoma workflows em delay |
-| `0 * * * *` | `/api/cron/collect-metrics` | Coleta métricas Meta Ads |
-| `0 6 * * *` | `/api/cron/score-leads` | Recalcula lead scoring |
-| `0 8 * * *` | `/api/cron/publish-posts` | Publica posts agendados |
-| `0 9 * * *` | `/api/cron/reactivate-leads` | Dispara reativação de leads inativos |
-| `0 10 * * 1` | `/api/cron/suggest-content` | Sugere pauta da semana |
+| Schedule      | Rota                         | Função                               |
+| ------------- | ---------------------------- | ------------------------------------ |
+| `*/5 * * * *` | `/api/cron/run-workflows`    | Retoma workflows em delay            |
+| `0 * * * *`   | `/api/cron/collect-metrics`  | Coleta métricas Meta Ads             |
+| `0 6 * * *`   | `/api/cron/score-leads`      | Recalcula lead scoring               |
+| `0 8 * * *`   | `/api/cron/publish-posts`    | Publica posts agendados              |
+| `0 9 * * *`   | `/api/cron/reactivate-leads` | Dispara reativação de leads inativos |
+| `0 10 * * 1`  | `/api/cron/suggest-content`  | Sugere pauta da semana               |
 
 Todos protegidos por `Authorization: Bearer $CRON_SECRET`.
 

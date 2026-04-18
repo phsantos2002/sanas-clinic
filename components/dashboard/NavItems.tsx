@@ -7,12 +7,12 @@ import { MetaIcon } from "@/components/icons/SourceIcons";
 
 const navItems = [
   { href: "/dashboard/overview", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/meta", label: "Ads", iconCustom: <MetaIcon size={16} /> },
   { href: "/dashboard/chat", label: "Chat", icon: MessageCircle },
   { href: "/dashboard/pipeline", label: "Pipeline", icon: Kanban },
-  { href: "/dashboard/prospeccao", label: "Prospecção", icon: Target },
-  { href: "/dashboard/meta", label: "Ads", iconCustom: <MetaIcon size={16} /> },
   { href: "/dashboard/posts", label: "Postagens", icon: CalendarDays },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/dashboard/prospeccao", label: "Prospecção", icon: Target },
   { href: "/dashboard/settings", label: "Config", icon: Settings },
 ];
 

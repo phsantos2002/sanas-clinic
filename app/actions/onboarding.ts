@@ -4,6 +4,54 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
 import { revalidatePath } from "next/cache";
 
+const DEFAULT_SERVICES_BY_NICHE: Record<string, { name: string; duration: number; category?: string }[]> = {
+  clinica_estetica: [
+    { name: "Botox", duration: 45, category: "Estetica" },
+    { name: "Preenchimento", duration: 60, category: "Estetica" },
+    { name: "Limpeza de Pele", duration: 60, category: "Estetica" },
+    { name: "Harmonizacao Facial", duration: 90, category: "Estetica" },
+  ],
+  clinica_odontologica: [
+    { name: "Avaliacao", duration: 30, category: "Odontologia" },
+    { name: "Limpeza", duration: 45, category: "Odontologia" },
+    { name: "Clareamento", duration: 60, category: "Odontologia" },
+    { name: "Ortodontia (consulta)", duration: 45, category: "Odontologia" },
+  ],
+  saude: [
+    { name: "Consulta", duration: 30, category: "Saude" },
+    { name: "Retorno", duration: 20, category: "Saude" },
+    { name: "Exame", duration: 30, category: "Saude" },
+  ],
+  academia: [
+    { name: "Mensalidade", duration: 0, category: "Plano" },
+    { name: "Personal (avulso)", duration: 60, category: "Personal" },
+    { name: "Avaliacao Fisica", duration: 45, category: "Avaliacao" },
+  ],
+  restaurante: [
+    { name: "Reserva de Mesa", duration: 90, category: "Reserva" },
+    { name: "Evento Privado", duration: 180, category: "Evento" },
+  ],
+  imobiliaria: [
+    { name: "Visita ao Imovel", duration: 60, category: "Visita" },
+    { name: "Avaliacao de Imovel", duration: 45, category: "Avaliacao" },
+  ],
+  salao_beleza: [
+    { name: "Corte", duration: 45, category: "Cabelo" },
+    { name: "Coloracao", duration: 90, category: "Cabelo" },
+    { name: "Escova", duration: 45, category: "Cabelo" },
+    { name: "Manicure", duration: 45, category: "Unhas" },
+  ],
+  barbearia: [
+    { name: "Corte", duration: 30, category: "Cabelo" },
+    { name: "Barba", duration: 30, category: "Barba" },
+    { name: "Corte + Barba", duration: 60, category: "Combo" },
+  ],
+  pet: [
+    { name: "Banho e Tosa", duration: 90, category: "Estetica" },
+    { name: "Consulta Veterinaria", duration: 30, category: "Saude" },
+  ],
+};
+
 export async function isOnboardingComplete(): Promise<boolean> {
   const user = await getCurrentUser();
   if (!user) return false;
@@ -75,6 +123,21 @@ export async function saveOnboardingData(data: {
           // Ignore unique constraint - stage already exists
         });
       }
+    }
+
+    // Create default services by niche if user has none yet
+    const serviceCount = await prisma.service.count({ where: { userId: user.id } });
+    const defaultServices = DEFAULT_SERVICES_BY_NICHE[data.niche];
+    if (serviceCount === 0 && defaultServices) {
+      await prisma.service.createMany({
+        data: defaultServices.map((s) => ({
+          userId: user.id,
+          name: s.name,
+          duration: s.duration,
+          category: s.category ?? null,
+        })),
+        skipDuplicates: true,
+      });
     }
 
     revalidatePath("/dashboard");
