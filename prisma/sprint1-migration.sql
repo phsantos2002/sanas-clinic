@@ -1,0 +1,11 @@
+-- Sprint 1 — Papéis SDR/Closer + Outbound
+
+ALTER TABLE "Attendant" ADD COLUMN IF NOT EXISTS "dailyActivityGoal" INTEGER NOT NULL DEFAULT 50;
+CREATE INDEX IF NOT EXISTS "Attendant_userId_role_idx" ON "Attendant"("userId", "role");
+
+ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "leadType" TEXT NOT NULL DEFAULT 'inbound';
+ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "company" TEXT;
+ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "jobTitle" TEXT;
+ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "linkedinUrl" TEXT;
+ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "industry" TEXT;
+ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "importBatchId" TEXT;

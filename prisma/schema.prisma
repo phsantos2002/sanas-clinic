@@ -31,6 +31,7 @@ model User {
   messageTemplates   MessageTemplate[]
   broadcastCampaigns BroadcastCampaign[]
   whatsappCampaigns  WhatsAppCampaign[]
+  emailTracking      EmailTracking[]
   notifications      Notification[]
   checklistCompleted String[] // IDs of completed checklist items
   agencyId           String?
@@ -157,6 +158,7 @@ model Lead {
   metaAdSetId        String? // adset_id numérico da Meta
   metaCampaignId     String? // campaign_id numérico da Meta
   pixelEvents        PixelEvent[]
+  workflowExecutions WorkflowExecution[]
   // ── Lead Scoring & Tags ──
   score              Int                @default(0) // 0-100
   scoreLabel         String? // "frio" | "morno" | "quente" | "vip"
@@ -165,6 +167,13 @@ model Lead {
   reactivationSentAt DateTime? // última msg de reativação enviada
   // ── Multi-attendant ──
   assignedTo         String? // attendant id
+  // ── Prospeccao outbound ──
+  leadType           String             @default("inbound") // "inbound" | "outbound"
+  company            String? // Empresa (B2B)
+  jobTitle           String? // Cargo
+  linkedinUrl        String? // Perfil LinkedIn
+  industry           String? // Setor / indústria
+  importBatchId      String? // Lote de importação CSV (para desfazer)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -413,15 +422,18 @@ model Attendant {
   name            String
   email           String?
   phone           String?
-  role            String    @default("attendant") // "admin" | "attendant"
+  role            String    @default("attendant") // "admin" | "sdr" | "sdr_manager" | "closer" | "closer_manager" | "attendant"
   isActive        Boolean   @default(true)
   avatar          String?
   status          String    @default("offline") // "online" | "away" | "busy" | "offline"
   statusUpdatedAt DateTime?
+  // Prospeccao outbound metas
+  dailyActivityGoal Int     @default(50) // metas diarias (atividades esperadas/dia)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([userId])
+  @@index([userId, role])
 }
 
 model MessageTemplate {
@@ -504,8 +516,11 @@ model Workflow {
   name        String
   description String?
   isActive    Boolean             @default(true)
-  trigger     Json // { type: "new_lead" | "stage_change" | "inactivity" | "tag_added" | "score_change", config: {} }
+  trigger     Json // { type: "new_lead" | "stage_change" | "inactivity" | "tag_added" | "score_change" | "manual_enroll", config: {} }
   canvas      Json? // { nodes: WorkflowNode[], edges: WorkflowEdge[] } — visual canvas data
+  // Sprint prospecção: cadência outbound multi-toque
+  isSequence  Boolean             @default(false) // se true, este Workflow é uma cadência manual (SDR inscreve leads)
+  stopOnReply Boolean             @default(true) // se lead responde, interrompe a cadência
   steps       WorkflowStep[]
   executions  WorkflowExecution[]
   // Sprint 7: versionamento de canvas
@@ -515,6 +530,7 @@ model Workflow {
 
   @@index([userId])
   @@index([userId, isActive])
+  @@index([userId, isSequence])
 }
 
 // Sprint 7: histórico de versões do canvas/steps para cada workflow
@@ -550,7 +566,8 @@ model WorkflowExecution {
   workflowId  String
   workflow    Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   leadId      String
-  status      String    @default("running") // "running" | "completed" | "failed" | "skipped"
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  status      String    @default("running") // "running" | "completed" | "failed" | "skipped" | "stopped" | "cancelled"
   currentStep Int       @default(0)
   logs        Json? // [{ step, action, result, timestamp }]
   startedAt   DateTime  @default(now())
@@ -559,6 +576,27 @@ model WorkflowExecution {
   @@index([workflowId])
   @@index([leadId])
   @@index([status])
+}
+
+// ── Email Tracking (cold email via Resend) ───────────────────
+
+model EmailTracking {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadId       String
+  subject      String
+  status       String    @default("queued") // queued | sent | opened | clicked | bounced | failed
+  providerId   String? // Resend email id
+  errorMessage String?
+  sentAt       DateTime?
+  openedAt     DateTime?
+  openCount    Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  @@index([userId, status])
+  @@index([leadId])
+  @@index([userId, createdAt])
 }
 
 // ── WhatsApp Campaigns (com anti-ban) ────────────────────────

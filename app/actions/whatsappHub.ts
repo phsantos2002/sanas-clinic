@@ -17,6 +17,7 @@ export type AttendantData = {
   role: string;
   isActive: boolean;
   avatar: string | null;
+  dailyActivityGoal: number;
   createdAt: Date;
 };
 

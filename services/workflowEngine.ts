@@ -272,13 +272,32 @@ async function executeAction(config: StepConfig, lead: any, userId: string): Pro
         .replace(/\{\{nome\}\}/gi, lead.name.split(" ")[0])
         .replace(/\{\{clinica\}\}/gi, clinicName);
 
-      const result = await sendMessage(waConfig, lead.phone, text);
+      const text2 = text
+        .replace(/\{\{empresa\}\}/gi, lead.company || "sua empresa")
+        .replace(/\{\{nome_completo\}\}/gi, lead.name);
+
+      const result = await sendMessage(waConfig, lead.phone, text2);
       if (result.success) {
-        await prisma.message.create({ data: { leadId: lead.id, role: "assistant", content: text } });
+        await prisma.message.create({ data: { leadId: lead.id, role: "assistant", content: text2 } });
         await prisma.lead.update({ where: { id: lead.id }, data: { lastInteractionAt: new Date() } });
-        return `Mensagem enviada: "${text.slice(0, 50)}..."`;
+        return `Mensagem enviada: "${text2.slice(0, 50)}..."`;
       }
       return `Falha ao enviar: ${result.error}`;
+    }
+
+    case "send_email": {
+      try {
+        const { sendCadenceEmail } = await import("@/services/emailService");
+        const res = await sendCadenceEmail({
+          userId,
+          lead,
+          subject: (config.subject as string) || "",
+          message: (config.message as string) || "",
+        });
+        return res.ok ? `Email enviado: "${(config.subject as string || "").slice(0, 50)}"` : `Falha email: ${res.error}`;
+      } catch (err) {
+        return `Email indisponivel: ${err instanceof Error ? err.message : "erro"}`;
+      }
     }
 
     case "move_stage": {

@@ -164,6 +164,18 @@ export async function processIncomingMessage(params: {
     }),
   ]);
 
+  // ── Cadência: parar sequências ativas se lead respondeu ──
+  // Outbound sequences com stopOnReply=true são interrompidas quando o lead
+  // manda qualquer mensagem — evita disparar próximos toques ao lead engajado.
+  await prisma.workflowExecution.updateMany({
+    where: {
+      leadId: lead.id,
+      status: "running",
+      workflow: { isSequence: true, stopOnReply: true, userId },
+    },
+    data: { status: "stopped", completedAt: new Date() },
+  }).catch(() => {});
+
   // ── Check if AI should respond ────────────────────────────
   if (!lead.aiEnabled) {
     log.debug("webhook_ai_disabled", { leadId: lead.id });
