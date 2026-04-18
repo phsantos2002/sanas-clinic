@@ -26,11 +26,9 @@ import {
   MapPin,
   StickyNote,
   User,
-  Sparkles,
 } from "lucide-react";
 import { SourceIcon, sourceConfig, getStageColor } from "@/components/icons/SourceIcons";
 import { getLeadDetail, deleteLead } from "@/app/actions/leads";
-import { enrichLeadAction } from "@/app/actions/enrichment";
 import { EditLeadModal } from "./EditLeadModal";
 import { LeadActivityTimeline } from "./LeadActivityTimeline";
 import { toast } from "sonner";
@@ -362,25 +360,6 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
                 >
                   <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
                   Abrir Chat
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={async () => {
-                    toast.info("Consultando enriquecimento...");
-                    const r = await enrichLeadAction(lead.id);
-                    if (!r.success) { toast.error(r.error); return; }
-                    const { updated, provider } = r.data!;
-                    if (updated.length) {
-                      toast.success(`Enriquecido via ${provider}: ${updated.join(", ")}`);
-                    } else {
-                      toast(`${provider} não retornou dados novos`);
-                    }
-                  }}
-                >
-                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                  Enriquecer
                 </Button>
                 <Button
                   size="sm"

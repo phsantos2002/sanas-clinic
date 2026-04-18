@@ -2,19 +2,16 @@ import { getPixel } from "@/app/actions/pixel";
 import { getAIConfig } from "@/app/actions/aiConfig";
 import { getWhatsAppConfig } from "@/app/actions/whatsapp";
 import { getSocialConnections } from "@/app/actions/social";
-import { getEnrichmentSettings } from "@/app/actions/enrichment";
 import { FacebookPixelForm } from "@/components/forms/FacebookPixelForm";
 import { WhatsAppConfigForm } from "@/components/forms/WhatsAppConfigForm";
 import { SetupProgress } from "@/components/settings/SetupProgress";
-import { EnrichmentForm } from "@/components/settings/EnrichmentForm";
 
 export default async function IntegrationsPage() {
-  const [pixel, aiConfig, whatsappConfig, connections, enrichment] = await Promise.all([
+  const [pixel, aiConfig, whatsappConfig, connections] = await Promise.all([
     getPixel(),
     getAIConfig(),
     getWhatsAppConfig(),
     getSocialConnections(),
-    getEnrichmentSettings(),
   ]);
 
   return (
@@ -76,17 +73,6 @@ export default async function IntegrationsPage() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Enriquecimento de leads */}
-      <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Enriquecimento de Leads</h2>
-          <p className="text-sm text-slate-400 mt-0.5">
-            Apollo ou Hunter — puxa email, cargo, LinkedIn e setor automaticamente
-          </p>
-        </div>
-        <EnrichmentForm initial={enrichment} />
       </div>
 
       <p className="text-xs text-slate-400 text-center pt-2">
