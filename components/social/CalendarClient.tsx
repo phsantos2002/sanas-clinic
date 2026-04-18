@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Sparkles,
   CalendarDays,
   Image,
   Video,
@@ -16,7 +15,6 @@ import { toast } from "sonner";
 import type { SocialPostData } from "@/app/actions/social";
 import { getScheduledPosts } from "@/app/actions/social";
 import { CreatePostModal } from "./CreatePostModal";
-import { GenerateWithAIModal } from "./GenerateWithAIModal";
 
 const WEEKDAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
 const MONTH_NAMES = [
@@ -65,7 +63,6 @@ export function CalendarClient({
   const [year, setYear] = useState(initialYear);
   const [posts, setPosts] = useState(initialPosts);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showAIModal, setShowAIModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const navigateMonth = useCallback(
@@ -148,13 +145,6 @@ export function CalendarClient({
             >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Agendar Post</span>
-            </button>
-            <button
-              onClick={() => setShowAIModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-xl text-sm font-medium hover:bg-violet-100 transition-colors"
-            >
-              <Sparkles className="h-4 w-4" />
-              <span className="hidden sm:inline">Gerar com IA</span>
             </button>
           </div>
         </div>
@@ -283,12 +273,6 @@ export function CalendarClient({
             icon: Image,
             color: "text-green-600 bg-green-50",
           },
-          {
-            label: "IA Gerados",
-            value: posts.filter((p) => p.aiGenerated).length,
-            icon: Sparkles,
-            color: "text-violet-600 bg-violet-50",
-          },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -317,13 +301,6 @@ export function CalendarClient({
         />
       )}
 
-      {/* Generate with AI Modal */}
-      {showAIModal && (
-        <GenerateWithAIModal
-          onClose={() => setShowAIModal(false)}
-          onPostCreated={handlePostCreated}
-        />
-      )}
     </div>
   );
 }

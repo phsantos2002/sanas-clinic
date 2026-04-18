@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { MessageCircle, PenTool, BarChart3, Kanban, Heart, Info } from "lucide-react";
+import { MessageCircle, BarChart3, Kanban } from "lucide-react";
 
 type Automations = Record<string, boolean>;
 
@@ -20,31 +20,6 @@ const SECTIONS = [
       { key: "reminderAgendamento", label: "Lembrete 2h antes", desc: "Envia lembrete no dia do agendamento" },
       { key: "reactivation30d", label: "Reativar inativos", desc: "Tenta reconectar leads sem interacao ha 30 dias" },
       { key: "nps7d", label: "Pesquisa NPS", desc: "Pede avaliacao 7 dias apos o atendimento" },
-    ],
-  },
-  {
-    title: "Publicacao & Conteudo",
-    icon: PenTool,
-    color: "text-violet-600",
-    bgColor: "bg-violet-50",
-    description: "Criacao e publicacao automatica de posts nas redes sociais",
-    toggles: [
-      { key: "weeklySuggestions", label: "Sugestoes semanais com IA", desc: "Gera ideias de conteudo toda segunda as 8h" },
-      { key: "autoPublish", label: "Publicar posts agendados", desc: "Publica automaticamente nos horarios definidos" },
-      { key: "collectMetrics", label: "Coletar metricas", desc: "Atualiza engajamento e alcance a cada 6 horas" },
-    ],
-  },
-  {
-    title: "Engajamento Social",
-    icon: Heart,
-    color: "text-pink-600",
-    bgColor: "bg-pink-50",
-    description: "Interacoes automaticas com seguidores e comentarios",
-    toggles: [
-      { key: "collectComments", label: "Monitorar comentarios", desc: "Coleta novos comentarios a cada 30 minutos" },
-      { key: "aiReplies", label: "Sugerir respostas com IA", desc: "IA gera sugestoes de resposta para cada comentario" },
-      { key: "autoLikeComments", label: "Curtir elogios", desc: "Curte automaticamente comentarios positivos" },
-      { key: "classifyFollowers", label: "Classificar seguidores", desc: "Identifica novos seguidores como potencial publico-alvo" },
     ],
   },
   {
@@ -74,8 +49,6 @@ const SECTIONS = [
 
 const DEFAULT_ON = [
   "whatsappWelcome", "followUp24h", "confirmAgendamento", "reactivation30d",
-  "weeklySuggestions", "autoPublish", "collectMetrics",
-  "collectComments", "aiReplies", "autoLikeComments", "classifyFollowers",
   "cplAlert", "frequencyAlert", "capiEvents", "dailyScoring", "stuckLeadAlert",
 ];
 

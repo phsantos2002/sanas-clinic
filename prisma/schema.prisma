@@ -9,165 +9,164 @@ datasource db {
 }
 
 model User {
-  id              String           @id @default(cuid())
-  email           String           @unique
-  name            String?
-  photoUrl        String?
-  facebookId      String?          @unique
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  pixels          Pixel[]
-  leads           Lead[]
-  stages          Stage[]
-  aiConfig        AIConfig?
-  whatsappConfig  WhatsAppConfig?
-  googleBusiness  GoogleBusinessConfig?
-  alerts          Alert[]
-  campaignActions CampaignAction[]
-  campaignConfigs CampaignConfig[]
-  socialConnections SocialConnection[]
-  socialPosts       SocialPost[]
-  attendants        Attendant[]
-  messageTemplates  MessageTemplate[]
+  id                 String                @id @default(cuid())
+  email              String                @unique
+  name               String?
+  photoUrl           String?
+  facebookId         String?               @unique
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  pixels             Pixel[]
+  leads              Lead[]
+  stages             Stage[]
+  aiConfig           AIConfig?
+  whatsappConfig     WhatsAppConfig?
+  googleBusiness     GoogleBusinessConfig?
+  alerts             Alert[]
+  campaignActions    CampaignAction[]
+  campaignConfigs    CampaignConfig[]
+  socialConnections  SocialConnection[]
+  socialPosts        SocialPost[]
+  attendants         Attendant[]
+  messageTemplates   MessageTemplate[]
   broadcastCampaigns BroadcastCampaign[]
-  whatsappCampaigns WhatsAppCampaign[]
-  notifications     Notification[]
-  checklistCompleted String[]         // IDs of completed checklist items
-  agencyId          String?
-  agency            Agency?          @relation(fields: [agencyId], references: [id])
-  services          Service[]
-  workflows         Workflow[]
-  googleCalendar    GoogleCalendar?
-  autonomousAgents  AutonomousAgent[]
+  whatsappCampaigns  WhatsAppCampaign[]
+  notifications      Notification[]
+  checklistCompleted String[] // IDs of completed checklist items
+  agencyId           String?
+  agency             Agency?               @relation(fields: [agencyId], references: [id])
+  services           Service[]
+  workflows          Workflow[]
+  googleCalendar     GoogleCalendar?
 }
 
 model AIConfig {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clinicName   String   @default("Sanas Pulse")
-  systemPrompt String?
-  sendAudio    Boolean  @default(false)
-  provider     String   @default("openai")    // "openai" | "gemini"
-  model        String   @default("gpt-4o-mini") // model ID
-  capabilities String   @default("text")      // "text" | "multimodal"
-  apiKey       String?                         // user's own API key
-  voiceClonePrompt String?                     // prompt for voice cloning audio sample
-  openaiKey    String?                         // legacy, kept for TTS
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clinicName         String   @default("Sanas Pulse")
+  systemPrompt       String?
+  sendAudio          Boolean  @default(false)
+  provider           String   @default("openai") // "openai" | "gemini"
+  model              String   @default("gpt-4o-mini") // model ID
+  capabilities       String   @default("text") // "text" | "multimodal"
+  apiKey             String? // user's own API key
+  voiceClonePrompt   String? // prompt for voice cloning audio sample
+  openaiKey          String? // legacy, kept for TTS
   // ── AI Response Config (Zap GPT style) ──
-  keepUnread         Boolean  @default(true)   // Manter não lida ao responder
-  singleMessage      Boolean  @default(true)   // Enviar resposta em 1 mensagem
-  includeContactName Boolean  @default(false)  // Incluir nome do contato na resposta
-  cancelOnNewMsg     Boolean  @default(true)   // Cancelar se nova msg chegar
-  pauseAfterManual   Boolean  @default(true)   // Não responder após msg manual
+  keepUnread         Boolean  @default(true) // Manter não lida ao responder
+  singleMessage      Boolean  @default(true) // Enviar resposta em 1 mensagem
+  includeContactName Boolean  @default(false) // Incluir nome do contato na resposta
+  cancelOnNewMsg     Boolean  @default(true) // Cancelar se nova msg chegar
+  pauseAfterManual   Boolean  @default(true) // Não responder após msg manual
   // ── Timers Humanizados ──
-  delayPerChar       Int      @default(120)    // Delay por caractere (ms)
-  delayMax           Int      @default(10000)  // Delay máximo (ms)
-  waitBeforeReply    Int      @default(7)      // Aguardar resposta (segundos)
+  delayPerChar       Int      @default(120) // Delay por caractere (ms)
+  delayMax           Int      @default(10000) // Delay máximo (ms)
+  waitBeforeReply    Int      @default(7) // Aguardar resposta (segundos)
   // ── Intervenção Humana ──
-  humanIntervention  Boolean  @default(true)   // Pausar IA quando humano intervém
-  humanPauseHours    Int      @default(2)      // Horas para reativar IA
+  humanIntervention  Boolean  @default(true) // Pausar IA quando humano intervém
+  humanPauseHours    Int      @default(2) // Horas para reativar IA
   // ── Filtros de Número ──
   whitelist          String[] // Somente responder estes números
   blacklist          String[] // Não responder estes números
-  ignoreGroups       Boolean  @default(true)   // Ignorar mensagens de grupo
+  ignoreGroups       Boolean  @default(true) // Ignorar mensagens de grupo
   // ── Follow-Up ──
   followUpEnabled    Boolean  @default(false)
-  followUpMessages   Int      @default(1)      // Qtd de mensagens de follow-up
-  followUpCheckMins  Int      @default(10)     // Verificar a cada X minutos
-  followUpIntervalH  Int      @default(25)     // Intervalo entre follow-ups (hrs)
-  followUpUseAI      Boolean  @default(true)   // Gerar mensagens por IA
-  followUpRespectBH  Boolean  @default(false)  // Respeitar horário comercial
+  followUpMessages   Int      @default(1) // Qtd de mensagens de follow-up
+  followUpCheckMins  Int      @default(10) // Verificar a cada X minutos
+  followUpIntervalH  Int      @default(25) // Intervalo entre follow-ups (hrs)
+  followUpUseAI      Boolean  @default(true) // Gerar mensagens por IA
+  followUpRespectBH  Boolean  @default(false) // Respeitar horário comercial
   // ── Mensagem para tipos desconhecidos ──
   unknownTypeMsg     String?  @default("Você pode me dar mais detalhes?")
   // ── Audio com IA ──
   audioVoice         String?  @default("alloy") // OpenAI voice: alloy, echo, fable, onyx, nova, shimmer
-  audioMinChars      Int      @default(50)      // Mínimo de caracteres para gerar áudio
-  audioAutoReply     Boolean  @default(false)   // Responder com áudio automaticamente
-  audioReplaceText   Boolean  @default(false)   // Substituir texto por áudio
+  audioMinChars      Int      @default(50) // Mínimo de caracteres para gerar áudio
+  audioAutoReply     Boolean  @default(false) // Responder com áudio automaticamente
+  audioReplaceText   Boolean  @default(false) // Substituir texto por áudio
   // ── Brand Identity ──
-  brandIdentity   Json?    // { logo_url, primary_color, secondary_color, font, business_type, default_tone, target_audience }
+  brandIdentity      Json? // { logo_url, primary_color, secondary_color, font, business_type, default_tone, target_audience }
   // ── AI Content Generation providers ──
-  aiImageProvider String?  @default("openai")  // "openai" | "replicate" | "fal"
-  aiImageApiKey   String?                      // Replicate or Fal.ai key (OpenAI reuses apiKey)
-  aiVideoProvider String?  @default("none")    // "replicate" | "fal" | "kling" | "none"
-  aiVideoApiKey   String?                      // separate key if different provider
+  aiImageProvider    String?  @default("openai") // "openai" | "replicate" | "fal"
+  aiImageApiKey      String? // Replicate or Fal.ai key (OpenAI reuses apiKey)
+  aiVideoProvider    String?  @default("none") // "replicate" | "fal" | "kling" | "none"
+  aiVideoApiKey      String? // separate key if different provider
   // ── Video Pipeline extras ──
-  klingApiKey     String?
-  runwayApiKey    String?
-  shotstackApiKey String?
+  klingApiKey        String?
+  runwayApiKey       String?
+  shotstackApiKey    String?
   // ── Business Profile ──
-  businessProfile Json?    // { name, niche, city, services, avgTicket, differentials }
+  businessProfile    Json? // { name, niche, city, services, avgTicket, differentials }
   // ── Automation Toggles ──
-  automations     Json?    // { whatsappWelcome, followUp24h, confirmAgendamento, reactivation30d, nps7d, weeklySuggestions, autoPublish, collectComments, aiReplies, autoLikeComments, cplAlert, frequencyAlert, capiEvents, dailyScoring, stuckLeadAlert }
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
-
-model Pixel {
-  id                 String   @id @default(cuid())
-  pixelId            String
-  accessToken        String
-  adAccountId        String?
-  metaAdsToken       String?
-  selectedCampaignId String?  // Meta campaign ID chosen in settings
-  campaignObjective      String?   // MESSAGES | CONVERSIONS | LEADS | ENGAGEMENT | TRAFFIC
-  conversionDestination  String?   // WHATSAPP | WEBSITE | INSTAGRAM | FORM | STORE
-  accountPhase           String?   // LEARNING | STABILIZING | SCALING | MATURE
-  monthlyBudget          Float?    // Verba mensal declarada em BRL
-  bidStrategy            String?   // LOWEST_COST | COST_CAP | BID_CAP | ROAS_MIN
-  businessSegment        String?   // HEALTH | EDUCATION | ECOMMERCE | SERVICES | REAL_ESTATE | FOOD | FITNESS | BEAUTY | LEGAL | OTHER
-  coverageArea           String?   // LOCAL | REGIONAL | NATIONAL | INTERNATIONAL
-  conversionValue        Float?    // Valor médio por conversão em BRL
-  maxCostPerResult       Float?    // Custo máximo por resultado (Cost Cap / Bid Cap)
-  bidValue               Float?    // Valor do lance manual
-  userId             String   @unique
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  automations        Json? // { whatsappWelcome, followUp24h, confirmAgendamento, reactivation30d, nps7d, weeklySuggestions, autoPublish, collectComments, aiReplies, autoLikeComments, cplAlert, frequencyAlert, capiEvents, dailyScoring, stuckLeadAlert }
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
 
+model Pixel {
+  id                    String   @id @default(cuid())
+  pixelId               String
+  accessToken           String
+  adAccountId           String?
+  metaAdsToken          String?
+  selectedCampaignId    String? // Meta campaign ID chosen in settings
+  campaignObjective     String? // MESSAGES | CONVERSIONS | LEADS | ENGAGEMENT | TRAFFIC
+  conversionDestination String? // WHATSAPP | WEBSITE | INSTAGRAM | FORM | STORE
+  accountPhase          String? // LEARNING | STABILIZING | SCALING | MATURE
+  monthlyBudget         Float? // Verba mensal declarada em BRL
+  bidStrategy           String? // LOWEST_COST | COST_CAP | BID_CAP | ROAS_MIN
+  businessSegment       String? // HEALTH | EDUCATION | ECOMMERCE | SERVICES | REAL_ESTATE | FOOD | FITNESS | BEAUTY | LEGAL | OTHER
+  coverageArea          String? // LOCAL | REGIONAL | NATIONAL | INTERNATIONAL
+  conversionValue       Float? // Valor médio por conversão em BRL
+  maxCostPerResult      Float? // Custo máximo por resultado (Cost Cap / Bid Cap)
+  bidValue              Float? // Valor do lance manual
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
 model Lead {
-  id           String             @id @default(cuid())
-  name         String
-  phone        String
-  email        String?
-  cpf          String?
-  address      String?
-  city         String?
-  notes        String?
-  photoUrl     String?
-  userId       String
-  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stageId      String?
-  stage        Stage?             @relation(fields: [stageId], references: [id])
-  stageHistory LeadStageHistory[]
-  messages     Message[]
-  aiEnabled         Boolean            @default(true)
-  humanPausedUntil  DateTime?          // IA pausada até esta data (intervenção humana)
-  lastFollowUpAt    DateTime?          // última msg de follow-up enviada
-  source         String?            // "meta", "google", "whatsapp", "manual"
-  medium         String?            // "cpc", "organic", "social", "referral"
-  campaign       String?            // campaign name
-  adSetName      String?            // ad set / conjunto de anúncios
-  adName         String?            // ad name
-  adAccountName  String?            // ad account name
-  platform       String?            // "facebook", "instagram", "google", "whatsapp"
-  referrer       String?            // original referrer URL
-  metaAdId       String?            // ad_id numérico da Meta Lead Ads API
-  metaAdSetId    String?            // adset_id numérico da Meta
-  metaCampaignId String?            // campaign_id numérico da Meta
-  pixelEvents    PixelEvent[]
+  id                 String             @id @default(cuid())
+  name               String
+  phone              String
+  email              String?
+  cpf                String?
+  address            String?
+  city               String?
+  notes              String?
+  photoUrl           String?
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stageId            String?
+  stage              Stage?             @relation(fields: [stageId], references: [id])
+  stageHistory       LeadStageHistory[]
+  messages           Message[]
+  aiEnabled          Boolean            @default(true)
+  humanPausedUntil   DateTime? // IA pausada até esta data (intervenção humana)
+  lastFollowUpAt     DateTime? // última msg de follow-up enviada
+  source             String? // "meta", "google", "whatsapp", "manual"
+  medium             String? // "cpc", "organic", "social", "referral"
+  campaign           String? // campaign name
+  adSetName          String? // ad set / conjunto de anúncios
+  adName             String? // ad name
+  adAccountName      String? // ad account name
+  platform           String? // "facebook", "instagram", "google", "whatsapp"
+  referrer           String? // original referrer URL
+  metaAdId           String? // ad_id numérico da Meta Lead Ads API
+  metaAdSetId        String? // adset_id numérico da Meta
+  metaCampaignId     String? // campaign_id numérico da Meta
+  pixelEvents        PixelEvent[]
   // ── Lead Scoring & Tags ──
-  score              Int        @default(0)     // 0-100
-  scoreLabel         String?                    // "frio" | "morno" | "quente" | "vip"
-  tags               String[]                   // ["vip", "retorno", "indicacao"]
-  lastInteractionAt  DateTime?                  // última msg ou mudança de stage
-  reactivationSentAt DateTime?                  // última msg de reativação enviada
+  score              Int                @default(0) // 0-100
+  scoreLabel         String? // "frio" | "morno" | "quente" | "vip"
+  tags               String[] // ["vip", "retorno", "indicacao"]
+  lastInteractionAt  DateTime? // última msg ou mudança de stage
+  reactivationSentAt DateTime? // última msg de reativação enviada
   // ── Multi-attendant ──
-  assignedTo         String?                    // attendant id
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  assignedTo         String? // attendant id
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   @@index([userId])
   @@index([userId, phone])
@@ -177,34 +176,34 @@ model Lead {
 }
 
 model Message {
-  id               String   @id @default(cuid())
-  leadId           String
-  lead             Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  role             String   // "user" | "assistant"
-  content          String
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  role       String // "user" | "assistant"
+  content    String
   // Sprint 2: externalId = ID da mensagem no provider (Meta/Uazapi/Evolution)
   // Usado para idempotência — previne duplicatas por reenvio de webhook.
-  externalId       String?  // ex: "wamid.HBgNNTUxMTk4..." ou "BAE5..."
-  createdAt        DateTime @default(now())
+  externalId String? // ex: "wamid.HBgNNTUxMTk4..." ou "BAE5..."
+  createdAt  DateTime @default(now())
 
-  @@index([leadId])
-  @@index([leadId, createdAt])
   // Unique por lead + provider message id (previne duplicatas)
   @@unique([leadId, externalId])
+  @@index([leadId])
+  @@index([leadId, createdAt])
 }
 
 model Stage {
-  id                       String             @id @default(cuid())
-  name                     String
-  order                    Int
-  eventName                String
-  stagnationDaysThreshold  Int?               // Dias max sem interação antes de alertar
-  userId                   String
-  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  leads                    Lead[]
-  history                  LeadStageHistory[]
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
+  id                      String             @id @default(cuid())
+  name                    String
+  order                   Int
+  eventName               String
+  stagnationDaysThreshold Int? // Dias max sem interação antes de alertar
+  userId                  String
+  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leads                   Lead[]
+  history                 LeadStageHistory[]
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
 
   @@unique([userId, order])
 }
@@ -219,22 +218,22 @@ model LeadStageHistory {
 }
 
 model WhatsAppConfig {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider      String   @default("official") // "official" | "uazapi"
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider            String   @default("official") // "official" | "uazapi"
   // --- Official API fields (mantidos) ---
-  phoneNumberId String   @default("")
-  accessToken   String   @default("")
-  verifyToken   String   @default("")
-  metaAppSecret String?  // App Secret do Meta for Developers — usado para verificar HMAC dos webhooks
+  phoneNumberId       String   @default("")
+  accessToken         String   @default("")
+  verifyToken         String   @default("")
+  metaAppSecret       String? // App Secret do Meta for Developers — usado para verificar HMAC dos webhooks
   // --- Uazapi fields ---
-  uazapiServerUrl    String?  // URL do servidor Uazapi (ex: https://sanas.uazapi.com)
-  uazapiAdminToken   String?  // Admin token do Uazapi
+  uazapiServerUrl     String? // URL do servidor Uazapi (ex: https://sanas.uazapi.com)
+  uazapiAdminToken    String? // Admin token do Uazapi
   uazapiInstanceToken String? // Token da instância
   uazapiInstanceName  String? // Nome da instância
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model PixelEvent {
@@ -249,29 +248,29 @@ model PixelEvent {
 }
 
 model GoogleBusinessConfig {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apiKey        String   // Google Cloud API Key (Places API)
-  placeId       String   // Google Place ID do negócio
-  whatsappMsg   String?  // Mensagem personalizada do botão WhatsApp
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKey      String // Google Cloud API Key (Places API)
+  placeId     String // Google Place ID do negócio
+  whatsappMsg String? // Mensagem personalizada do botão WhatsApp
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Alert {
-  id          String   @id @default(cuid())
-  type        String   // HIGH_FREQUENCY | LOW_CTR | BUDGET_EXHAUSTED | PAYMENT_ERROR | HIGH_CPM | LEARNING_LIMITED | CREATIVE_FATIGUE
-  severity    String   // WARNING | CRITICAL
-  message     String
-  suggestion  String
-  campaignId  String?
-  adSetId     String?
-  adId        String?
-  resolved    Boolean  @default(false)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  type       String // HIGH_FREQUENCY | LOW_CTR | BUDGET_EXHAUSTED | PAYMENT_ERROR | HIGH_CPM | LEARNING_LIMITED | CREATIVE_FATIGUE
+  severity   String // WARNING | CRITICAL
+  message    String
+  suggestion String
+  campaignId String?
+  adSetId    String?
+  adId       String?
+  resolved   Boolean  @default(false)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 
   @@index([userId, resolved])
 }
@@ -298,31 +297,31 @@ model CampaignConfig {
 }
 
 model CampaignAction {
-  id          String   @id @default(cuid())
-  type        String   // PAUSE | ACTIVATE | BUDGET_CHANGE | BID_CHANGE | STRATEGY_CHANGE
-  entityType  String   // CAMPAIGN | ADSET | AD
-  entityId    String
-  entityName  String
-  before      String?
-  after       String?
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  type       String // PAUSE | ACTIVATE | BUDGET_CHANGE | BID_CHANGE | STRATEGY_CHANGE
+  entityType String // CAMPAIGN | ADSET | AD
+  entityId   String
+  entityName String
+  before     String?
+  after      String?
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 
   @@index([userId, createdAt])
 }
 
 model AdTrackingCode {
-  id             String   @id @default(cuid())
-  code           String   // ex: "REF-A1B2C3"
-  userId         String
-  campaignId     String?  // Meta campaign ID
-  campaignName   String?
-  adSetId        String?
-  adSetName      String?
-  adId           String?
-  adName         String?
-  createdAt      DateTime @default(now())
+  id           String   @id @default(cuid())
+  code         String // ex: "REF-A1B2C3"
+  userId       String
+  campaignId   String? // Meta campaign ID
+  campaignName String?
+  adSetId      String?
+  adSetName    String?
+  adId         String?
+  adName       String?
+  createdAt    DateTime @default(now())
 
   @@unique([code, userId])
   @@index([userId])
@@ -331,45 +330,45 @@ model AdTrackingCode {
 // ── Social Media Module ──────────────────────────────────────
 
 model SocialConnection {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  platform       String   // "instagram" | "facebook" | "tiktok" | "linkedin" | "pinterest" | "google_business"
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform       String // "instagram" | "facebook" | "tiktok" | "linkedin" | "pinterest" | "google_business"
   accessToken    String
   refreshToken   String?
   pageId         String?
   profileName    String?
   profilePicture String?
   tokenExpiresAt DateTime?
-  isActive       Boolean  @default(true)
-  connectedAt    DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isActive       Boolean   @default(true)
+  connectedAt    DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([userId, platform])
   @@index([userId])
 }
 
 model SocialPost {
-  id               String   @id @default(cuid())
+  id               String              @id @default(cuid())
   userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   title            String?
   caption          String?
   hashtags         String[] // array de hashtags
   mediaUrls        String[] // URLs dos assets no storage
-  mediaType        String?  // "image" | "video" | "carousel" | "reels" | "story"
+  mediaType        String? // "image" | "video" | "carousel" | "reels" | "story"
   platforms        String[] // ["instagram", "facebook", "tiktok"]
-  platformSpecific Json?    // configs específicas por plataforma
+  platformSpecific Json? // configs específicas por plataforma
   scheduledAt      DateTime?
   publishedAt      DateTime?
-  status           String   @default("draft") // "draft" | "scheduled" | "generating" | "ready" | "publishing" | "published" | "failed"
-  aiGenerated      Boolean  @default(false)
+  status           String              @default("draft") // "draft" | "scheduled" | "generating" | "ready" | "publishing" | "published" | "failed"
+  aiGenerated      Boolean             @default(false)
   aiCostEstimate   Float?
-  publishResults   Json?    // resultado de cada plataforma
-  engagementData   Json?    // métricas pós-publicação
+  publishResults   Json? // resultado de cada plataforma
+  engagementData   Json? // métricas pós-publicação
   versions         SocialPostVersion[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   @@index([userId])
   @@index([userId, status])
@@ -383,8 +382,8 @@ model SocialPostVersion {
   platform    String
   caption     String?
   mediaUrl    String?
-  aspectRatio String?    // "1:1" | "9:16" | "16:9" | "4:5"
-  specs       Json?      // dimensões, duração, etc.
+  aspectRatio String? // "1:1" | "9:16" | "16:9" | "4:5"
+  specs       Json? // dimensões, duração, etc.
   createdAt   DateTime   @default(now())
 
   @@index([postId])
@@ -393,8 +392,8 @@ model SocialPostVersion {
 model AiUsageLog {
   id           String   @id @default(cuid())
   userId       String
-  operation    String   // "caption" | "image" | "video" | "carousel"
-  provider     String   // "openai" | "replicate" | "fal"
+  operation    String // "caption" | "image" | "video" | "carousel"
+  provider     String // "openai" | "replicate" | "fal"
   model        String?
   inputTokens  Int?
   outputTokens Int?
@@ -409,7 +408,7 @@ model AiUsageLog {
 
 model Attendant {
   id              String    @id @default(cuid())
-  userId          String                         // owner user
+  userId          String // owner user
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name            String
   email           String?
@@ -417,7 +416,7 @@ model Attendant {
   role            String    @default("attendant") // "admin" | "attendant"
   isActive        Boolean   @default(true)
   avatar          String?
-  status          String    @default("offline")   // "online" | "away" | "busy" | "offline"
+  status          String    @default("offline") // "online" | "away" | "busy" | "offline"
   statusUpdatedAt DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -426,38 +425,38 @@ model Attendant {
 }
 
 model MessageTemplate {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String                         // "Saudacao", "Follow-up", "Agendamento"
-  category  String   @default("geral")     // "saudacao" | "follow_up" | "agendamento" | "promo" | "geral"
-  content   String                         // Texto com {{nome}}, {{clinica}} placeholders
-  shortcut  String?                        // "/oi", "/agenda", "/promo"
-  isActive  Boolean  @default(true)
-  usageCount   Int     @default(0)
-  responseRate Float?                        // Taxa de resposta após uso deste template
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([userId])
-  @@unique([userId, shortcut])
-}
-
-model BroadcastCampaign {
   id           String   @id @default(cuid())
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name         String
-  message      String                      // Message text (supports {{nome}} placeholder)
-  filters      Json?                       // { tags: [], scoreMin: 0, stageIds: [], source: "" }
-  totalLeads   Int      @default(0)
-  sentCount    Int      @default(0)
-  failedCount  Int      @default(0)
-  status       String   @default("draft")  // "draft" | "sending" | "completed" | "failed"
-  scheduledAt  DateTime?
-  completedAt  DateTime?
+  name         String // "Saudacao", "Follow-up", "Agendamento"
+  category     String   @default("geral") // "saudacao" | "follow_up" | "agendamento" | "promo" | "geral"
+  content      String // Texto com {{nome}}, {{clinica}} placeholders
+  shortcut     String? // "/oi", "/agenda", "/promo"
+  isActive     Boolean  @default(true)
+  usageCount   Int      @default(0)
+  responseRate Float? // Taxa de resposta após uso deste template
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@unique([userId, shortcut])
+  @@index([userId])
+}
+
+model BroadcastCampaign {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  message     String // Message text (supports {{nome}} placeholder)
+  filters     Json? // { tags: [], scoreMin: 0, stageIds: [], source: "" }
+  totalLeads  Int       @default(0)
+  sentCount   Int       @default(0)
+  failedCount Int       @default(0)
+  status      String    @default("draft") // "draft" | "sending" | "completed" | "failed"
+  scheduledAt DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([userId])
 }
@@ -468,12 +467,12 @@ model Service {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String                         // Ex: "Botox", "Limpeza de Pele"
-  description String?                        // Descricao do servico
-  price       Float    @default(0)           // Valor em R$
-  duration    Int      @default(60)          // Duracao em minutos
+  name        String // Ex: "Botox", "Limpeza de Pele"
+  description String? // Descricao do servico
+  price       Float    @default(0) // Valor em R$
+  duration    Int      @default(60) // Duracao em minutos
   isActive    Boolean  @default(true)
-  category    String?                        // Categoria do servico
+  category    String? // Categoria do servico
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -481,38 +480,38 @@ model Service {
 }
 
 model GoogleCalendar {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken     String                      // OAuth2 access token
-  refreshToken    String                      // OAuth2 refresh token
-  tokenExpiry     DateTime                    // When access token expires
-  calendarId      String   @default("primary") // Calendar ID to use
-  email           String?                     // Google account email
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken        String // OAuth2 access token
+  refreshToken       String // OAuth2 refresh token
+  tokenExpiry        DateTime // When access token expires
+  calendarId         String   @default("primary") // Calendar ID to use
+  email              String? // Google account email
   // Business hours config
-  businessHoursStart String @default("09:00") // HH:mm
-  businessHoursEnd   String @default("18:00") // HH:mm
-  workDays           Int[]  @default([1,2,3,4,5,6]) // 0=Sun, 1=Mon, ..., 6=Sat
-  timezone           String @default("America/Sao_Paulo")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  businessHoursStart String   @default("09:00") // HH:mm
+  businessHoursEnd   String   @default("18:00") // HH:mm
+  workDays           Int[]    @default([1, 2, 3, 4, 5, 6]) // 0=Sun, 1=Mon, ..., 6=Sat
+  timezone           String   @default("America/Sao_Paulo")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 model Workflow {
-  id          String   @id @default(cuid())
+  id          String              @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   description String?
-  isActive    Boolean  @default(true)
-  trigger     Json     // { type: "new_lead" | "stage_change" | "inactivity" | "tag_added" | "score_change", config: {} }
-  canvas      Json?    // { nodes: WorkflowNode[], edges: WorkflowEdge[] } — visual canvas data
+  isActive    Boolean             @default(true)
+  trigger     Json // { type: "new_lead" | "stage_change" | "inactivity" | "tag_added" | "score_change", config: {} }
+  canvas      Json? // { nodes: WorkflowNode[], edges: WorkflowEdge[] } — visual canvas data
   steps       WorkflowStep[]
   executions  WorkflowExecution[]
   // Sprint 7: versionamento de canvas
   versions    WorkflowVersion[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
   @@index([userId])
   @@index([userId, isActive])
@@ -523,38 +522,38 @@ model WorkflowVersion {
   id         String   @id @default(cuid())
   workflowId String
   workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  version    Int                          // Número incremental da versão
-  canvas     Json?                        // Snapshot do canvas no momento do save
-  steps      Json?                        // Snapshot dos steps em formato JSON
-  label      String?                      // Ex: "Antes de adicionar delay 24h"
-  createdBy  String?                      // userId de quem salvou (auditoria)
+  version    Int // Número incremental da versão
+  canvas     Json? // Snapshot do canvas no momento do save
+  steps      Json? // Snapshot dos steps em formato JSON
+  label      String? // Ex: "Antes de adicionar delay 24h"
+  createdBy  String? // userId de quem salvou (auditoria)
   createdAt  DateTime @default(now())
 
-  @@index([workflowId])
   @@unique([workflowId, version])
+  @@index([workflowId])
 }
 
 model WorkflowStep {
-  id          String   @id @default(cuid())
-  workflowId  String
-  workflow    Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  order       Int
-  type        String   // "condition" | "action" | "delay"
-  config      Json     // depends on type — see WorkflowEngine
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  order      Int
+  type       String // "condition" | "action" | "delay"
+  config     Json // depends on type — see WorkflowEngine
+  createdAt  DateTime @default(now())
 
   @@index([workflowId])
 }
 
 model WorkflowExecution {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   workflowId  String
   workflow    Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   leadId      String
-  status      String   @default("running") // "running" | "completed" | "failed" | "skipped"
-  currentStep Int      @default(0)
-  logs        Json?    // [{ step, action, result, timestamp }]
-  startedAt   DateTime @default(now())
+  status      String    @default("running") // "running" | "completed" | "failed" | "skipped"
+  currentStep Int       @default(0)
+  logs        Json? // [{ step, action, result, timestamp }]
+  startedAt   DateTime  @default(now())
   completedAt DateTime?
 
   @@index([workflowId])
@@ -562,163 +561,51 @@ model WorkflowExecution {
   @@index([status])
 }
 
-// ── Agentes de IA (Multi-Agent System) ───────────────────────
-
-model AIAgentChat {
-  id        String   @id @default(cuid())
-  userId    String
-  agentType String   // "strategist" | "creative" | "commercial" | "analyst" | "retention"
-  title     String?
-  messages  Json     @default("[]") // [{ role, content, timestamp }]
-  feedback  String?  // "approved" | "rejected" | "edited"
-  metadata  Json?    // context data the agent used
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([userId, agentType])
-}
-
-// ── Agentes Autônomos (Autonomous Multi-Agent System) ───────
-// Extensão do AIAgentChat: enquanto aquele é conversacional (usuário pergunta, agente responde),
-// este roda sozinho, analisa dados, toma decisões e executa ações.
-
-model AutonomousAgent {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type          String   // "commercial" | "strategist" | "analyst" | "retention" | "creative"
-  name          String   // Nome visível (ex: "Agente de Vendas")
-  isActive      Boolean  @default(true)
-  // Nível de autonomia
-  autonomyLevel String   @default("full") // "full" (executa) | "assisted" (pede aprovação) | "suggest" (só recomenda)
-  // Agendamento
-  schedule      String?  // cron expression (null = só event-driven ou manual)
-  lastRunAt     DateTime?
-  nextRunAt     DateTime?
-  // Configuração específica do agente (thresholds, preferências)
-  config        Json     @default("{}")
-  // Estatísticas agregadas
-  totalRuns     Int      @default(0)
-  totalActions  Int      @default(0)
-  totalReports  Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  executions AutonomousAgentExecution[]
-  actions    AutonomousAgentAction[]
-  reports    AutonomousAgentReport[]
-
-  @@unique([userId, type])
-  @@index([userId, isActive])
-}
-
-model AutonomousAgentExecution {
-  id          String   @id @default(cuid())
-  agentId     String
-  agent       AutonomousAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  status      String   @default("running") // "running" | "completed" | "failed"
-  trigger     String   // "scheduled" | "manual" | "event"
-  triggeredBy String?  // event name ou userId (audit)
-  summary     String?  // resumo curto do que foi feito
-  metrics     Json     @default("{}") // métricas coletadas (leads analisados, ações tomadas, etc)
-  error       String?  // mensagem de erro se falhou
-  startedAt   DateTime @default(now())
-  completedAt DateTime?
-
-  actions AutonomousAgentAction[]
-  reports AutonomousAgentReport[]
-
-  @@index([agentId, startedAt])
-  @@index([status])
-}
-
-model AutonomousAgentAction {
-  id           String   @id @default(cuid())
-  agentId      String
-  agent        AutonomousAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  executionId  String?
-  execution    AutonomousAgentExecution? @relation(fields: [executionId], references: [id], onDelete: SetNull)
-  type         String   // "send_message" | "move_stage" | "add_tag" | "pause_campaign" | "change_budget" | ...
-  targetType   String   // "lead" | "campaign" | "post" | "stage"
-  targetId     String
-  targetName   String?
-  reasoning    String   // Por que o agente tomou essa ação (explicabilidade)
-  payload      Json     // Dados da ação (ex: { message: "...", toStage: "..." })
-  status       String   @default("executed") // "executed" | "failed" | "reverted" | "pending_approval"
-  errorMessage String?
-  executedAt   DateTime @default(now())
-
-  @@index([agentId, executedAt])
-  @@index([targetType, targetId])
-  @@index([status])
-}
-
-model AutonomousAgentReport {
-  id          String   @id @default(cuid())
-  agentId     String
-  agent       AutonomousAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  executionId String?
-  execution   AutonomousAgentExecution? @relation(fields: [executionId], references: [id], onDelete: SetNull)
-  type        String   // "daily" | "weekly" | "alert" | "insight"
-  title       String
-  summary     String   // Markdown curto
-  details     Json     // Dados estruturados (charts, tabelas, recomendações)
-  severity    String   @default("info") // "info" | "warning" | "critical"
-  isRead      Boolean  @default(false)
-  isPinned    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-
-  @@index([agentId, createdAt])
-  @@index([agentId, isRead])
-  @@index([severity])
-}
-
 // ── WhatsApp Campaigns (com anti-ban) ────────────────────────
 
 model WhatsAppCampaign {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name            String
-  type            String   @default("custom")
-  status          String   @default("draft")
-  baseMessage     String
-  variations      Json     @default("[]")
-  filters         Json?
-  antiBanConfig   Json?
-  riskScore       String?
-  totalLeads      Int      @default(0)
-  sentCount       Int      @default(0)
-  deliveredCount  Int      @default(0)
-  readCount       Int      @default(0)
-  repliedCount    Int      @default(0)
-  optOutCount     Int      @default(0)
-  leadsConverted  Int      @default(0)
-  scheduledAt     DateTime?
-  startedAt       DateTime?
-  completedAt     DateTime?
-  messages        WACampaignMessage[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String              @id @default(cuid())
+  userId         String
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  type           String              @default("custom")
+  status         String              @default("draft")
+  baseMessage    String
+  variations     Json                @default("[]")
+  filters        Json?
+  antiBanConfig  Json?
+  riskScore      String?
+  totalLeads     Int                 @default(0)
+  sentCount      Int                 @default(0)
+  deliveredCount Int                 @default(0)
+  readCount      Int                 @default(0)
+  repliedCount   Int                 @default(0)
+  optOutCount    Int                 @default(0)
+  leadsConverted Int                 @default(0)
+  scheduledAt    DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  messages       WACampaignMessage[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
   @@index([userId])
   @@index([userId, status])
 }
 
 model WACampaignMessage {
-  id              String           @id @default(cuid())
-  campaignId      String
-  campaign        WhatsAppCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  leadId          String
-  variationIndex  Int              @default(0)
-  messageText     String
-  status          String           @default("queued")
-  sentAt          DateTime?
-  deliveredAt     DateTime?
-  readAt          DateTime?
-  repliedAt       DateTime?
-  optedOut        Boolean          @default(false)
+  id             String           @id @default(cuid())
+  campaignId     String
+  campaign       WhatsAppCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  leadId         String
+  variationIndex Int              @default(0)
+  messageText    String
+  status         String           @default("queued")
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  repliedAt      DateTime?
+  optedOut       Boolean          @default(false)
 
   @@index([campaignId, status])
 }
@@ -726,19 +613,19 @@ model WACampaignMessage {
 // ── White-Label (Agency) ─────────────────────────────────────
 
 model Agency {
-  id            String   @id @default(cuid())
-  name          String
-  subdomain     String   @unique // ex: "minha-agencia"
-  customDomain  String?          // ex: "app.minhaagencia.com.br"
-  logoUrl       String?
-  faviconUrl    String?
-  primaryColor  String   @default("#4f46e5") // Indigo-600
-  secondaryColor String  @default("#7c3aed") // Violet-600
-  productName   String   @default("Sanas Pulse")  // Nome do produto white-label
-  supportEmail  String?
-  users         User[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  subdomain      String   @unique // ex: "minha-agencia"
+  customDomain   String? // ex: "app.minhaagencia.com.br"
+  logoUrl        String?
+  faviconUrl     String?
+  primaryColor   String   @default("#4f46e5") // Indigo-600
+  secondaryColor String   @default("#7c3aed") // Violet-600
+  productName    String   @default("Sanas Pulse") // Nome do produto white-label
+  supportEmail   String?
+  users          User[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([subdomain])
 }
@@ -749,16 +636,15 @@ model Notification {
   id         String   @id @default(cuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type       String   // "new_lead" | "lead_stuck" | "cpl_alert" | "lead_replied" | "workflow_error" | "broadcast_done" | "score_change"
+  type       String // "new_lead" | "lead_stuck" | "cpl_alert" | "lead_replied" | "workflow_error" | "broadcast_done" | "score_change"
   title      String
   message    String
   read       Boolean  @default(false)
-  entityId   String?  // ID do recurso relacionado
-  entityType String?  // "lead" | "alert" | "workflow" | "broadcast" | "post"
-  actionUrl  String?  // Link direto para o contexto
+  entityId   String? // ID do recurso relacionado
+  entityType String? // "lead" | "alert" | "workflow" | "broadcast" | "post"
+  actionUrl  String? // Link direto para o contexto
   createdAt  DateTime @default(now())
 
   @@index([userId, read])
   @@index([userId, createdAt])
 }
-

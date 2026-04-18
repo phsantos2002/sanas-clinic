@@ -124,7 +124,6 @@ export function IntelligentDashboard({ data }: { data: { alerts: DashboardAlert[
           <div className="grid grid-cols-2 gap-2">
             {[
               { label: "Perguntar a IA", href: "/dashboard/chat/assistant", icon: Bot, color: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100" },
-              { label: "Criar Post", href: "/dashboard/posts", icon: PenTool, color: "bg-violet-50 text-violet-700 hover:bg-violet-100" },
               { label: "Ver Pipeline", href: "/dashboard/pipeline", icon: Users, color: "bg-blue-50 text-blue-700 hover:bg-blue-100" },
               { label: "Broadcast", href: "/dashboard/chat/broadcast", icon: Megaphone, color: "bg-amber-50 text-amber-700 hover:bg-amber-100" },
             ].map((action) => (
