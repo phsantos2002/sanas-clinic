@@ -1,41 +1,45 @@
 import { redirect } from "next/navigation";
-import { getDashboardStats } from "@/app/actions/leads";
-import { getDashboardIntelligence } from "@/app/actions/dashboard";
 import { isOnboardingComplete } from "@/app/actions/onboarding";
 import { hasTutorialBeenSeen } from "@/app/actions/tutorial";
-import { DashboardOverviewClient } from "@/components/dashboard/DashboardOverviewClient";
-import { IntelligentDashboard } from "@/components/dashboard/IntelligentDashboard";
-import { DailyBrief } from "@/components/dashboard/DailyBrief";
-import { TodaysTasks } from "@/components/dashboard/TodaysTasks";
-import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
-import { HealthScore } from "@/components/dashboard/HealthScore";
+import { getUpcomingMeetings } from "@/app/actions/overview";
+import { getSDRMetrics } from "@/app/actions/sdrDashboard";
+import { UpcomingMeetings } from "@/components/dashboard/UpcomingMeetings";
+import { TeamPerformanceMini } from "@/components/dashboard/TeamPerformanceMini";
+import { DashboardChat } from "@/components/dashboard/DashboardChat";
 import { TutorialGate } from "@/components/onboarding/TutorialGate";
 
 export default async function OverviewPage() {
   const onboarded = await isOnboardingComplete();
   if (!onboarded) redirect("/dashboard/onboarding");
 
-  const [stats, intelligence, tutorialSeen] = await Promise.all([
-    getDashboardStats(),
-    getDashboardIntelligence(),
+  const [meetings, metrics, tutorialSeen] = await Promise.all([
+    getUpcomingMeetings(),
+    getSDRMetrics(),
     hasTutorialBeenSeen(),
   ]);
 
+  const today = new Date().toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  });
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <TutorialGate shouldShow={!tutorialSeen} />
-      <DailyBrief />
-      {intelligence && <IntelligentDashboard data={intelligence} />}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
-          <TodaysTasks />
-          <ActivityFeed />
-        </div>
-        <div>
-          <HealthScore />
-        </div>
+
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Hoje</h1>
+        <p className="text-sm text-slate-500 mt-0.5 capitalize">{today}</p>
       </div>
-      <DashboardOverviewClient initialStats={stats} />
+
+      {/* Grid: 3 colunas — Reuniões | Performance | Chat */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <UpcomingMeetings meetings={meetings} />
+        <TeamPerformanceMini metrics={metrics} />
+        <DashboardChat />
+      </div>
     </div>
   );
 }
