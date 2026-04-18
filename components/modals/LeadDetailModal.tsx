@@ -26,10 +26,13 @@ import {
   MapPin,
   StickyNote,
   User,
+  Sparkles,
 } from "lucide-react";
 import { SourceIcon, sourceConfig, getStageColor } from "@/components/icons/SourceIcons";
 import { getLeadDetail, deleteLead } from "@/app/actions/leads";
+import { enrichLeadAction } from "@/app/actions/enrichment";
 import { EditLeadModal } from "./EditLeadModal";
+import { LeadActivityTimeline } from "./LeadActivityTimeline";
 import { toast } from "sonner";
 import type { LeadDetail } from "@/types";
 import type { Stage } from "@/types";
@@ -300,6 +303,17 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
 
               <Separator />
 
+              {/* Section 4.5: Timeline de atividades */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-indigo-500" />
+                  Histórico de atividades
+                </h4>
+                <LeadActivityTimeline leadId={lead.id} />
+              </div>
+
+              <Separator />
+
               {/* Section 5: Últimas Mensagens */}
               <div className="space-y-1">
                 <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
@@ -337,7 +351,7 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   className="flex-1 rounded-xl"
@@ -348,6 +362,25 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
                 >
                   <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
                   Abrir Chat
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={async () => {
+                    toast.info("Consultando enriquecimento...");
+                    const r = await enrichLeadAction(lead.id);
+                    if (!r.success) { toast.error(r.error); return; }
+                    const { updated, provider } = r.data!;
+                    if (updated.length) {
+                      toast.success(`Enriquecido via ${provider}: ${updated.join(", ")}`);
+                    } else {
+                      toast(`${provider} não retornou dados novos`);
+                    }
+                  }}
+                >
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                  Enriquecer
                 </Button>
                 <Button
                   size="sm"

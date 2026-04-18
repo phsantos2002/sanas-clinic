@@ -146,7 +146,7 @@ export function OnboardingClient() {
               <label className="text-sm font-medium text-slate-700 mb-2 block">Qual o nome do seu negocio?</label>
               <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && businessName.trim() && setStep(1)}
-                placeholder="Ex: Clinica Renova, Barbearia do Joao..."
+                placeholder="Ex: Consultório Silva, Loja Moderna, Software XYZ..."
                 className="w-full border border-slate-200 rounded-xl px-4 py-3.5 text-base bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
                 autoFocus />
             </div>

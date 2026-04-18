@@ -100,6 +100,10 @@ model AIConfig {
   businessProfile    Json? // { name, niche, city, services, avgTicket, differentials }
   // ── Automation Toggles ──
   automations        Json? // { whatsappWelcome, followUp24h, confirmAgendamento, reactivation30d, nps7d, weeklySuggestions, autoPublish, collectComments, aiReplies, autoLikeComments, cplAlert, frequencyAlert, capiEvents, dailyScoring, stuckLeadAlert }
+  // ── Enriquecimento outbound (Apollo / Hunter) ──
+  enrichmentProvider String?  @default("none") // "none" | "apollo" | "hunter"
+  apolloApiKey       String? // chave Apollo.io
+  hunterApiKey       String? // chave Hunter.io
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -159,6 +163,7 @@ model Lead {
   metaCampaignId     String? // campaign_id numérico da Meta
   pixelEvents        PixelEvent[]
   workflowExecutions WorkflowExecution[]
+  activities         LeadActivity[]
   // ── Lead Scoring & Tags ──
   score              Int                @default(0) // 0-100
   scoreLabel         String? // "frio" | "morno" | "quente" | "vip"
@@ -576,6 +581,26 @@ model WorkflowExecution {
   @@index([workflowId])
   @@index([leadId])
   @@index([status])
+}
+
+// ── Lead Activity Timeline ───────────────────────────────────
+// Registra eventos estruturados por lead (alem de mensagens) para dar
+// contexto de historico ao SDR/Closer na LeadDetailModal.
+
+model LeadActivity {
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId     String // owner
+  type       String // "stage_change" | "assignment" | "tag_added" | "tag_removed" | "cadence_enrolled" | "cadence_stopped" | "email_sent" | "email_opened" | "note" | "enrichment" | "import"
+  summary    String // texto curto para a timeline
+  metadata   Json? // dados estruturados (stageFromId, attendantId, cadenceId, etc)
+  actorType  String   @default("system") // "system" | "user" | "ai"
+  actorName  String? // nome do usuario/atendente (auditoria)
+  createdAt  DateTime @default(now())
+
+  @@index([leadId, createdAt])
+  @@index([userId, type])
 }
 
 // ── Email Tracking (cold email via Resend) ───────────────────

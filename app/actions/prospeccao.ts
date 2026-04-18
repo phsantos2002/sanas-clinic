@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
 import { normalizePhone } from "@/lib/validations";
 import { ATTENDANT_ROLES, type AttendantRole } from "@/lib/prospeccao";
+import { logLeadActivity } from "@/services/leadActivity";
 import type { ActionResult } from "@/types";
 
 // ══════════════════════════════════════════════════════════════
@@ -98,7 +99,7 @@ export async function importLeadsBulk(data: {
     }
 
     try {
-      await prisma.lead.create({
+      const createdLead = await prisma.lead.create({
         data: {
           userId: user.id,
           name: row.name.trim(),
@@ -121,6 +122,17 @@ export async function importLeadsBulk(data: {
         },
       });
       created++;
+
+      // log activity (best effort)
+      await logLeadActivity({
+        leadId: createdLead.id,
+        userId: user.id,
+        type: "import",
+        summary: "Importado via CSV outbound",
+        metadata: { batchId, company: row.company, jobTitle: row.jobTitle },
+        actorType: "user",
+        actorName: user.name ?? user.email ?? undefined,
+      });
     } catch (err) {
       errors.push({
         row: i + 1,

@@ -24,6 +24,10 @@ type Props = {
   onClickLead?: (leadId: string) => void;
   stagnationThreshold?: number | null;
   onMoveNext?: (leadId: string) => void;
+  // Bulk selection
+  selected?: boolean;
+  onToggleSelect?: (leadId: string) => void;
+  selectionMode?: boolean;
 };
 
 function getDaysInStage(lead: Lead): number | null {
@@ -31,7 +35,15 @@ function getDaysInStage(lead: Lead): number | null {
   return Math.floor((Date.now() - new Date(lead.lastInteractionAt).getTime()) / 86400000);
 }
 
-export function LeadCard({ lead, onClickLead, stagnationThreshold, onMoveNext }: Props) {
+export function LeadCard({
+  lead,
+  onClickLead,
+  stagnationThreshold,
+  onMoveNext,
+  selected = false,
+  onToggleSelect,
+  selectionMode = false,
+}: Props) {
   const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -71,12 +83,47 @@ export function LeadCard({ lead, onClickLead, stagnationThreshold, onMoveNext }:
       ref={setNodeRef}
       style={style}
       className={`relative bg-white border rounded-xl p-3.5 shadow-sm group cursor-pointer hover:shadow-md transition-all ${
-        isStagnant
-          ? "border-amber-300 ring-1 ring-amber-200"
-          : "border-slate-100 hover:border-slate-200"
+        selected
+          ? "border-indigo-400 ring-2 ring-indigo-200"
+          : isStagnant
+            ? "border-amber-300 ring-1 ring-amber-200"
+            : "border-slate-100 hover:border-slate-200"
       }`}
-      onClick={() => onClickLead?.(lead.id)}
+      onClick={(e) => {
+        if (selectionMode && onToggleSelect) {
+          e.preventDefault();
+          onToggleSelect(lead.id);
+          return;
+        }
+        onClickLead?.(lead.id);
+      }}
     >
+      {/* Bulk select checkbox */}
+      {onToggleSelect && (
+        <div
+          className={`absolute top-2 left-2 z-10 transition-opacity ${
+            selected || selectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect(lead.id);
+          }}
+        >
+          <div
+            className={`h-4 w-4 rounded border-2 flex items-center justify-center cursor-pointer ${
+              selected
+                ? "bg-indigo-600 border-indigo-600"
+                : "bg-white border-slate-300 hover:border-indigo-400"
+            }`}
+          >
+            {selected && (
+              <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
       {/* Quick Actions on Hover (2.7) */}
       <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1 bg-white rounded-lg border border-slate-200 shadow-md opacity-0 group-hover:opacity-100 transition-all z-10 pointer-events-none group-hover:pointer-events-auto">
         <button

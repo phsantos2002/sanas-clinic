@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
+import { logLeadActivity } from "@/services/leadActivity";
 import type { ActionResult } from "@/types";
 
 // ══════════════════════════════════════════════════════════════
@@ -281,6 +282,16 @@ export async function enrollLeadsInCadence(
       },
     });
     enrolled++;
+
+    await logLeadActivity({
+      leadId,
+      userId: user.id,
+      type: "cadence_enrolled",
+      summary: `Inscrito na cadência "${cadence.name}"`,
+      metadata: { cadenceId, cadenceName: cadence.name },
+      actorType: "user",
+      actorName: user.name ?? user.email ?? undefined,
+    });
   }
 
   revalidatePath("/dashboard/prospeccao/cadencias");

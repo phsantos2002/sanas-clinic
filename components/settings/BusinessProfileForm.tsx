@@ -13,17 +13,27 @@ type BusinessProfile = {
 };
 
 const NICHES = [
-  "clinica_estetica", "clinica_odontologica", "salao_beleza", "barbearia",
-  "academia", "restaurante", "loja_roupas", "ecommerce", "servicos",
-  "saude", "educacao", "imobiliaria", "outro",
+  "b2c_servicos", "b2c_varejo", "b2c_saude", "b2c_beleza", "b2c_alimentacao",
+  "b2c_educacao", "b2c_fitness", "b2c_imobiliario",
+  "b2b_servicos", "b2b_software", "b2b_consultoria", "b2b_industria", "b2b_agencia",
+  "outro",
 ];
 
 const NICHE_LABELS: Record<string, string> = {
-  clinica_estetica: "Clinica de Estetica", clinica_odontologica: "Clinica Odontologica",
-  salao_beleza: "Salao de Beleza", barbearia: "Barbearia", academia: "Academia / Personal",
-  restaurante: "Restaurante / Food", loja_roupas: "Loja de Roupas", ecommerce: "E-commerce",
-  servicos: "Servicos em Geral", saude: "Saude / Consultorio", educacao: "Educacao / Cursos",
-  imobiliaria: "Imobiliaria", outro: "Outro",
+  b2c_servicos: "B2C — Servicos locais",
+  b2c_varejo: "B2C — Varejo / Loja",
+  b2c_saude: "B2C — Saude / Consultorio",
+  b2c_beleza: "B2C — Estetica / Beleza",
+  b2c_alimentacao: "B2C — Alimentacao",
+  b2c_educacao: "B2C — Educacao / Cursos",
+  b2c_fitness: "B2C — Fitness / Academia",
+  b2c_imobiliario: "B2C — Imobiliario",
+  b2b_servicos: "B2B — Servicos profissionais",
+  b2b_software: "B2B — Software / SaaS",
+  b2b_consultoria: "B2B — Consultoria",
+  b2b_industria: "B2B — Industria",
+  b2b_agencia: "B2B — Agencia / Marketing",
+  outro: "Outro",
 };
 
 export function BusinessProfileForm({ initial, onSave }: {
@@ -50,7 +60,7 @@ export function BusinessProfileForm({ initial, onSave }: {
       <div>
         <label className="text-sm font-medium text-slate-700 mb-1 block">Nome do negocio</label>
         <input type="text" value={profile.name || ""} onChange={(e) => update("name", e.target.value)}
-          placeholder="Ex: Clinica Sanas" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          placeholder="Ex: Consultório Silva, Loja Moderna, Software XYZ..." className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -70,7 +80,7 @@ export function BusinessProfileForm({ initial, onSave }: {
       <div>
         <label className="text-sm font-medium text-slate-700 mb-1 block">Servicos oferecidos</label>
         <textarea value={profile.services || ""} onChange={(e) => update("services", e.target.value)} rows={2}
-          placeholder="Ex: Botox, Harmonizacao Facial, Preenchimento Labial, Limpeza de Pele"
+          placeholder="Descreva o que você vende ou oferece (produtos, serviços, planos)."
           className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500" />
       </div>
       <div className="grid grid-cols-2 gap-3">

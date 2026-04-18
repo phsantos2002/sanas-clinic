@@ -21,9 +21,12 @@ type Props = {
   columns: KanbanColumnType[];
   onClickLead?: (leadId: string) => void;
   onEditLead?: (leadId: string) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (leadId: string) => void;
+  selectionMode?: boolean;
 };
 
-export function KanbanBoard({ columns: initialColumns, onClickLead, onEditLead }: Props) {
+export function KanbanBoard({ columns: initialColumns, onClickLead, onEditLead, selectedIds, onToggleSelect, selectionMode }: Props) {
   const [columns, setColumns] = useState(initialColumns);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -99,7 +102,15 @@ export function KanbanBoard({ columns: initialColumns, onClickLead, onEditLead }
     >
       <div className="flex gap-4 overflow-x-auto pb-4">
         {columns.map((column) => (
-          <KanbanColumn key={column.id} column={column} onClickLead={onClickLead} onEditLead={onEditLead} />
+          <KanbanColumn
+            key={column.id}
+            column={column}
+            onClickLead={onClickLead}
+            onEditLead={onEditLead}
+            selectedIds={selectedIds}
+            onToggleSelect={onToggleSelect}
+            selectionMode={selectionMode}
+          />
         ))}
       </div>
 

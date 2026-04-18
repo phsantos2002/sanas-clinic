@@ -36,19 +36,19 @@ const DEFAULT_STEPS: CadenceStepData[] = [
   {
     order: 0,
     type: "send_whatsapp",
-    message: "Oi {{nome}}! Vi que voce atua na {{empresa}}. Tenho algo que pode interessar. Posso te mandar em 2 linhas?",
+    message: "Oi {{nome}}! Vi o seu perfil{{empresa}} e tenho uma ideia rápida que pode te interessar. Posso mandar em 2 linhas?",
   },
   { order: 1, type: "delay", delayDays: 2, delayHours: 0 },
   {
     order: 2,
     type: "send_whatsapp",
-    message: "{{nome}}, so complementando — nosso sistema ajudou clinicas semelhantes a triplicarem o retorno de ads. Quer ver um case rapido?",
+    message: "{{nome}}, só complementando — nosso sistema já ajudou negócios parecidos com o seu a triplicar o retorno das campanhas. Quer ver um caso rápido?",
   },
   { order: 3, type: "delay", delayDays: 4, delayHours: 0 },
   {
     order: 4,
     type: "send_whatsapp",
-    message: "{{nome}}, vou parar por aqui. Se quiser conversar algum dia, me chama. Abs!",
+    message: "{{nome}}, vou parar por aqui. Se quiser conversar algum dia, é só me chamar. Abs!",
   },
 ];
 
@@ -137,7 +137,7 @@ export function CadenceBuilder({ initial }: Props) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ex: Cadência SDR — Clínicas Meta Ads"
+            placeholder="Ex: Cadência outbound — SDR B2B"
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>

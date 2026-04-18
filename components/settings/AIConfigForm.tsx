@@ -28,7 +28,7 @@ const GEMINI_MODELS = [
 
 const VOICE_CLONE_PROMPT = `Olá! Vou gravar um áudio de referência para que a IA possa clonar minha voz e responder aos clientes com naturalidade.
 
-Meu nome é [SEU NOME], sou [SUA PROFISSÃO/CARGO] na [NOME DA CLÍNICA/EMPRESA].
+Meu nome é [SEU NOME], sou [SUA PROFISSÃO/CARGO] na [NOME DO NEGÓCIO].
 
 Vou falar agora de forma natural, como se estivesse conversando com um cliente:
 
@@ -173,17 +173,17 @@ export function AIConfigForm({ config }: Props) {
         </p>
       </div>
 
-      {/* Clinic name */}
+      {/* Business name */}
       <div className="space-y-1.5">
-        <Label htmlFor="clinicName">Nome da clínica / empresa</Label>
+        <Label htmlFor="clinicName">Nome do negócio</Label>
         <Input
           id="clinicName"
           value={clinicName}
           onChange={(e) => setClinicName(e.target.value)}
-          placeholder="Sanas Pulse"
+          placeholder="Ex: Consultório Silva, Loja Moderna, Imobiliária ABC..."
         />
         <p className="text-xs text-slate-400">
-          Usado pela IA ao se apresentar e nas respostas.
+          Usado pela IA ao se apresentar nas conversas. Funciona para qualquer setor — B2C ou B2B.
         </p>
       </div>
 

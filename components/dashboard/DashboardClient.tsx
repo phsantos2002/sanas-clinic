@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { Search, Kanban, List, X, Download, SlidersHorizontal } from "lucide-react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { Search, Kanban, List, X, Download, SlidersHorizontal, CheckSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,9 @@ import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { LeadsTable } from "@/components/dashboard/LeadsTable";
 import { LeadDetailModal } from "@/components/modals/LeadDetailModal";
 import { SourceCards } from "@/components/dashboard/SourceCards";
+import { BulkActionBar } from "@/components/dashboard/BulkActionBar";
+import { getAttendants } from "@/app/actions/whatsappHub";
+import { getCadences } from "@/app/actions/cadences";
 import type { Lead, KanbanColumn, LeadSourceStats, Stage } from "@/types";
 
 type SavedFilter = {
@@ -49,6 +52,35 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>(loadSavedFilters);
   const [showSavedDropdown, setShowSavedDropdown] = useState(false);
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [attendants, setAttendants] = useState<{ id: string; name: string; role: string }[]>([]);
+  const [cadences, setCadences] = useState<{ id: string; name: string }[]>([]);
+
+  // Load bulk-action data once
+  useEffect(() => {
+    getAttendants().then((list) =>
+      setAttendants(list.map((a) => ({ id: a.id, name: a.name, role: a.role })))
+    );
+    getCadences().then((list) =>
+      setCadences(list.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name })))
+    );
+  }, []);
+
+  const toggleSelect = useCallback((leadId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(leadId)) next.delete(leadId);
+      else next.add(leadId);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  }, []);
 
   const hasActiveFilters = !!(search.trim() || sourceFilter || stageFilter || scoreFilter || tagFilter);
 
@@ -282,6 +314,21 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
           )}
         </div>
 
+        {/* Bulk selection toggle */}
+        <Button
+          variant={selectionMode ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setSelectionMode((v) => !v);
+            if (selectionMode) setSelectedIds(new Set());
+          }}
+          className={`h-9 text-sm gap-2 rounded-xl ${selectionMode ? "bg-indigo-600 hover:bg-indigo-700 text-white" : ""}`}
+          title="Seleção em massa"
+        >
+          <CheckSquare className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">{selectionMode ? "Sair" : "Selecionar"}</span>
+        </Button>
+
         {/* Export CSV */}
         <Button
           variant="outline"
@@ -323,7 +370,14 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
 
       {/* Content */}
       {view === "kanban" ? (
-        <KanbanBoard columns={filteredColumns} onClickLead={setSelectedLeadId} onEditLead={handleEditLead} />
+        <KanbanBoard
+          columns={filteredColumns}
+          onClickLead={setSelectedLeadId}
+          onEditLead={handleEditLead}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+          selectionMode={selectionMode}
+        />
       ) : (
         <LeadsTable leads={filteredLeads} onClickLead={setSelectedLeadId} onEditLead={handleEditLead} />
       )}
@@ -332,6 +386,15 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
         leadId={selectedLeadId}
         stages={stages}
         onClose={() => setSelectedLeadId(null)}
+      />
+
+      {/* Floating bulk action bar */}
+      <BulkActionBar
+        selectedIds={Array.from(selectedIds)}
+        stages={stages}
+        attendants={attendants}
+        cadences={cadences}
+        onClear={clearSelection}
       />
     </div>
   );

@@ -10,9 +10,12 @@ type Props = {
   column: KanbanColumnType;
   onClickLead?: (leadId: string) => void;
   onEditLead?: (leadId: string) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (leadId: string) => void;
+  selectionMode?: boolean;
 };
 
-export function KanbanColumn({ column, onClickLead }: Props) {
+export function KanbanColumn({ column, onClickLead, selectedIds, onToggleSelect, selectionMode }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const color = getStageColor(column.name);
 
@@ -41,7 +44,14 @@ export function KanbanColumn({ column, onClickLead }: Props) {
           strategy={verticalListSortingStrategy}
         >
           {column.leads.map((lead) => (
-            <LeadCard key={lead.id} lead={lead} onClickLead={onClickLead} />
+            <LeadCard
+              key={lead.id}
+              lead={lead}
+              onClickLead={onClickLead}
+              selected={selectedIds?.has(lead.id)}
+              onToggleSelect={onToggleSelect}
+              selectionMode={selectionMode}
+            />
           ))}
         </SortableContext>
 
