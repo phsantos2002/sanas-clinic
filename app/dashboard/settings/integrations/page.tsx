@@ -60,7 +60,7 @@ export default async function IntegrationsPage() {
         <div>
           <h2 className="text-base font-semibold text-slate-900">WhatsApp Business</h2>
           <p className="text-sm text-slate-400 mt-0.5">
-            API oficial, Uazapi ou Evolution para atendimento e automacoes
+            API oficial (Meta Cloud) ou Uazapi para atendimento e automacoes
           </p>
         </div>
         <WhatsAppConfigForm config={whatsappConfig} />

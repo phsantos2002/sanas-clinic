@@ -146,8 +146,6 @@ export function CreatePostModal({
   // Media state
   const [singleMediaUrl, setSingleMediaUrl] = useState<string | null>(null);
   const [carouselMediaUrls, setCarouselMediaUrls] = useState<string[]>([]);
-  const [addSubtitles, setAddSubtitles] = useState(false);
-  const [addMusic, setAddMusic] = useState(false);
 
   const togglePlatform = (id: string) => {
     setPlatforms((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
@@ -260,36 +258,14 @@ export function CreatePostModal({
                 hint="Arraste 2-10 imagens para o carrossel"
               />
             ) : mediaType === "reels" ? (
-              <div className="space-y-2">
-                <FileUpload
-                  mode="single"
-                  accept="video/mp4,video/quicktime,video/webm"
-                  value={singleMediaUrl}
-                  onChange={(url) => setSingleMediaUrl(url)}
-                  hint="MP4, MOV ou WebM — max 60s para Reels, 3min para Feed"
-                  maxSizeMB={100}
-                />
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={addSubtitles}
-                      onChange={(e) => setAddSubtitles(e.target.checked)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    Legendas automaticas
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={addMusic}
-                      onChange={(e) => setAddMusic(e.target.checked)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    Musica de fundo
-                  </label>
-                </div>
-              </div>
+              <FileUpload
+                mode="single"
+                accept="video/mp4,video/quicktime,video/webm"
+                value={singleMediaUrl}
+                onChange={(url) => setSingleMediaUrl(url)}
+                hint="MP4, MOV ou WebM — max 60s para Reels, 3min para Feed"
+                maxSizeMB={100}
+              />
             ) : (
               <FileUpload
                 mode="single"
