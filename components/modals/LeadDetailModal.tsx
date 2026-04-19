@@ -2,12 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +43,15 @@ const platformLabels: Record<string, string> = {
   whatsapp: "WhatsApp",
 };
 
-function InfoRow({ label, value, icon }: { label: string; value: string | null | undefined; icon?: React.ReactNode }) {
+function InfoRow({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string | null | undefined;
+  icon?: React.ReactNode;
+}) {
   if (!value) return null;
   return (
     <div className="flex items-start justify-between py-2.5 border-b border-slate-100 last:border-0">
@@ -114,9 +117,7 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
     setConfirmDelete(false);
   }
 
-  const firstMessage = lead?.messages?.length
-    ? lead.messages[lead.messages.length - 1]
-    : null;
+  const firstMessage = lead?.messages?.length ? lead.messages[lead.messages.length - 1] : null;
   const lastMessage = lead?.messages?.length ? lead.messages[0] : null;
   const lastStageChange = lead?.stageHistory?.length
     ? lead.stageHistory[lead.stageHistory.length - 1]
@@ -131,15 +132,15 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
             <DialogTitle className="text-lg">Detalhes do Lead</DialogTitle>
           </DialogHeader>
 
-          {loading && (
-            <div className="py-8 text-center text-sm text-slate-400">Carregando...</div>
-          )}
+          {loading && <div className="py-8 text-center text-sm text-slate-400">Carregando...</div>}
 
           {!loading && lead && (
             <div className="space-y-5">
               {/* Lead header card */}
               <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
-                <div className={`flex items-center justify-center w-12 h-12 rounded-xl ${config?.bg ?? "bg-orange-50"}`}>
+                <div
+                  className={`flex items-center justify-center w-12 h-12 rounded-xl ${config?.bg ?? "bg-orange-50"}`}
+                >
                   <SourceIcon source={lead.source} size={24} />
                 </div>
                 <div className="flex-1">
@@ -147,14 +148,17 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
                   <p className="text-sm text-slate-500">{lead.phone}</p>
                   {lead.email && <p className="text-xs text-slate-400">{lead.email}</p>}
                 </div>
-                {lead.stage && (() => {
-                  const stageColor = getStageColor(lead.stage.name);
-                  return (
-                    <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${stageColor.bg} ${stageColor.text}`}>
-                      {lead.stage.name}
-                    </span>
-                  );
-                })()}
+                {lead.stage &&
+                  (() => {
+                    const stageColor = getStageColor(lead.stage.name);
+                    return (
+                      <span
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold ${stageColor.bg} ${stageColor.text}`}
+                      >
+                        {lead.stage.name}
+                      </span>
+                    );
+                  })()}
               </div>
 
               {/* Section 1: Informações do Contato */}
@@ -165,10 +169,18 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
                 </h4>
                 <div className="bg-slate-50 rounded-xl p-3">
                   <InfoRow label="Nome" value={lead.name} />
-                  <InfoRow label="WhatsApp" value={lead.phone} icon={<Phone className="h-3 w-3" />} />
+                  <InfoRow
+                    label="WhatsApp"
+                    value={lead.phone}
+                    icon={<Phone className="h-3 w-3" />}
+                  />
                   <InfoRow label="Email" value={lead.email} icon={<Mail className="h-3 w-3" />} />
                   <InfoRow label="CPF" value={lead.cpf} icon={<FileText className="h-3 w-3" />} />
-                  <InfoRow label="Endereço" value={lead.address} icon={<MapPin className="h-3 w-3" />} />
+                  <InfoRow
+                    label="Endereço"
+                    value={lead.address}
+                    icon={<MapPin className="h-3 w-3" />}
+                  />
                   <InfoRow label="Cidade" value={lead.city} icon={<MapPin className="h-3 w-3" />} />
                   <InfoRow label="Origem" value={config?.label ?? "Não rastreada"} />
                   <InfoRow label="Etapa" value={lead.stage?.name ?? "Sem estágio"} />
@@ -197,9 +209,18 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
                   Informações da Conversa
                 </h4>
                 <div className="bg-slate-50 rounded-xl p-3">
-                  <InfoRow label="Primeira Mensagem" value={firstMessage ? formatDate(firstMessage.createdAt) : "—"} />
-                  <InfoRow label="Última Mensagem" value={lastMessage ? formatDate(lastMessage.createdAt) : "—"} />
-                  <InfoRow label="Última Mudança de Etapa" value={lastStageChange ? formatDate(lastStageChange.createdAt) : "—"} />
+                  <InfoRow
+                    label="Primeira Mensagem"
+                    value={firstMessage ? formatDate(firstMessage.createdAt) : "—"}
+                  />
+                  <InfoRow
+                    label="Última Mensagem"
+                    value={lastMessage ? formatDate(lastMessage.createdAt) : "—"}
+                  />
+                  <InfoRow
+                    label="Última Mudança de Etapa"
+                    value={lastStageChange ? formatDate(lastStageChange.createdAt) : "—"}
+                  />
                 </div>
               </div>
 
@@ -216,13 +237,23 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
                     {lead.source === "whatsapp"
                       ? "Lead chegou diretamente pelo WhatsApp, sem dados de campanha."
                       : lead.source === "manual"
-                      ? "Lead cadastrado manualmente."
-                      : "Nenhuma informação de rastreamento disponível."}
+                        ? "Lead cadastrado manualmente."
+                        : "Nenhuma informação de rastreamento disponível."}
                   </p>
                 ) : (
                   <div className="bg-slate-50 rounded-xl p-3">
-                    <InfoRow label="Método" value={lead.source === "meta" ? "Campanha do Meta Ads" : "Campanha do Google Ads"} />
-                    <InfoRow label="Plataforma" value={lead.platform ? (platformLabels[lead.platform] ?? lead.platform) : null} />
+                    <InfoRow
+                      label="Método"
+                      value={
+                        lead.source === "meta" ? "Campanha do Meta Ads" : "Campanha do Google Ads"
+                      }
+                    />
+                    <InfoRow
+                      label="Plataforma"
+                      value={
+                        lead.platform ? (platformLabels[lead.platform] ?? lead.platform) : null
+                      }
+                    />
                     <InfoRow label="Conta de Anúncio" value={lead.adAccountName} />
                     <InfoRow label="Campanha" value={lead.campaign} />
                     <InfoRow label="Conjunto de Anúncios" value={lead.adSetName} />
@@ -258,7 +289,10 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
                       >
                         <span className="text-slate-600">{formatDate(evt.createdAt)}</span>
                         <span className="text-slate-700 truncate">{evt.stageName}</span>
-                        <Badge variant="secondary" className="text-[10px] py-0 h-4 w-fit rounded-md">
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] py-0 h-4 w-fit rounded-md"
+                        >
                           {evt.eventName}
                         </Badge>
                         {evt.success ? (
@@ -287,8 +321,13 @@ export function LeadDetailModal({ leadId, stages = [], onClose }: Props) {
                     {lead.stageHistory.map((entry) => {
                       const sc = getStageColor(entry.stage.name);
                       return (
-                        <div key={entry.id} className="flex items-center justify-between text-xs py-1">
-                          <span className={`px-2 py-0.5 rounded-md font-semibold ${sc.bg} ${sc.text}`}>
+                        <div
+                          key={entry.id}
+                          className="flex items-center justify-between text-xs py-1"
+                        >
+                          <span
+                            className={`px-2 py-0.5 rounded-md font-semibold ${sc.bg} ${sc.text}`}
+                          >
                             {entry.stage.name}
                           </span>
                           <span className="text-slate-400">{formatDate(entry.createdAt)}</span>

@@ -64,13 +64,15 @@ export function TodaysTasks() {
                 isDone
                   ? "border-green-100 bg-green-50/50 opacity-60"
                   : task.urgencyLevel === "high"
-                  ? "border-red-100 bg-red-50/30"
-                  : "border-slate-100 hover:border-slate-200"
+                    ? "border-red-100 bg-red-50/30"
+                    : "border-slate-100 hover:border-slate-200"
               }`}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className={`text-sm font-medium truncate ${isDone ? "line-through text-slate-400" : "text-slate-800"}`}>
+                  <p
+                    className={`text-sm font-medium truncate ${isDone ? "line-through text-slate-400" : "text-slate-800"}`}
+                  >
                     {task.leadName}
                   </p>
                   <LeadScoreBadge score={task.score} label={task.scoreLabel} variant="compact" />

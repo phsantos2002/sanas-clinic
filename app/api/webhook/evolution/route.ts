@@ -153,7 +153,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (!whatsappConfig) {
-      log.error("uazapi_config_not_found", { tokenPrefix: instanceToken?.slice(0, 8), instanceName });
+      log.error("uazapi_config_not_found", {
+        tokenPrefix: instanceToken?.slice(0, 8),
+        instanceName,
+      });
       return NextResponse.json({ ok: true });
     }
 
@@ -161,14 +164,16 @@ export async function POST(req: NextRequest) {
 
     // Resolve tracking code attribution
     const refCode = extractRefCode(msgData.text);
-    let attribution: {
-      adId?: string | null;
-      adSetId?: string | null;
-      campaignId?: string | null;
-      adName?: string | null;
-      adSetName?: string | null;
-      campaignName?: string | null;
-    } | undefined;
+    let attribution:
+      | {
+          adId?: string | null;
+          adSetId?: string | null;
+          campaignId?: string | null;
+          adName?: string | null;
+          adSetName?: string | null;
+          campaignName?: string | null;
+        }
+      | undefined;
 
     if (refCode) {
       const tracking = await prisma.adTrackingCode.findFirst({
@@ -188,28 +193,30 @@ export async function POST(req: NextRequest) {
 
     // Sprint 3: enqueue for async processing — returns 200 immediately
     const capturedConfig = whatsappConfig;
-    webhookQueue.enqueue(() =>
-      processIncomingMessage({
-        userId: capturedConfig.userId,
-        phone,
-        text: msgData!.text,
-        pushName: msgData!.senderName,
-        attribution,
-        externalMessageId: msgData!.messageId,
-        sendReply: async (replyPhone, replyText) => {
-          if (capturedConfig.uazapiServerUrl && capturedConfig.uazapiInstanceToken) {
-            const res = await sendUazapiMessage(
-              capturedConfig.uazapiServerUrl!,
-              capturedConfig.uazapiInstanceToken!,
-              replyPhone,
-              replyText,
-            );
-            return { success: res.ok, error: res.ok ? undefined : res.error };
-          }
-          return { success: false, error: "Uazapi nao configurado" };
-        },
-      })
-    ).catch((err) => log.error("uazapi_queue_error", { err }));
+    webhookQueue
+      .enqueue(() =>
+        processIncomingMessage({
+          userId: capturedConfig.userId,
+          phone,
+          text: msgData!.text,
+          pushName: msgData!.senderName,
+          attribution,
+          externalMessageId: msgData!.messageId,
+          sendReply: async (replyPhone, replyText) => {
+            if (capturedConfig.uazapiServerUrl && capturedConfig.uazapiInstanceToken) {
+              const res = await sendUazapiMessage(
+                capturedConfig.uazapiServerUrl!,
+                capturedConfig.uazapiInstanceToken!,
+                replyPhone,
+                replyText
+              );
+              return { success: res.ok, error: res.ok ? undefined : res.error };
+            }
+            return { success: false, error: "Uazapi nao configurado" };
+          },
+        })
+      )
+      .catch((err) => log.error("uazapi_queue_error", { err }));
 
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -47,9 +47,7 @@ export function CreatePostModal({
   const [addMusic, setAddMusic] = useState(false);
 
   const togglePlatform = (id: string) => {
-    setPlatforms((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    );
+    setPlatforms((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   };
 
   const getMediaUrls = (): string[] => {
@@ -206,9 +204,7 @@ export function CreatePostModal({
 
           {/* Caption */}
           <div>
-            <label className="text-sm font-medium text-slate-700 mb-1 block">
-              Legenda
-            </label>
+            <label className="text-sm font-medium text-slate-700 mb-1 block">Legenda</label>
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
@@ -220,9 +216,7 @@ export function CreatePostModal({
 
           {/* Hashtags */}
           <div>
-            <label className="text-sm font-medium text-slate-700 mb-1 block">
-              Hashtags
-            </label>
+            <label className="text-sm font-medium text-slate-700 mb-1 block">Hashtags</label>
             <input
               type="text"
               value={hashtags}
@@ -234,9 +228,7 @@ export function CreatePostModal({
 
           {/* Platforms */}
           <div>
-            <label className="text-sm font-medium text-slate-700 mb-2 block">
-              Plataformas
-            </label>
+            <label className="text-sm font-medium text-slate-700 mb-2 block">Plataformas</label>
             <div className="flex flex-wrap gap-2">
               {PLATFORM_OPTIONS.map((p) => (
                 <button
@@ -257,9 +249,7 @@ export function CreatePostModal({
 
           {/* Schedule */}
           <div>
-            <label className="text-sm font-medium text-slate-700 mb-2 block">
-              Status
-            </label>
+            <label className="text-sm font-medium text-slate-700 mb-2 block">Status</label>
             <div className="flex gap-2 mb-3">
               <button
                 onClick={() => setStatus("draft")}
@@ -321,11 +311,7 @@ export function CreatePostModal({
             disabled={saving || (!title.trim() && !caption.trim())}
             className="flex-1 py-2.5 px-4 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving
-              ? "Salvando..."
-              : status === "scheduled"
-              ? "Agendar Post"
-              : "Salvar Rascunho"}
+            {saving ? "Salvando..." : status === "scheduled" ? "Agendar Post" : "Salvar Rascunho"}
           </button>
         </div>
       </div>

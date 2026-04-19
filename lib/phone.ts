@@ -29,7 +29,7 @@ export function phonesMatch(a: string, b: string): boolean {
   if (na === nb) return true;
 
   // Brasil: comparar com e sem o DDI +55
-  const stripBR = (p: string) => p.startsWith("55") && p.length >= 12 ? p.slice(2) : p;
+  const stripBR = (p: string) => (p.startsWith("55") && p.length >= 12 ? p.slice(2) : p);
   return stripBR(na) === stripBR(nb);
 }
 

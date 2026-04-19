@@ -89,13 +89,13 @@ describe("classifyError (lógica interna do apiHandler)", () => {
 
 describe("statusCodes semânticos por tipo de erro", () => {
   const cases: Array<[label: string, error: unknown, expectedStatus: number]> = [
-    ["ValidationError",    new ValidationError("x"),         400],
-    ["AuthError",          new AuthError(),                   401],
-    ["NotFoundError",      new NotFoundError("R"),            404],
-    ["RateLimitError",     new RateLimitError(),              429],
-    ["ExternalServiceError", new ExternalServiceError("S"),  502],
-    ["InternalError",      new InternalError(),               500],
-    ["Error genérico",     new Error("x"),                    500],
+    ["ValidationError", new ValidationError("x"), 400],
+    ["AuthError", new AuthError(), 401],
+    ["NotFoundError", new NotFoundError("R"), 404],
+    ["RateLimitError", new RateLimitError(), 429],
+    ["ExternalServiceError", new ExternalServiceError("S"), 502],
+    ["InternalError", new InternalError(), 500],
+    ["Error genérico", new Error("x"), 500],
   ];
 
   it.each(cases)("%s → %i", (_label: string, error: unknown, expectedStatus: number) => {

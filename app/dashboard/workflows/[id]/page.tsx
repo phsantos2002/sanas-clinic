@@ -21,7 +21,10 @@ export default async function WorkflowEditorPage({ params }: { params: Promise<{
 
   if (!workflow) redirect("/dashboard/workflows");
 
-  const canvas = (workflow.canvas as { nodes: unknown[]; edges: unknown[] }) || { nodes: [], edges: [] };
+  const canvas = (workflow.canvas as { nodes: unknown[]; edges: unknown[] }) || {
+    nodes: [],
+    edges: [],
+  };
 
   return (
     <div>

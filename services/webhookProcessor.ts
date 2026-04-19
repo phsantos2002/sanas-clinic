@@ -16,8 +16,16 @@ type AdAttribution = {
 };
 
 type SendFn = (phone: string, text: string) => Promise<{ success: boolean; error?: string }>;
-type SendMediaFn = ((phone: string, url: string, caption?: string) => Promise<{ success: boolean; error?: string }>) | null;
-type SendAudioFn = ((phone: string, audioUrl: string) => Promise<{ success: boolean; error?: string }>) | null;
+type SendMediaFn =
+  | ((
+      phone: string,
+      url: string,
+      caption?: string
+    ) => Promise<{ success: boolean; error?: string }>)
+  | null;
+type SendAudioFn =
+  | ((phone: string, audioUrl: string) => Promise<{ success: boolean; error?: string }>)
+  | null;
 type MarkUnreadFn = ((chatId: string) => Promise<void>) | null;
 
 /**
@@ -40,7 +48,20 @@ export async function processIncomingMessage(params: {
   /** Sprint 2: ID da mensagem no provider para idempotência */
   externalMessageId?: string;
 }) {
-  const { userId, phone, text, pushName, messageType, attribution, sendReply, sendMedia, sendAudio, markUnread, chatId, externalMessageId } = params;
+  const {
+    userId,
+    phone,
+    text,
+    pushName,
+    messageType,
+    attribution,
+    sendReply,
+    sendMedia,
+    sendAudio,
+    markUnread,
+    chatId,
+    externalMessageId,
+  } = params;
 
   const log = logger.child({ userId, phone: phone.slice(-4), externalMessageId });
   log.debug("webhook_processing_start", { text: text.slice(0, 50) });
@@ -52,14 +73,14 @@ export async function processIncomingMessage(params: {
   if (aiConfig) {
     const cleanPhone = normalizePhone(phone);
     if (aiConfig.whitelist && aiConfig.whitelist.length > 0) {
-      const inWhitelist = aiConfig.whitelist.some(w => phonesMatch(cleanPhone, w));
+      const inWhitelist = aiConfig.whitelist.some((w) => phonesMatch(cleanPhone, w));
       if (!inWhitelist) {
         log.info("webhook_whitelist_skip", { phone: phone.slice(-4) });
         return;
       }
     }
     if (aiConfig.blacklist && aiConfig.blacklist.length > 0) {
-      const inBlacklist = aiConfig.blacklist.some(b => phonesMatch(cleanPhone, b));
+      const inBlacklist = aiConfig.blacklist.some((b) => phonesMatch(cleanPhone, b));
       if (inBlacklist) {
         log.info("webhook_blacklist_skip", { phone: phone.slice(-4) });
         return;
@@ -97,7 +118,10 @@ export async function processIncomingMessage(params: {
   }
 
   // ── Handle unknown message types ──────────────────────────
-  if (messageType && !["text", "conversation", "extendedTextMessage"].includes(messageType.toLowerCase())) {
+  if (
+    messageType &&
+    !["text", "conversation", "extendedTextMessage"].includes(messageType.toLowerCase())
+  ) {
     if (aiConfig?.unknownTypeMsg) {
       await sendReply(phone, aiConfig.unknownTypeMsg);
     }
@@ -167,14 +191,16 @@ export async function processIncomingMessage(params: {
   // ── Cadência: parar sequências ativas se lead respondeu ──
   // Outbound sequences com stopOnReply=true são interrompidas quando o lead
   // manda qualquer mensagem — evita disparar próximos toques ao lead engajado.
-  await prisma.workflowExecution.updateMany({
-    where: {
-      leadId: lead.id,
-      status: "running",
-      workflow: { isSequence: true, stopOnReply: true, userId },
-    },
-    data: { status: "stopped", completedAt: new Date() },
-  }).catch(() => {});
+  await prisma.workflowExecution
+    .updateMany({
+      where: {
+        leadId: lead.id,
+        status: "running",
+        workflow: { isSequence: true, stopOnReply: true, userId },
+      },
+      data: { status: "stopped", completedAt: new Date() },
+    })
+    .catch(() => {});
 
   // ── Check if AI should respond ────────────────────────────
   if (!lead.aiEnabled) {
@@ -215,7 +241,11 @@ export async function processIncomingMessage(params: {
     }
   }
 
-  log.info("webhook_ai_generating", { provider: aiConfig.provider, model: aiConfig.model, leadId: lead.id });
+  log.info("webhook_ai_generating", {
+    provider: aiConfig.provider,
+    model: aiConfig.model,
+    leadId: lead.id,
+  });
 
   // ── Build context with services ───────────────────────────
   const servicesContext = await getServicesContext(userId);
@@ -225,7 +255,7 @@ export async function processIncomingMessage(params: {
   try {
     const { getCalendarContextForAI } = await import("@/services/googleCalendar");
     calendarContext = await getCalendarContextForAI(userId);
-  } catch {};
+  } catch {}
 
   const history = [
     ...lead.messages.map((m) => ({
@@ -244,17 +274,13 @@ export async function processIncomingMessage(params: {
     enrichedSystemPrompt += `\n\n${calendarContext}`;
   }
 
-  const { reply, newStageEventName } = await generateAIReply(
-    history,
-    lead.name || pushName,
-    {
-      provider: aiConfig.provider,
-      model: aiConfig.model,
-      apiKey: aiConfig.apiKey,
-      clinicName: aiConfig.clinicName,
-      systemPrompt: enrichedSystemPrompt || null,
-    }
-  );
+  const { reply, newStageEventName } = await generateAIReply(history, lead.name || pushName, {
+    provider: aiConfig.provider,
+    model: aiConfig.model,
+    apiKey: aiConfig.apiKey,
+    clinicName: aiConfig.clinicName,
+    systemPrompt: enrichedSystemPrompt || null,
+  });
 
   // ── Personalize reply ─────────────────────────────────────
   let finalReply = reply;
@@ -263,7 +289,9 @@ export async function processIncomingMessage(params: {
   }
 
   // ── Process calendar booking commands ─────────────────────
-  const bookingMatch = finalReply.match(/\[AGENDAR:\s*(.+?)\s*\|\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*\|\s*(.+?)\s*\|\s*(\d+)\s*\]/);
+  const bookingMatch = finalReply.match(
+    /\[AGENDAR:\s*(.+?)\s*\|\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*\|\s*(.+?)\s*\|\s*(\d+)\s*\]/
+  );
   if (bookingMatch) {
     try {
       const { createCalendarEvent } = await import("@/services/googleCalendar");
@@ -314,7 +342,10 @@ export async function processIncomingMessage(params: {
   if (aiConfig.sendAudio && sendAudio && finalReply.length >= (aiConfig.audioMinChars ?? 50)) {
     try {
       const { generateAudio } = await import("@/services/textToSpeech");
-      const audioBuffer = await generateAudio(finalReply, aiConfig.openaiKey || aiConfig.apiKey || "");
+      const audioBuffer = await generateAudio(
+        finalReply,
+        aiConfig.openaiKey || aiConfig.apiKey || ""
+      );
       // For now, skip audio sending if we only have buffer (need URL for Uazapi)
       const audioUrl = audioBuffer ? null : null; // TODO: upload buffer to get URL
       if (audioUrl) {
@@ -407,8 +438,8 @@ async function findLead(userId: string, phone: string) {
 
   // Secondary: try with +55 prefix variants (55XX vs XX)
   const altPhone = normalizedIncoming.startsWith("55")
-    ? normalizedIncoming.slice(2)  // strip country code
-    : `55${normalizedIncoming}`;   // add country code
+    ? normalizedIncoming.slice(2) // strip country code
+    : `55${normalizedIncoming}`; // add country code
 
   lead = await prisma.lead.findFirst({
     where: { userId, phone: altPhone },
@@ -427,7 +458,12 @@ async function findLead(userId: string, phone: string) {
   return lead;
 }
 
-async function createLead(userId: string, phone: string, pushName: string, attribution?: AdAttribution) {
+async function createLead(
+  userId: string,
+  phone: string,
+  pushName: string,
+  attribution?: AdAttribution
+) {
   const firstStage = await prisma.stage.findFirst({
     where: { userId },
     orderBy: { order: "asc" },
@@ -489,7 +525,7 @@ async function getServicesContext(userId: string): Promise<string | null> {
   if (services.length === 0) return null;
 
   const serviceList = services
-    .map(s => {
+    .map((s) => {
       const price = s.price > 0 ? `R$ ${s.price.toFixed(2)}` : "consultar";
       const dur = s.duration > 0 ? `${s.duration} min` : "";
       return `- ${s.name}: ${s.description || ""} | Valor: ${price} | Duração: ${dur}${s.category ? ` | Categoria: ${s.category}` : ""}`;

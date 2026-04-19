@@ -58,7 +58,8 @@ export async function getAdvancedFunnel(): Promise<FunnelStep[]> {
         const prevEntry = history.find((h) => h.stageId === prevStage.id);
         const currEntry = history.find((h) => h.stageId === stage.id);
         if (prevEntry && currEntry) {
-          const diff = (currEntry.createdAt.getTime() - prevEntry.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+          const diff =
+            (currEntry.createdAt.getTime() - prevEntry.createdAt.getTime()) / (1000 * 60 * 60 * 24);
           if (diff >= 0) durations.push(diff);
         }
       }
@@ -173,7 +174,9 @@ export async function getCACByChannel(): Promise<CACData[]> {
       );
       const data = await res.json();
       metaSpend = parseFloat(data.data?.[0]?.spend || "0");
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   }
 
   const leads = await prisma.lead.findMany({
@@ -209,8 +212,12 @@ export async function getCACByChannel(): Promise<CACData[]> {
         spend: data.spend,
         leads: data.leads,
         clients: data.clients,
-        costPerLead: data.leads > 0 && data.spend > 0 ? Math.round((data.spend / data.leads) * 100) / 100 : 0,
-        costPerClient: data.clients > 0 && data.spend > 0 ? Math.round((data.spend / data.clients) * 100) / 100 : 0,
+        costPerLead:
+          data.leads > 0 && data.spend > 0 ? Math.round((data.spend / data.leads) * 100) / 100 : 0,
+        costPerClient:
+          data.clients > 0 && data.spend > 0
+            ? Math.round((data.spend / data.clients) * 100) / 100
+            : 0,
         roas: data.spend > 0 ? Math.round((revenue / data.spend) * 100) / 100 : 0,
       };
     })
@@ -239,7 +246,10 @@ export async function getCohortAnalysis(): Promise<CohortRow[]> {
   });
 
   // Group leads by creation month
-  const cohorts = new Map<string, { id: string; createdAt: Date; lastInteraction: Date | null }[]>();
+  const cohorts = new Map<
+    string,
+    { id: string; createdAt: Date; lastInteraction: Date | null }[]
+  >();
 
   for (const lead of leads) {
     const key = lead.createdAt.toISOString().slice(0, 7); // "2026-01"
@@ -308,7 +318,13 @@ export async function getScoreDistribution(): Promise<ScoreDistribution> {
     _avg: { score: true },
   });
 
-  const dist: ScoreDistribution = { frio: 0, morno: 0, quente: 0, vip: 0, avgScore: Math.round(avg._avg.score || 0) };
+  const dist: ScoreDistribution = {
+    frio: 0,
+    morno: 0,
+    quente: 0,
+    vip: 0,
+    avgScore: Math.round(avg._avg.score || 0),
+  };
   for (const g of groups) {
     if (g.scoreLabel === "frio") dist.frio = g._count.id;
     else if (g.scoreLabel === "morno") dist.morno = g._count.id;
@@ -334,7 +350,8 @@ export type AIUsageReport = {
 
 export async function getAIUsageReport(days: number = 30): Promise<AIUsageReport> {
   const user = await getCurrentUser();
-  if (!user) return { totalOperations: 0, totalCostUsd: 0, byOperation: [], byProvider: [], dailyCost: [] };
+  if (!user)
+    return { totalOperations: 0, totalCostUsd: 0, byOperation: [], byProvider: [], dailyCost: [] };
 
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
@@ -402,8 +419,17 @@ export async function exportLeadsCSV(): Promise<string> {
   });
 
   const headers = [
-    "Nome", "Telefone", "Email", "Estagio", "Score", "Tags",
-    "Fonte", "Campanha", "IA Ativa", "Ultima Interacao", "Criado em",
+    "Nome",
+    "Telefone",
+    "Email",
+    "Estagio",
+    "Score",
+    "Tags",
+    "Fonte",
+    "Campanha",
+    "IA Ativa",
+    "Ultima Interacao",
+    "Criado em",
   ];
 
   const rows = leads.map((l) => [
@@ -441,15 +467,19 @@ export async function exportAnalyticsJSON(): Promise<string> {
     getAIUsageReport(),
   ]);
 
-  return JSON.stringify({
-    exportedAt: new Date().toISOString(),
-    funnel,
-    ltvBySource: ltv,
-    cacByChannel: cac,
-    cohortAnalysis: cohort,
-    scoreDistribution: scores,
-    aiUsage,
-  }, null, 2);
+  return JSON.stringify(
+    {
+      exportedAt: new Date().toISOString(),
+      funnel,
+      ltvBySource: ltv,
+      cacByChannel: cac,
+      cohortAnalysis: cohort,
+      scoreDistribution: scores,
+      aiUsage,
+    },
+    null,
+    2
+  );
 }
 
 // ── Analytics Narrative (4.5) ───────────────────────────────
@@ -462,23 +492,30 @@ export async function getAnalyticsNarrative(_force = false) {
   const monthAgo = new Date(now.getTime() - 30 * 86400000);
   const weekAgo = new Date(now.getTime() - 7 * 86400000);
 
-  const [totalLeads, weekLeads, convertedLeads, avgScore, publishedPosts, stages] = await Promise.all([
-    prisma.lead.count({ where: { userId: user.id, createdAt: { gte: monthAgo } } }),
-    prisma.lead.count({ where: { userId: user.id, createdAt: { gte: weekAgo } } }),
-    prisma.lead.count({ where: { userId: user.id, stage: { eventName: "Purchase" }, createdAt: { gte: monthAgo } } }),
-    prisma.lead.aggregate({ where: { userId: user.id }, _avg: { score: true } }),
-    prisma.socialPost.count({ where: { userId: user.id, status: "published", publishedAt: { gte: monthAgo } } }),
-    prisma.stage.findMany({
-      where: { userId: user.id },
-      include: { _count: { select: { leads: true } } },
-      orderBy: { order: "asc" },
-    }),
-  ]);
+  const [totalLeads, weekLeads, convertedLeads, avgScore, publishedPosts, stages] =
+    await Promise.all([
+      prisma.lead.count({ where: { userId: user.id, createdAt: { gte: monthAgo } } }),
+      prisma.lead.count({ where: { userId: user.id, createdAt: { gte: weekAgo } } }),
+      prisma.lead.count({
+        where: { userId: user.id, stage: { eventName: "Purchase" }, createdAt: { gte: monthAgo } },
+      }),
+      prisma.lead.aggregate({ where: { userId: user.id }, _avg: { score: true } }),
+      prisma.socialPost.count({
+        where: { userId: user.id, status: "published", publishedAt: { gte: monthAgo } },
+      }),
+      prisma.stage.findMany({
+        where: { userId: user.id },
+        include: { _count: { select: { leads: true } } },
+        orderBy: { order: "asc" },
+      }),
+    ]);
 
   const parts: string[] = [];
 
   const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : "0";
-  parts.push(`No ultimo mes, voce recebeu ${totalLeads} leads (${weekLeads} esta semana) com taxa de conversao de ${conversionRate}%.`);
+  parts.push(
+    `No ultimo mes, voce recebeu ${totalLeads} leads (${weekLeads} esta semana) com taxa de conversao de ${conversionRate}%.`
+  );
 
   const avgScoreVal = Math.round(avgScore._avg.score || 0);
   parts.push(`Score medio dos seus leads: ${avgScoreVal}/100.`);
@@ -497,7 +534,9 @@ export async function getAnalyticsNarrative(_force = false) {
       }
     }
     if (maxDrop > 0) {
-      parts.push(`Maior gargalo do pipeline: de "${bottleneckFrom}" para "${bottleneckTo}" com queda de ${maxDrop} leads.`);
+      parts.push(
+        `Maior gargalo do pipeline: de "${bottleneckFrom}" para "${bottleneckTo}" com queda de ${maxDrop} leads.`
+      );
     }
   }
 

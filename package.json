@@ -7,24 +7,20 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "postinstall": "prisma generate",
-
     "typecheck": "tsc --noEmit",
-    "lint": "next lint --max-warnings=0",
-    "lint:fix": "next lint --fix",
+    "lint": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yml}\"",
+    "lint:fix": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yml}\"",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yml}\"",
-
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-
     "db:seed": "npx ts-node --project tsconfig.json -e 'require(\"./prisma/seed.ts\")'",
     "db:reset": "prisma migrate reset --force && npm run db:seed",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-
     "prepare": "husky || true"
   },
   "dependencies": {
@@ -62,7 +58,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",

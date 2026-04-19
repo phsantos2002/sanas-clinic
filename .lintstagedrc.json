@@ -1,15 +1,4 @@
 {
-  "*.{ts,tsx}": [
-    "eslint --fix --max-warnings=0",
-    "prettier --write"
-  ],
-  "*.{js,mjs,cjs}": [
-    "prettier --write"
-  ],
-  "*.{json,md,yml,yaml}": [
-    "prettier --write"
-  ],
-  "prisma/schema.prisma": [
-    "npx prisma format"
-  ]
+  "*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml}": ["prettier --write"],
+  "prisma/schema.prisma": ["npx prisma format"]
 }

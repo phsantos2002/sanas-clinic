@@ -17,7 +17,11 @@ async function publishToInstagram(
 ): Promise<PublishResult> {
   const igAccountId = await getInstagramAccountId(accessToken, pageId);
   if (!igAccountId) {
-    return { platform: "instagram", success: false, error: "Instagram account nao encontrado na Page" };
+    return {
+      platform: "instagram",
+      success: false,
+      error: "Instagram account nao encontrado na Page",
+    };
   }
 
   try {
@@ -99,10 +103,7 @@ async function publishToFacebook(
   post: { caption: string; mediaUrls: string[]; mediaType: string }
 ): Promise<PublishResult> {
   try {
-    if (
-      post.mediaType === "video" ||
-      post.mediaType === "reels"
-    ) {
+    if (post.mediaType === "video" || post.mediaType === "reels") {
       const res = await metaGraphPost(`${pageId}/videos`, accessToken, {
         file_url: post.mediaUrls[0],
         description: post.caption,
@@ -177,17 +178,14 @@ async function publishToGoogleBusiness(
       ];
     }
 
-    const res = await fetch(
-      `https://mybusiness.googleapis.com/v4/${_pageId}/localPosts`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(body),
-      }
-    );
+    const res = await fetch(`https://mybusiness.googleapis.com/v4/${_pageId}/localPosts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(body),
+    });
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -386,15 +384,9 @@ function buildCaption(caption: string | null, hashtags: string[]): string {
   return text;
 }
 
-async function getInstagramAccountId(
-  accessToken: string,
-  pageId: string
-): Promise<string | null> {
+async function getInstagramAccountId(accessToken: string, pageId: string): Promise<string | null> {
   try {
-    const data = await metaGraphGet(
-      `${pageId}?fields=instagram_business_account`,
-      accessToken
-    );
+    const data = await metaGraphGet(`${pageId}?fields=instagram_business_account`, accessToken);
     return data.instagram_business_account?.id || null;
   } catch {
     return null;
@@ -405,7 +397,7 @@ async function metaGraphPost(
   endpoint: string,
   accessToken: string,
   params: Record<string, unknown>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const url = `https://graph.facebook.com/v18.0/${endpoint}`;
   const body = new URLSearchParams();
@@ -429,7 +421,7 @@ async function metaGraphPost(
 async function metaGraphGet(
   endpoint: string,
   accessToken: string
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const url = `https://graph.facebook.com/v18.0/${endpoint}${endpoint.includes("?") ? "&" : "?"}access_token=${accessToken}`;
   const res = await fetch(url);

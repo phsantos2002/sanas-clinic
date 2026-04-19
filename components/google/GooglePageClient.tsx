@@ -2,9 +2,19 @@
 
 import { useState } from "react";
 import {
-  MapPin, Star, Clock, Phone, Store, ExternalLink,
-  MessageCircle, Globe, ChevronDown, ChevronUp,
-  AlertTriangle, Settings, ImageIcon,
+  MapPin,
+  Star,
+  Clock,
+  Phone,
+  Store,
+  ExternalLink,
+  MessageCircle,
+  Globe,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  Settings,
+  ImageIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { GoogleBusinessData } from "@/app/actions/googleBusiness";
@@ -41,14 +51,22 @@ export function GooglePageClient({ data, hasConfig, whatsappPhone, whatsappMsg }
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Coluna esquerda - Avaliações (2/3) */}
         <div className="lg:col-span-2 space-y-4">
-          <ReviewsSection reviews={data.reviews} rating={data.rating} totalReviews={data.totalReviews} />
+          <ReviewsSection
+            reviews={data.reviews}
+            rating={data.rating}
+            totalReviews={data.totalReviews}
+          />
         </div>
 
         {/* Coluna direita - Info (1/3) */}
         <div className="space-y-4">
           <BusinessInfo data={data} />
           <OpeningHours hours={data.hours} openNow={data.openNow} />
-          <WhatsAppCTA whatsappPhone={whatsappPhone} whatsappMsg={whatsappMsg} mapsUrl={data.mapsUrl} />
+          <WhatsAppCTA
+            whatsappPhone={whatsappPhone}
+            whatsappMsg={whatsappMsg}
+            mapsUrl={data.mapsUrl}
+          />
         </div>
       </div>
 
@@ -67,9 +85,7 @@ function EmptyState() {
         <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
           <Store className="h-6 w-6 text-amber-500" /> Google Meu Negócio
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Gerencie a presença da sua clínica no Google
-        </p>
+        <p className="text-sm text-slate-400 mt-1">Gerencie a presença da sua clínica no Google</p>
       </div>
       <Card className="border-slate-100 rounded-2xl">
         <CardContent className="py-12 text-center space-y-3">
@@ -78,9 +94,11 @@ function EmptyState() {
           </div>
           <p className="text-sm font-semibold text-slate-700">Conecte seu Google Meu Negócio</p>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
-            Configure a API Key e o Place ID em<br />
+            Configure a API Key e o Place ID em
+            <br />
             <span className="font-medium text-indigo-600">Configurações → Google Meu Negócio</span>
-            <br />para ver avaliações, fotos e informações do seu negócio.
+            <br />
+            para ver avaliações, fotos e informações do seu negócio.
           </p>
           <a
             href="/dashboard/settings"
@@ -114,7 +132,10 @@ function ErrorState({ error }: { error: string }) {
               <p className="text-xs text-red-600/80 mt-1 font-mono">{error}</p>
               <p className="text-xs text-red-600/60 mt-2">
                 Verifique a API Key e o Place ID em{" "}
-                <a href="/dashboard/settings" className="underline font-medium">Configurações</a>.
+                <a href="/dashboard/settings" className="underline font-medium">
+                  Configurações
+                </a>
+                .
               </p>
             </div>
           </div>
@@ -219,7 +240,9 @@ function QuickStats({ data }: { data: GoogleBusinessData }) {
       {/* Total avaliações */}
       <div className="bg-white border border-slate-100 rounded-2xl p-4">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Avaliações</p>
+          <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+            Avaliações
+          </p>
           <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
             <MessageCircle className="h-4 w-4 text-violet-600" />
           </div>
@@ -231,7 +254,9 @@ function QuickStats({ data }: { data: GoogleBusinessData }) {
       <div className="bg-white border border-slate-100 rounded-2xl p-4">
         <div className="flex items-center justify-between mb-2">
           <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Status</p>
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${data.openNow ? "bg-emerald-50" : "bg-red-50"}`}>
+          <div
+            className={`w-8 h-8 rounded-xl flex items-center justify-center ${data.openNow ? "bg-emerald-50" : "bg-red-50"}`}
+          >
             <Clock className={`h-4 w-4 ${data.openNow ? "text-emerald-600" : "text-red-500"}`} />
           </div>
         </div>
@@ -264,9 +289,7 @@ function RatingStars({ rating, size = "md" }: { rating: number; size?: "sm" | "m
         <Star
           key={i}
           className={`${starSize} ${
-            i <= Math.round(rating)
-              ? "text-amber-400 fill-amber-400"
-              : "text-slate-200"
+            i <= Math.round(rating) ? "text-amber-400 fill-amber-400" : "text-slate-200"
           }`}
         />
       ))}
@@ -347,9 +370,13 @@ function ReviewsSection({
             className="w-full flex items-center justify-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 py-2 transition-colors"
           >
             {expanded ? (
-              <>Mostrar menos <ChevronUp className="h-3 w-3" /></>
+              <>
+                Mostrar menos <ChevronUp className="h-3 w-3" />
+              </>
             ) : (
-              <>Ver todas ({reviews.length}) <ChevronDown className="h-3 w-3" /></>
+              <>
+                Ver todas ({reviews.length}) <ChevronDown className="h-3 w-3" />
+              </>
             )}
           </button>
         )}
@@ -414,12 +441,8 @@ function BusinessInfo({ data }: { data: GoogleBusinessData }) {
       <CardContent className="p-5 space-y-3">
         <h2 className="text-sm font-bold text-slate-900">Informações</h2>
 
-        {data.address && (
-          <InfoRow icon={MapPin} label="Endereço" value={data.address} />
-        )}
-        {data.phone && (
-          <InfoRow icon={Phone} label="Telefone" value={data.phone} />
-        )}
+        {data.address && <InfoRow icon={MapPin} label="Endereço" value={data.address} />}
+        {data.phone && <InfoRow icon={Phone} label="Telefone" value={data.phone} />}
         {data.website && (
           <div className="flex items-start gap-2.5">
             <Globe className="h-3.5 w-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
@@ -441,7 +464,15 @@ function BusinessInfo({ data }: { data: GoogleBusinessData }) {
   );
 }
 
-function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex items-start gap-2.5">
       <Icon className="h-3.5 w-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
@@ -472,11 +503,11 @@ function OpeningHours({ hours, openNow }: { hours: string[]; openNow: boolean | 
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900">Horários</h2>
           {openNow !== null && (
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-              openNow
-                ? "bg-emerald-50 text-emerald-600"
-                : "bg-red-50 text-red-500"
-            }`}>
+            <span
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                openNow ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"
+              }`}
+            >
               {openNow ? "Aberto agora" : "Fechado"}
             </span>
           )}
@@ -510,9 +541,13 @@ function OpeningHours({ hours, openNow }: { hours: string[]; openNow: boolean | 
           className="w-full flex items-center justify-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-700 transition-colors"
         >
           {expanded ? (
-            <>Ocultar <ChevronUp className="h-3 w-3" /></>
+            <>
+              Ocultar <ChevronUp className="h-3 w-3" />
+            </>
           ) : (
-            <>Ver todos os horários <ChevronDown className="h-3 w-3" /></>
+            <>
+              Ver todos os horários <ChevronDown className="h-3 w-3" />
+            </>
           )}
         </button>
       </CardContent>
@@ -536,8 +571,8 @@ function WhatsAppCTA({
       <CardContent className="p-5 space-y-3">
         <h2 className="text-sm font-bold text-emerald-900">Conversão WhatsApp</h2>
         <p className="text-xs text-emerald-700/70 leading-relaxed">
-          Quando clientes encontrarem você no Google, direcione para o WhatsApp.
-          Configure a mensagem padrão nas Configurações.
+          Quando clientes encontrarem você no Google, direcione para o WhatsApp. Configure a
+          mensagem padrão nas Configurações.
         </p>
         {whatsappPhone ? (
           <div className="space-y-2">
@@ -557,7 +592,9 @@ function WhatsAppCTA({
         ) : (
           <p className="text-[10px] text-emerald-600/60">
             Configure o WhatsApp Business em{" "}
-            <a href="/dashboard/settings" className="underline font-medium">Configurações</a>{" "}
+            <a href="/dashboard/settings" className="underline font-medium">
+              Configurações
+            </a>{" "}
             para gerar o link.
           </p>
         )}
@@ -597,9 +634,13 @@ function PhotosSection({ photos }: { photos: string[] }) {
             className="w-full flex items-center justify-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 py-1 transition-colors"
           >
             {showAll ? (
-              <>Mostrar menos <ChevronUp className="h-3 w-3" /></>
+              <>
+                Mostrar menos <ChevronUp className="h-3 w-3" />
+              </>
             ) : (
-              <>Ver todas as fotos ({photos.length}) <ChevronDown className="h-3 w-3" /></>
+              <>
+                Ver todas as fotos ({photos.length}) <ChevronDown className="h-3 w-3" />
+              </>
             )}
           </button>
         )}
@@ -610,10 +651,7 @@ function PhotosSection({ photos }: { photos: string[] }) {
 
 // ─── Helpers ───
 
-function estimateDistribution(
-  rating: number,
-  total: number
-): Record<number, number> {
+function estimateDistribution(rating: number, total: number): Record<number, number> {
   // Approximate distribution based on average rating
   // This is an estimate since the Places API doesn't give per-star counts
   if (total === 0) return { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };

@@ -19,7 +19,10 @@ function formatValue(value: number, format: string): string {
   return value.toLocaleString("pt-BR");
 }
 
-function getDelta(current: number, previous: number): { pct: number; direction: "up" | "down" | "same" } {
+function getDelta(
+  current: number,
+  previous: number
+): { pct: number; direction: "up" | "down" | "same" } {
   if (previous === 0) return { pct: 0, direction: "same" };
   const pct = ((current - previous) / previous) * 100;
   return { pct: Math.abs(pct), direction: pct > 1 ? "up" : pct < -1 ? "down" : "same" };
@@ -40,10 +43,15 @@ export function PeriodComparison({ metrics }: Props) {
           <div key={m.label} className="bg-white border border-slate-100 rounded-xl p-3">
             <p className="text-[11px] text-slate-400 mb-1">{m.label}</p>
             <p className="text-lg font-bold text-slate-900">{formatValue(m.current, m.format)}</p>
-            <div className={`flex items-center gap-1 mt-1 text-xs font-medium ${
-              delta.direction === "same" ? "text-slate-400" :
-              isGood ? "text-emerald-600" : "text-red-500"
-            }`}>
+            <div
+              className={`flex items-center gap-1 mt-1 text-xs font-medium ${
+                delta.direction === "same"
+                  ? "text-slate-400"
+                  : isGood
+                    ? "text-emerald-600"
+                    : "text-red-500"
+              }`}
+            >
               {delta.direction === "up" && <ArrowUp className="h-3 w-3" />}
               {delta.direction === "down" && <ArrowDown className="h-3 w-3" />}
               {delta.direction === "same" && <Minus className="h-3 w-3" />}

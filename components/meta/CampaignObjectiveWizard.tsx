@@ -2,8 +2,15 @@
 
 import { useState, useTransition } from "react";
 import {
-  MessageCircle, Globe, ShoppingBag, Instagram, FileText,
-  ArrowRight, ArrowLeft, Check, Sparkles,
+  MessageCircle,
+  Globe,
+  ShoppingBag,
+  Instagram,
+  FileText,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,11 +23,46 @@ type Props = {
 };
 
 const DESTINATIONS = [
-  { value: "WHATSAPP", label: "WhatsApp", desc: "Click-to-WhatsApp", icon: MessageCircle, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200" },
-  { value: "WEBSITE", label: "Website / Landing Page", desc: "Formulário ou checkout no site", icon: Globe, color: "text-blue-600", bg: "bg-blue-50 border-blue-200" },
-  { value: "INSTAGRAM", label: "Instagram Direct", desc: "Mensagens pelo Instagram", icon: Instagram, color: "text-pink-600", bg: "bg-pink-50 border-pink-200" },
-  { value: "FORM", label: "Formulário Nativo", desc: "Lead Ads do Facebook/Instagram", icon: FileText, color: "text-violet-600", bg: "bg-violet-50 border-violet-200" },
-  { value: "STORE", label: "Loja / E-commerce", desc: "Vendas diretas no site", icon: ShoppingBag, color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
+  {
+    value: "WHATSAPP",
+    label: "WhatsApp",
+    desc: "Click-to-WhatsApp",
+    icon: MessageCircle,
+    color: "text-emerald-600",
+    bg: "bg-emerald-50 border-emerald-200",
+  },
+  {
+    value: "WEBSITE",
+    label: "Website / Landing Page",
+    desc: "Formulário ou checkout no site",
+    icon: Globe,
+    color: "text-blue-600",
+    bg: "bg-blue-50 border-blue-200",
+  },
+  {
+    value: "INSTAGRAM",
+    label: "Instagram Direct",
+    desc: "Mensagens pelo Instagram",
+    icon: Instagram,
+    color: "text-pink-600",
+    bg: "bg-pink-50 border-pink-200",
+  },
+  {
+    value: "FORM",
+    label: "Formulário Nativo",
+    desc: "Lead Ads do Facebook/Instagram",
+    icon: FileText,
+    color: "text-violet-600",
+    bg: "bg-violet-50 border-violet-200",
+  },
+  {
+    value: "STORE",
+    label: "Loja / E-commerce",
+    desc: "Vendas diretas no site",
+    icon: ShoppingBag,
+    color: "text-amber-600",
+    bg: "bg-amber-50 border-amber-200",
+  },
 ];
 
 const OBJECTIVES = [
@@ -85,8 +127,12 @@ export function CampaignObjectiveWizard({ onComplete }: Props) {
         {step === 0 && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Para onde seus anúncios levam os leads?</h3>
-              <p className="text-xs text-slate-400 mt-1">Escolha o destino principal das suas campanhas</p>
+              <h3 className="text-sm font-bold text-slate-900">
+                Para onde seus anúncios levam os leads?
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Escolha o destino principal das suas campanhas
+              </p>
             </div>
             <div className="grid gap-2">
               {DESTINATIONS.map((d) => {
@@ -102,11 +148,17 @@ export function CampaignObjectiveWizard({ onComplete }: Props) {
                         : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                     }`}
                   >
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${selected ? "" : "bg-slate-50"}`}>
+                    <div
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center ${selected ? "" : "bg-slate-50"}`}
+                    >
                       <DIcon className={`h-4 w-4 ${selected ? d.color : "text-slate-400"}`} />
                     </div>
                     <div className="flex-1">
-                      <p className={`text-sm font-medium ${selected ? "text-slate-900" : "text-slate-700"}`}>{d.label}</p>
+                      <p
+                        className={`text-sm font-medium ${selected ? "text-slate-900" : "text-slate-700"}`}
+                      >
+                        {d.label}
+                      </p>
                       <p className="text-[11px] text-slate-400">{d.desc}</p>
                     </div>
                     {selected && (
@@ -135,8 +187,12 @@ export function CampaignObjectiveWizard({ onComplete }: Props) {
         {step === 1 && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Qual o objetivo das suas campanhas?</h3>
-              <p className="text-xs text-slate-400 mt-1">Selecione o objetivo principal configurado na Meta</p>
+              <h3 className="text-sm font-bold text-slate-900">
+                Qual o objetivo das suas campanhas?
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Selecione o objetivo principal configurado na Meta
+              </p>
             </div>
             <div className="grid gap-2">
               {OBJECTIVES.map((o) => {
@@ -152,7 +208,11 @@ export function CampaignObjectiveWizard({ onComplete }: Props) {
                     }`}
                   >
                     <div className="flex-1">
-                      <p className={`text-sm font-medium ${selected ? "text-blue-900" : "text-slate-700"}`}>{o.label}</p>
+                      <p
+                        className={`text-sm font-medium ${selected ? "text-blue-900" : "text-slate-700"}`}
+                      >
+                        {o.label}
+                      </p>
                       <p className="text-[11px] text-slate-400">{o.desc}</p>
                     </div>
                     {selected && (
@@ -165,10 +225,20 @@ export function CampaignObjectiveWizard({ onComplete }: Props) {
               })}
             </div>
             <div className="flex justify-between">
-              <Button size="sm" variant="ghost" onClick={() => setStep(0)} className="rounded-xl gap-1.5">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setStep(0)}
+                className="rounded-xl gap-1.5"
+              >
                 <ArrowLeft className="h-3 w-3" /> Voltar
               </Button>
-              <Button size="sm" onClick={() => setStep(2)} disabled={!objective} className="rounded-xl gap-1.5">
+              <Button
+                size="sm"
+                onClick={() => setStep(2)}
+                disabled={!objective}
+                className="rounded-xl gap-1.5"
+              >
                 Próximo <ArrowRight className="h-3 w-3" />
               </Button>
             </div>
@@ -179,11 +249,17 @@ export function CampaignObjectiveWizard({ onComplete }: Props) {
         {step === 2 && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Qual sua verba mensal em anúncios?</h3>
-              <p className="text-xs text-slate-400 mt-1">Opcional — usaremos para alertas de orçamento</p>
+              <h3 className="text-sm font-bold text-slate-900">
+                Qual sua verba mensal em anúncios?
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Opcional — usaremos para alertas de orçamento
+              </p>
             </div>
             <div className="relative max-w-xs">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">R$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">
+                R$
+              </span>
               <Input
                 type="number"
                 placeholder="Ex: 3000"
@@ -198,7 +274,12 @@ export function CampaignObjectiveWizard({ onComplete }: Props) {
               Você pode alterar depois em Configurações. Se não souber, deixe em branco.
             </p>
             <div className="flex justify-between">
-              <Button size="sm" variant="ghost" onClick={() => setStep(1)} className="rounded-xl gap-1.5">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setStep(1)}
+                className="rounded-xl gap-1.5"
+              >
                 <ArrowLeft className="h-3 w-3" /> Voltar
               </Button>
               <Button
@@ -207,7 +288,8 @@ export function CampaignObjectiveWizard({ onComplete }: Props) {
                 disabled={isPending || !destination || !objective}
                 className="rounded-xl gap-1.5 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700"
               >
-                {isPending ? "Salvando..." : "Concluir"} {!isPending && <Check className="h-3 w-3" />}
+                {isPending ? "Salvando..." : "Concluir"}{" "}
+                {!isPending && <Check className="h-3 w-3" />}
               </Button>
             </div>
           </div>

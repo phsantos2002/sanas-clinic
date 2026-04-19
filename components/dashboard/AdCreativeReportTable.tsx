@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 import {
-  TrendingUp, TrendingDown, Activity, Pause, Sparkles,
-  ChevronDown, ChevronUp, Image,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Pause,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Image,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AdCreativeRow, CreativeHealthStatus } from "@/app/actions/analytics";
@@ -12,18 +18,51 @@ type Props = {
   creatives: AdCreativeRow[];
 };
 
-const healthConfig: Record<CreativeHealthStatus, {
-  label: string;
-  color: string;
-  bg: string;
-  icon: typeof TrendingUp;
-  tip: string;
-}> = {
-  performing: { label: "Performando", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: TrendingUp, tip: "Bom desempenho" },
-  saturating: { label: "Saturando", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: Activity, tip: "Prepare substituto" },
-  declining: { label: "Declinando", color: "text-red-700", bg: "bg-red-50 border-red-200", icon: TrendingDown, tip: "Considere pausar" },
-  paused: { label: "Pausado", color: "text-slate-500", bg: "bg-slate-50 border-slate-200", icon: Pause, tip: "Inativo" },
-  new: { label: "Novo", color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: Sparkles, tip: "Aguarde dados" },
+const healthConfig: Record<
+  CreativeHealthStatus,
+  {
+    label: string;
+    color: string;
+    bg: string;
+    icon: typeof TrendingUp;
+    tip: string;
+  }
+> = {
+  performing: {
+    label: "Performando",
+    color: "text-emerald-700",
+    bg: "bg-emerald-50 border-emerald-200",
+    icon: TrendingUp,
+    tip: "Bom desempenho",
+  },
+  saturating: {
+    label: "Saturando",
+    color: "text-amber-700",
+    bg: "bg-amber-50 border-amber-200",
+    icon: Activity,
+    tip: "Prepare substituto",
+  },
+  declining: {
+    label: "Declinando",
+    color: "text-red-700",
+    bg: "bg-red-50 border-red-200",
+    icon: TrendingDown,
+    tip: "Considere pausar",
+  },
+  paused: {
+    label: "Pausado",
+    color: "text-slate-500",
+    bg: "bg-slate-50 border-slate-200",
+    icon: Pause,
+    tip: "Inativo",
+  },
+  new: {
+    label: "Novo",
+    color: "text-blue-700",
+    bg: "bg-blue-50 border-blue-200",
+    icon: Sparkles,
+    tip: "Aguarde dados",
+  },
 };
 
 function fmt(n: number, dec = 2) {
@@ -45,9 +84,8 @@ export function AdCreativeReportTable({ creatives }: Props) {
     return null;
   }
 
-  const filtered = filterHealth === "all"
-    ? creatives
-    : creatives.filter((c) => c.health === filterHealth);
+  const filtered =
+    filterHealth === "all" ? creatives : creatives.filter((c) => c.health === filterHealth);
 
   const sorted = [...filtered].sort((a, b) => {
     const diff = (a[sortKey] as number) - (b[sortKey] as number);
@@ -56,14 +94,19 @@ export function AdCreativeReportTable({ creatives }: Props) {
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDesc(!sortDesc);
-    else { setSortKey(key); setSortDesc(true); }
+    else {
+      setSortKey(key);
+      setSortDesc(true);
+    }
   }
 
   const SortIcon = ({ col }: { col: SortKey }) => {
     if (sortKey !== col) return null;
-    return sortDesc
-      ? <ChevronDown className="h-3 w-3 inline ml-0.5" />
-      : <ChevronUp className="h-3 w-3 inline ml-0.5" />;
+    return sortDesc ? (
+      <ChevronDown className="h-3 w-3 inline ml-0.5" />
+    ) : (
+      <ChevronUp className="h-3 w-3 inline ml-0.5" />
+    );
   };
 
   // Summary stats
@@ -71,12 +114,13 @@ export function AdCreativeReportTable({ creatives }: Props) {
   const saturatingCreatives = creatives.filter((c) => c.health === "saturating").length;
   const decliningCreatives = creatives.filter((c) => c.health === "declining").length;
 
-  const healthFilters: Array<{ key: CreativeHealthStatus | "all"; label: string; count: number }> = [
-    { key: "all", label: "Todos", count: creatives.length },
-    { key: "performing", label: "Performando", count: activeCreatives },
-    { key: "saturating", label: "Saturando", count: saturatingCreatives },
-    { key: "declining", label: "Declinando", count: decliningCreatives },
-  ];
+  const healthFilters: Array<{ key: CreativeHealthStatus | "all"; label: string; count: number }> =
+    [
+      { key: "all", label: "Todos", count: creatives.length },
+      { key: "performing", label: "Performando", count: activeCreatives },
+      { key: "saturating", label: "Saturando", count: saturatingCreatives },
+      { key: "declining", label: "Declinando", count: decliningCreatives },
+    ];
 
   return (
     <Card className="border-slate-100 rounded-2xl shadow-sm">
@@ -153,7 +197,10 @@ export function AdCreativeReportTable({ creatives }: Props) {
                 const hCfg = healthConfig[ad.health];
                 const HIcon = hCfg.icon;
                 return (
-                  <tr key={ad.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <tr
+                    key={ad.id}
+                    className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                  >
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
                         {ad.thumbnailUrl ? (
@@ -174,31 +221,62 @@ export function AdCreativeReportTable({ creatives }: Props) {
                       </div>
                     </td>
                     <td className="px-3 py-3">
-                      <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium ${hCfg.bg} ${hCfg.color}`} title={hCfg.tip}>
+                      <span
+                        className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium ${hCfg.bg} ${hCfg.color}`}
+                        title={hCfg.tip}
+                      >
                         <HIcon className="h-3 w-3" />
                         {hCfg.label}
                       </span>
                     </td>
-                    <td className="text-right px-3 py-3 font-medium text-slate-800">{fmtBrl(ad.spend)}</td>
-                    <td className="text-right px-3 py-3 text-slate-600">{ad.impressions.toLocaleString("pt-BR")}</td>
-                    <td className={`text-right px-3 py-3 font-medium ${
-                      ad.ctr >= 1.5 ? "text-emerald-600" : ad.ctr >= 0.5 ? "text-amber-600" : "text-red-500"
-                    }`}>
+                    <td className="text-right px-3 py-3 font-medium text-slate-800">
+                      {fmtBrl(ad.spend)}
+                    </td>
+                    <td className="text-right px-3 py-3 text-slate-600">
+                      {ad.impressions.toLocaleString("pt-BR")}
+                    </td>
+                    <td
+                      className={`text-right px-3 py-3 font-medium ${
+                        ad.ctr >= 1.5
+                          ? "text-emerald-600"
+                          : ad.ctr >= 0.5
+                            ? "text-amber-600"
+                            : "text-red-500"
+                      }`}
+                    >
                       {fmt(ad.ctr)}%
                     </td>
-                    <td className={`text-right px-3 py-3 font-medium ${
-                      ad.cpm <= 20 ? "text-emerald-600" : ad.cpm <= 50 ? "text-amber-600" : "text-red-500"
-                    }`}>
+                    <td
+                      className={`text-right px-3 py-3 font-medium ${
+                        ad.cpm <= 20
+                          ? "text-emerald-600"
+                          : ad.cpm <= 50
+                            ? "text-amber-600"
+                            : "text-red-500"
+                      }`}
+                    >
                       {fmtBrl(ad.cpm)}
                     </td>
-                    <td className={`text-right px-3 py-3 font-medium ${
-                      ad.cpc <= 2 ? "text-emerald-600" : ad.cpc <= 5 ? "text-amber-600" : "text-red-500"
-                    }`}>
+                    <td
+                      className={`text-right px-3 py-3 font-medium ${
+                        ad.cpc <= 2
+                          ? "text-emerald-600"
+                          : ad.cpc <= 5
+                            ? "text-amber-600"
+                            : "text-red-500"
+                      }`}
+                    >
                       {fmtBrl(ad.cpc)}
                     </td>
-                    <td className={`text-right px-3 py-3 font-medium ${
-                      ad.frequency >= 4 ? "text-red-500" : ad.frequency >= 2.5 ? "text-amber-600" : "text-slate-600"
-                    }`}>
+                    <td
+                      className={`text-right px-3 py-3 font-medium ${
+                        ad.frequency >= 4
+                          ? "text-red-500"
+                          : ad.frequency >= 2.5
+                            ? "text-amber-600"
+                            : "text-slate-600"
+                      }`}
+                    >
                       {fmt(ad.frequency, 1)}x
                     </td>
                   </tr>
@@ -208,7 +286,9 @@ export function AdCreativeReportTable({ creatives }: Props) {
           </table>
         </div>
         {sorted.length === 0 && (
-          <p className="text-sm text-slate-400 text-center py-6">Nenhum criativo encontrado com esse filtro.</p>
+          <p className="text-sm text-slate-400 text-center py-6">
+            Nenhum criativo encontrado com esse filtro.
+          </p>
         )}
       </CardContent>
     </Card>

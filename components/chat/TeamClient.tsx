@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Users, Trash2, UserCircle, Target } from "lucide-react";
 import { toast } from "sonner";
 import { createAttendant, deleteAttendant, type AttendantData } from "@/app/actions/whatsappHub";
-import {
-  updateAttendantRole,
-  updateAttendantActivityGoal,
-} from "@/app/actions/prospeccao";
+import { updateAttendantRole, updateAttendantActivityGoal } from "@/app/actions/prospeccao";
 import { ATTENDANT_ROLES, type AttendantRole } from "@/lib/prospeccao";
 
 const ROLE_COLORS: Record<string, string> = {
@@ -140,7 +137,9 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
                         </div>
                         <span
                           className={`text-[10px] px-2 py-0.5 rounded-full ${
-                            att.isActive ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
+                            att.isActive
+                              ? "bg-green-100 text-green-700"
+                              : "bg-slate-100 text-slate-500"
                           }`}
                         >
                           {att.isActive ? "Ativo" : "Inativo"}
@@ -154,7 +153,9 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
                           </label>
                           <select
                             value={att.role}
-                            onChange={(e) => handleRoleChange(att.id, e.target.value as AttendantRole)}
+                            onChange={(e) =>
+                              handleRoleChange(att.id, e.target.value as AttendantRole)
+                            }
                             className={`w-full text-xs font-medium rounded-lg px-2 py-1 border-0 ${ROLE_COLORS[att.role] || ROLE_COLORS.attendant}`}
                           >
                             {ATTENDANT_ROLES.map((r) => (

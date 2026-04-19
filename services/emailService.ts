@@ -52,14 +52,16 @@ export async function sendCadenceEmail(args: SendArgs): Promise<SendResult> {
   const messageText = renderTemplate(args.message);
 
   // Create tracking record
-  const tracking = await prisma.emailTracking.create({
-    data: {
-      leadId: args.lead.id,
-      userId: args.userId,
-      subject,
-      status: "queued",
-    },
-  }).catch(() => null);
+  const tracking = await prisma.emailTracking
+    .create({
+      data: {
+        leadId: args.lead.id,
+        userId: args.userId,
+        subject,
+        status: "queued",
+      },
+    })
+    .catch(() => null);
 
   const trackingId = tracking?.id;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sanas-clinic-l235.vercel.app";
@@ -87,29 +89,35 @@ export async function sendCadenceEmail(args: SendArgs): Promise<SendResult> {
 
     if (!res.ok) {
       if (trackingId) {
-        await prisma.emailTracking.update({
-          where: { id: trackingId },
-          data: { status: "failed", errorMessage: data.message || `HTTP ${res.status}` },
-        }).catch(() => {});
+        await prisma.emailTracking
+          .update({
+            where: { id: trackingId },
+            data: { status: "failed", errorMessage: data.message || `HTTP ${res.status}` },
+          })
+          .catch(() => {});
       }
       return { ok: false, error: data.message || `HTTP ${res.status}` };
     }
 
     if (trackingId) {
-      await prisma.emailTracking.update({
-        where: { id: trackingId },
-        data: { status: "sent", providerId: data.id, sentAt: new Date() },
-      }).catch(() => {});
+      await prisma.emailTracking
+        .update({
+          where: { id: trackingId },
+          data: { status: "sent", providerId: data.id, sentAt: new Date() },
+        })
+        .catch(() => {});
     }
 
     return { ok: true, providerId: data.id };
   } catch (error) {
     const msg = error instanceof Error ? error.message : "erro desconhecido";
     if (trackingId) {
-      await prisma.emailTracking.update({
-        where: { id: trackingId },
-        data: { status: "failed", errorMessage: msg },
-      }).catch(() => {});
+      await prisma.emailTracking
+        .update({
+          where: { id: trackingId },
+          data: { status: "failed", errorMessage: msg },
+        })
+        .catch(() => {});
     }
     return { ok: false, error: msg };
   }
@@ -118,7 +126,10 @@ export async function sendCadenceEmail(args: SendArgs): Promise<SendResult> {
 function buildHtml(text: string, pixelUrl: string | null): string {
   const body = text
     .split(/\n\n+/)
-    .map((para) => `<p style="margin: 0 0 16px 0; line-height: 1.5;">${escape(para).replace(/\n/g, "<br/>")}</p>`)
+    .map(
+      (para) =>
+        `<p style="margin: 0 0 16px 0; line-height: 1.5;">${escape(para).replace(/\n/g, "<br/>")}</p>`
+    )
     .join("");
 
   const pixel = pixelUrl

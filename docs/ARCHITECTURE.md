@@ -115,6 +115,7 @@ Todos os modelos têm `userId` como chave de isolamento. Não existe tenant glob
 O campo `userId` é indexado em todas as queries de lista.
 
 Proteção via:
+
 - `getCurrentUser()` em Server Actions (Supabase Auth session)
 - `ensureOwnership(model, resourceId)` para operações em recursos específicos
 - Row-level validation explícita (`pixel.userId === userId`) em rotas públicas
@@ -123,12 +124,12 @@ Proteção via:
 
 In-memory, sliding window. Resets em redeploy.
 
-| Contexto | Limite | Chave |
-|----------|--------|-------|
-| AI generation | 20 req/min | `ai:{userId}` |
-| Lead capture API | 120 req/min | `leads:{ip}` |
-| Webhook | 300 req/min | (sem RL — gerenciado pela queue) |
-| General API | 60 req/min | configurável |
+| Contexto         | Limite      | Chave                            |
+| ---------------- | ----------- | -------------------------------- |
+| AI generation    | 20 req/min  | `ai:{userId}`                    |
+| Lead capture API | 120 req/min | `leads:{ip}`                     |
+| Webhook          | 300 req/min | (sem RL — gerenciado pela queue) |
+| General API      | 60 req/min  | configurável                     |
 
 Para produção com escala, trocar store `Map` por Vercel KV ou Upstash Redis.
 
@@ -136,10 +137,10 @@ Para produção com escala, trocar store `Map` por Vercel KV ou Upstash Redis.
 
 In-process queue com concorrência controlada e retry exponencial.
 
-| Queue | Concorrência | Retries | Backoff |
-|-------|-------------|---------|---------|
-| webhook | 5 | 3 | 1s base |
-| ai | 3 | 2 | 2s base |
+| Queue   | Concorrência | Retries | Backoff |
+| ------- | ------------ | ------- | ------- |
+| webhook | 5            | 3       | 1s base |
+| ai      | 3            | 2       | 2s base |
 
 Para escala horizontal, substituir `enqueue()` por BullMQ (Redis) ou QStash (HTTP).
 
@@ -149,6 +150,7 @@ Cada save de workflow gera um `WorkflowVersion` com snapshot do canvas+steps.
 Versões são imutáveis. Rollback cria uma nova versão apontando para o snapshot antigo.
 
 Schema:
+
 ```
 WorkflowVersion {
   id, workflowId, version (auto-increment por workflow),
@@ -166,6 +168,7 @@ WorkflowVersion {
 ## Error Handling
 
 Hierarquia `AppError` em `lib/errors.ts`:
+
 - `ValidationError` (400) — input inválido
 - `AuthError` (401) — não autenticado
 - `ForbiddenError` (403) — sem permissão

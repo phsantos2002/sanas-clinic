@@ -25,10 +25,7 @@ export function validateCronAuth(req: NextRequest): NextResponse | null {
       path: new URL(req.url).pathname,
       msg: "CRON_SECRET não configurado — cron bloqueado por segurança",
     });
-    return NextResponse.json(
-      { error: "Cron secret not configured" },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: "Cron secret not configured" }, { status: 401 });
   }
 
   const authHeader = req.headers.get("authorization");

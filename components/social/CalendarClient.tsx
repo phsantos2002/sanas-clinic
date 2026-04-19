@@ -18,8 +18,18 @@ import { CreatePostModal } from "./CreatePostModal";
 
 const WEEKDAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
 const MONTH_NAMES = [
-  "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
-  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+  "Janeiro",
+  "Fevereiro",
+  "Marco",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
 ];
 
 const MEDIA_ICONS: Record<string, typeof Image> = {
@@ -197,9 +207,7 @@ export function CalendarClient({
                     {day}
                   </span>
                   {dayPosts.length > 0 && (
-                    <span className="text-[10px] text-slate-400">
-                      {dayPosts.length}
-                    </span>
+                    <span className="text-[10px] text-slate-400">{dayPosts.length}</span>
                   )}
                 </div>
 
@@ -300,7 +308,6 @@ export function CalendarClient({
           onCreated={handlePostCreated}
         />
       )}
-
     </div>
   );
 }

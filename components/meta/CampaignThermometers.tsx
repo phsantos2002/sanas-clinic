@@ -20,8 +20,8 @@ export function CampaignThermometers({ campaign, config }: Props) {
   );
   const objective = config?.campaignObjective ?? null;
   const bidStrategy = config?.bidStrategy ?? "LOWEST_COST";
-  const frequency = campaign.impressions > 0 && campaign.reach > 0
-    ? campaign.impressions / campaign.reach : 0;
+  const frequency =
+    campaign.impressions > 0 && campaign.reach > 0 ? campaign.impressions / campaign.reach : 0;
 
   const ctrStatus = getMetricStatus("ctr", campaign.ctr, benchmark);
   const cpmStatus = getMetricStatus("cpm", campaign.cpm, benchmark);
@@ -88,7 +88,12 @@ export function CampaignThermometers({ campaign, config }: Props) {
 
 // ─── Strategy-specific indicator strip ───
 
-function StrategyIndicator({ bidStrategy, campaign, config, benchmark }: {
+function StrategyIndicator({
+  bidStrategy,
+  campaign,
+  config,
+  benchmark,
+}: {
   bidStrategy: string;
   campaign: MetaCampaignFull;
   config: CampaignConfig | null;
@@ -100,12 +105,18 @@ function StrategyIndicator({ bidStrategy, campaign, config, benchmark }: {
 
   switch (bidStrategy) {
     case "COST_CAP": {
-      if (!maxCost || maxCost <= 0) return (
-        <Hint text="Configure o Custo Máximo por Resultado para ver indicadores de Cost Cap." color="blue" />
-      );
+      if (!maxCost || maxCost <= 0)
+        return (
+          <Hint
+            text="Configure o Custo Máximo por Resultado para ver indicadores de Cost Cap."
+            color="blue"
+          />
+        );
       const overCap = campaign.cpc > maxCost;
       return (
-        <div className={`p-3 rounded-xl border text-xs ${overCap ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
+        <div
+          className={`p-3 rounded-xl border text-xs ${overCap ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}
+        >
           <p className="font-semibold">
             Cost Cap: {fmtBrl(maxCost)} | CPC real: {fmtBrl(campaign.cpc)}
           </p>
@@ -141,9 +152,11 @@ function StrategyIndicator({ bidStrategy, campaign, config, benchmark }: {
           {bidValue && bidValue > 0 && (
             <p className="text-[10px] text-slate-600">
               Seu lance: <strong>{fmtBrl(bidValue)}</strong>
-              {bidValue < sugMin ? " — muito baixo, risco de entrega limitada" :
-               bidValue > sugMax ? " — acima do recomendado" :
-               " — dentro da faixa ideal"}
+              {bidValue < sugMin
+                ? " — muito baixo, risco de entrega limitada"
+                : bidValue > sugMax
+                  ? " — acima do recomendado"
+                  : " — dentro da faixa ideal"}
             </p>
           )}
         </div>
@@ -160,20 +173,31 @@ function StrategyIndicator({ bidStrategy, campaign, config, benchmark }: {
       const currentRoas = spend > 0 && avgValue > 0 ? estRevenue / spend : 0;
       const roasOk = targetRoas > 0 && currentRoas >= targetRoas;
 
-      if (targetRoas <= 0 && avgValue <= 0) return (
-        <Hint text="Configure o ROAS Mínimo e o Valor por Conversão para ver indicadores de ROAS." color="amber" />
-      );
+      if (targetRoas <= 0 && avgValue <= 0)
+        return (
+          <Hint
+            text="Configure o ROAS Mínimo e o Valor por Conversão para ver indicadores de ROAS."
+            color="amber"
+          />
+        );
 
       return (
-        <div className={`p-3 rounded-xl border text-xs ${roasOk ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}>
+        <div
+          className={`p-3 rounded-xl border text-xs ${roasOk ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}
+        >
           <p className="font-semibold">
             ROAS Meta: {fmt(targetRoas, 1)}x
             {avgValue > 0 && <> | Valor/conversão: {fmtBrl(avgValue)}</>}
           </p>
           {avgValue > 0 && spend > 0 && (
             <p className="text-[10px] text-slate-600 mt-0.5">
-              ROAS estimado: <strong className={roasOk ? "text-emerald-600" : "text-amber-600"}>{fmt(currentRoas, 1)}x</strong>
-              {roasOk ? " — acima da meta" : " — abaixo da meta, otimize criativos ou aumente o valor médio"}
+              ROAS estimado:{" "}
+              <strong className={roasOk ? "text-emerald-600" : "text-amber-600"}>
+                {fmt(currentRoas, 1)}x
+              </strong>
+              {roasOk
+                ? " — acima da meta"
+                : " — abaixo da meta, otimize criativos ou aumente o valor médio"}
             </p>
           )}
         </div>
@@ -185,8 +209,8 @@ function StrategyIndicator({ bidStrategy, campaign, config, benchmark }: {
         <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
           <p className="font-semibold text-emerald-900">Menor Custo — Otimização automática</p>
           <p className="text-[10px] text-slate-600 mt-0.5">
-            Monitore CPM e frequência. Se o CPM subir, expanda o público.
-            Se a frequência passar de {fmt(benchmark.frequency.average, 1)}x, renove criativos.
+            Monitore CPM e frequência. Se o CPM subir, expanda o público. Se a frequência passar de{" "}
+            {fmt(benchmark.frequency.average, 1)}x, renove criativos.
           </p>
         </div>
       );
@@ -194,10 +218,9 @@ function StrategyIndicator({ bidStrategy, campaign, config, benchmark }: {
 }
 
 function Hint({ text, color }: { text: string; color: "blue" | "amber" }) {
-  const cls = color === "blue"
-    ? "bg-blue-50 border-blue-200 text-blue-700"
-    : "bg-amber-50 border-amber-200 text-amber-700";
-  return (
-    <div className={`p-2 rounded-xl border text-[10px] ${cls}`}>{text}</div>
-  );
+  const cls =
+    color === "blue"
+      ? "bg-blue-50 border-blue-200 text-blue-700"
+      : "bg-amber-50 border-amber-200 text-amber-700";
+  return <div className={`p-2 rounded-xl border text-[10px] ${cls}`}>{text}</div>;
 }

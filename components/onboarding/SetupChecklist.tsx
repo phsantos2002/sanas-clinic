@@ -21,7 +21,11 @@ export function SetupChecklist() {
 
   useEffect(() => {
     const wasDismissed = localStorage.getItem("sanas-checklist-dismissed");
-    if (wasDismissed) { setDismissed(true); setLoading(false); return; }
+    if (wasDismissed) {
+      setDismissed(true);
+      setLoading(false);
+      return;
+    }
 
     getChecklistProgress().then((data) => {
       setItems(data || []);
@@ -54,18 +58,29 @@ export function SetupChecklist() {
           </div>
           <div className="flex items-center gap-1">
             <button
-              onClick={(e) => { e.stopPropagation(); setDismissed(true); localStorage.setItem("sanas-checklist-dismissed", "true"); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setDismissed(true);
+                localStorage.setItem("sanas-checklist-dismissed", "true");
+              }}
               className="p-1 text-slate-400 hover:text-slate-600 rounded"
             >
               <X className="h-3.5 w-3.5" />
             </button>
-            {collapsed ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+            {collapsed ? (
+              <ChevronUp className="h-4 w-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-slate-400" />
+            )}
           </div>
         </div>
 
         {/* Progress bar */}
         <div className="h-1 bg-slate-100">
-          <div className="h-full bg-indigo-500 transition-all" style={{ width: `${(completed / total) * 100}%` }} />
+          <div
+            className="h-full bg-indigo-500 transition-all"
+            style={{ width: `${(completed / total) * 100}%` }}
+          />
         </div>
 
         {/* Items */}
@@ -85,7 +100,9 @@ export function SetupChecklist() {
                   <Circle className="h-4 w-4 text-slate-300 shrink-0 mt-0.5" />
                 )}
                 <div>
-                  <p className={`text-xs font-medium ${item.completed ? "text-slate-400 line-through" : "text-slate-700"}`}>
+                  <p
+                    className={`text-xs font-medium ${item.completed ? "text-slate-400 line-through" : "text-slate-700"}`}
+                  >
                     {item.label}
                   </p>
                   <p className="text-[10px] text-slate-400">{item.description}</p>

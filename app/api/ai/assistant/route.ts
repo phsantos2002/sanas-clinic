@@ -11,7 +11,8 @@ const anthropic = new Anthropic();
 const tools: Anthropic.Tool[] = [
   {
     name: "get_pipeline_summary",
-    description: "Retorna resumo do pipeline: total de leads por stage, leads quentes, leads sem resposta",
+    description:
+      "Retorna resumo do pipeline: total de leads por stage, leads quentes, leads sem resposta",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
@@ -20,7 +21,11 @@ const tools: Anthropic.Tool[] = [
     input_schema: {
       type: "object" as const,
       properties: {
-        status: { type: "string", description: "Filtro: 'hot' (score>50), 'cold' (score<25), 'stuck' (sem interacao 3+ dias), 'all'" },
+        status: {
+          type: "string",
+          description:
+            "Filtro: 'hot' (score>50), 'cold' (score<25), 'stuck' (sem interacao 3+ dias), 'all'",
+        },
         limit: { type: "number", description: "Quantidade maxima (default 10)" },
       },
       required: [],
@@ -68,7 +73,9 @@ const tools: Anthropic.Tool[] = [
     description: "Busca anuncios de concorrentes no Meta Ad Library",
     input_schema: {
       type: "object" as const,
-      properties: { search_terms: { type: "string", description: "Termos de busca (ex: botox, harmonizacao)" } },
+      properties: {
+        search_terms: { type: "string", description: "Termos de busca (ex: botox, harmonizacao)" },
+      },
       required: ["search_terms"],
     },
   },
@@ -102,7 +109,11 @@ const tools: Anthropic.Tool[] = [
 
 // ── Tool execution ───────────────────────────────────────────
 
-async function executeTool(toolName: string, input: Record<string, unknown>, userId: string): Promise<string> {
+async function executeTool(
+  toolName: string,
+  input: Record<string, unknown>,
+  userId: string
+): Promise<string> {
   switch (toolName) {
     case "get_pipeline_summary": {
       const stages = await prisma.stage.findMany({
@@ -113,10 +124,18 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
       const totalLeads = await prisma.lead.count({ where: { userId } });
       const hotLeads = await prisma.lead.count({ where: { userId, score: { gte: 50 } } });
       const stuck = await prisma.lead.count({
-        where: { userId, lastInteractionAt: { lt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) }, stage: { eventName: { not: "Purchase" } } },
+        where: {
+          userId,
+          lastInteractionAt: { lt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
+          stage: { eventName: { not: "Purchase" } },
+        },
       });
       const unanswered = await prisma.lead.count({
-        where: { userId, lastInteractionAt: { lt: new Date(Date.now() - 6 * 60 * 60 * 1000) }, stage: { eventName: { not: "Purchase" } } },
+        where: {
+          userId,
+          lastInteractionAt: { lt: new Date(Date.now() - 6 * 60 * 60 * 1000) },
+          stage: { eventName: { not: "Purchase" } },
+        },
       });
 
       return JSON.stringify({
@@ -129,7 +148,7 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
     }
 
     case "get_leads": {
-      const status = input.status as string || "all";
+      const status = (input.status as string) || "all";
       const limit = (input.limit as number) || 10;
       const where: Record<string, unknown> = { userId };
 
@@ -142,21 +161,40 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
 
       const leads = await prisma.lead.findMany({
         where,
-        select: { name: true, phone: true, score: true, scoreLabel: true, source: true, tags: true, lastInteractionAt: true, stage: { select: { name: true } } },
+        select: {
+          name: true,
+          phone: true,
+          score: true,
+          scoreLabel: true,
+          source: true,
+          tags: true,
+          lastInteractionAt: true,
+          stage: { select: { name: true } },
+        },
         orderBy: { score: "desc" },
         take: limit,
       });
 
-      return JSON.stringify(leads.map((l) => ({
-        nome: l.name, telefone: l.phone, score: l.score, label: l.scoreLabel,
-        fonte: l.source, estagio: l.stage?.name, tags: l.tags,
-        diasSemInteracao: l.lastInteractionAt ? Math.floor((Date.now() - l.lastInteractionAt.getTime()) / 86400000) : null,
-      })));
+      return JSON.stringify(
+        leads.map((l) => ({
+          nome: l.name,
+          telefone: l.phone,
+          score: l.score,
+          label: l.scoreLabel,
+          fonte: l.source,
+          estagio: l.stage?.name,
+          tags: l.tags,
+          diasSemInteracao: l.lastInteractionAt
+            ? Math.floor((Date.now() - l.lastInteractionAt.getTime()) / 86400000)
+            : null,
+        }))
+      );
     }
 
     case "get_ad_performance": {
       const pixel = await prisma.pixel.findUnique({ where: { userId } });
-      if (!pixel?.adAccountId || !pixel?.metaAdsToken) return JSON.stringify({ error: "Meta Ads nao configurado" });
+      if (!pixel?.adAccountId || !pixel?.metaAdsToken)
+        return JSON.stringify({ error: "Meta Ads nao configurado" });
 
       try {
         const res = await fetch(
@@ -165,7 +203,9 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
         );
         const data = await res.json();
         const insights = data.data?.[0] || {};
-        const leads = (insights.actions || []).find((a: { action_type: string }) => a.action_type === "lead")?.value || 0;
+        const leads =
+          (insights.actions || []).find((a: { action_type: string }) => a.action_type === "lead")
+            ?.value || 0;
         const spend = parseFloat(insights.spend || "0");
 
         return JSON.stringify({
@@ -179,23 +219,36 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
           cpl: leads > 0 ? `R$ ${(spend / leads).toFixed(2)}` : "N/A",
           periodo: "ultimos 7 dias",
         });
-      } catch { return JSON.stringify({ error: "Erro ao buscar dados do Meta Ads" }); }
+      } catch {
+        return JSON.stringify({ error: "Erro ao buscar dados do Meta Ads" });
+      }
     }
 
     case "get_recent_posts": {
       const limit = (input.limit as number) || 5;
       const posts = await prisma.socialPost.findMany({
         where: { userId, status: "published" },
-        select: { title: true, caption: true, mediaType: true, platforms: true, engagementData: true, publishedAt: true },
+        select: {
+          title: true,
+          caption: true,
+          mediaType: true,
+          platforms: true,
+          engagementData: true,
+          publishedAt: true,
+        },
         orderBy: { publishedAt: "desc" },
         take: limit,
       });
 
-      return JSON.stringify(posts.map((p) => ({
-        titulo: p.title, tipo: p.mediaType, plataformas: p.platforms,
-        publicadoEm: p.publishedAt?.toISOString(),
-        engagement: p.engagementData || {},
-      })));
+      return JSON.stringify(
+        posts.map((p) => ({
+          titulo: p.title,
+          tipo: p.mediaType,
+          plataformas: p.platforms,
+          publicadoEm: p.publishedAt?.toISOString(),
+          engagement: p.engagementData || {},
+        }))
+      );
     }
 
     case "get_funnel_metrics": {
@@ -204,7 +257,12 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
       const result = [];
       for (const stage of stages) {
         const count = await prisma.lead.count({ where: { userId, stageId: stage.id } });
-        result.push({ estagio: stage.name, evento: stage.eventName, leads: count, percentual: totalLeads > 0 ? `${Math.round((count / totalLeads) * 100)}%` : "0%" });
+        result.push({
+          estagio: stage.name,
+          evento: stage.eventName,
+          leads: count,
+          percentual: totalLeads > 0 ? `${Math.round((count / totalLeads) * 100)}%` : "0%",
+        });
       }
       return JSON.stringify({ totalLeads, funil: result });
     }
@@ -225,18 +283,27 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const [newLeads, newClients, publishedPosts] = await Promise.all([
         prisma.lead.count({ where: { userId, createdAt: { gte: weekAgo } } }),
-        prisma.lead.count({ where: { userId, stage: { eventName: "Purchase" }, createdAt: { gte: weekAgo } } }),
-        prisma.socialPost.count({ where: { userId, status: "published", publishedAt: { gte: weekAgo } } }),
+        prisma.lead.count({
+          where: { userId, stage: { eventName: "Purchase" }, createdAt: { gte: weekAgo } },
+        }),
+        prisma.socialPost.count({
+          where: { userId, status: "published", publishedAt: { gte: weekAgo } },
+        }),
       ]);
 
       return JSON.stringify({
-        leadsNovos: newLeads, vendas: newClients, postsPublicados: publishedPosts,
+        leadsNovos: newLeads,
+        vendas: newClients,
+        postsPublicados: publishedPosts,
         periodo: "ultimos 7 dias",
       });
     }
 
     case "search_competitor_ads": {
-      const pixel = await prisma.pixel.findUnique({ where: { userId }, select: { metaAdsToken: true } });
+      const pixel = await prisma.pixel.findUnique({
+        where: { userId },
+        select: { metaAdsToken: true },
+      });
       if (!pixel?.metaAdsToken) return JSON.stringify({ error: "Token Meta Ads nao configurado" });
 
       try {
@@ -245,18 +312,24 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
           { cache: "no-store" }
         );
         const data = await res.json();
-        return JSON.stringify((data.data || []).slice(0, 10).map((ad: Record<string, unknown>) => ({
-          pagina: ad.page_name, texto: ((ad.ad_creative_bodies as string[]) || [])[0]?.slice(0, 200),
-        })));
-      } catch { return JSON.stringify({ error: "Erro ao buscar Ad Library" }); }
+        return JSON.stringify(
+          (data.data || []).slice(0, 10).map((ad: Record<string, unknown>) => ({
+            pagina: ad.page_name,
+            texto: ((ad.ad_creative_bodies as string[]) || [])[0]?.slice(0, 200),
+          }))
+        );
+      } catch {
+        return JSON.stringify({ error: "Erro ao buscar Ad Library" });
+      }
     }
 
     case "prepare_broadcast": {
-      const filter = input.filter as string || "all";
+      const filter = (input.filter as string) || "all";
       const where: Record<string, unknown> = { userId };
       if (filter === "hot") where.score = { gte: 50 };
       if (filter === "cold") where.score = { lt: 25 };
-      if (filter === "inactive") where.lastInteractionAt = { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) };
+      if (filter === "inactive")
+        where.lastInteractionAt = { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) };
 
       const count = await prisma.lead.count({ where });
       return JSON.stringify({
@@ -271,7 +344,14 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
       const limit = (input.limit as number) || 5;
       const posts = await prisma.socialPost.findMany({
         where: { userId, status: "published" },
-        select: { title: true, caption: true, mediaType: true, platforms: true, engagementData: true, publishedAt: true },
+        select: {
+          title: true,
+          caption: true,
+          mediaType: true,
+          platforms: true,
+          engagementData: true,
+          publishedAt: true,
+        },
         orderBy: { publishedAt: "desc" },
         take: 20,
       });
@@ -283,10 +363,14 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
         })
         .sort((a, b) => b.totalEng - a.totalEng)
         .slice(0, limit);
-      return JSON.stringify(sorted.map((p) => ({
-        titulo: p.title, tipo: p.mediaType, engagement: p.totalEng,
-        publicadoEm: p.publishedAt?.toISOString(),
-      })));
+      return JSON.stringify(
+        sorted.map((p) => ({
+          titulo: p.title,
+          tipo: p.mediaType,
+          engagement: p.totalEng,
+          publicadoEm: p.publishedAt?.toISOString(),
+        }))
+      );
     }
 
     case "get_scheduled_posts": {
@@ -296,10 +380,14 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
         orderBy: { scheduledAt: "asc" },
         take: 10,
       });
-      return JSON.stringify(posts.map((p) => ({
-        titulo: p.title, tipo: p.mediaType, plataformas: p.platforms,
-        agendadoPara: p.scheduledAt?.toISOString(),
-      })));
+      return JSON.stringify(
+        posts.map((p) => ({
+          titulo: p.title,
+          tipo: p.mediaType,
+          plataformas: p.platforms,
+          agendadoPara: p.scheduledAt?.toISOString(),
+        }))
+      );
     }
 
     default:
@@ -311,17 +399,23 @@ async function executeTool(toolName: string, input: Record<string, unknown>, use
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
 
   const rl = rateLimit(`assistant:${user.id}`, RATE_LIMITS.ai);
   if (!rl.allowed) return NextResponse.json({ error: "Muitas requisicoes" }, { status: 429 });
 
   const { message, history } = await req.json();
-  if (!message?.trim()) return NextResponse.json({ error: "Mensagem obrigatoria" }, { status: 400 });
+  if (!message?.trim())
+    return NextResponse.json({ error: "Mensagem obrigatoria" }, { status: 400 });
 
   // Get user context
-  const dbUser = await prisma.user.findUnique({ where: { email: user.email! }, include: { aiConfig: true } });
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email! },
+    include: { aiConfig: true },
+  });
   if (!dbUser) return NextResponse.json({ error: "Usuario nao encontrado" }, { status: 404 });
 
   const config = dbUser.aiConfig;
@@ -357,11 +451,17 @@ REGRAS:
 
     // Process tool calls iteratively
     while (response.stop_reason === "tool_use") {
-      const toolBlocks = response.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
+      const toolBlocks = response.content.filter(
+        (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+      );
       const toolResults: Anthropic.ToolResultBlockParam[] = [];
 
       for (const block of toolBlocks) {
-        const result = await executeTool(block.name, block.input as Record<string, unknown>, dbUser.id);
+        const result = await executeTool(
+          block.name,
+          block.input as Record<string, unknown>,
+          dbUser.id
+        );
         toolResults.push({ type: "tool_result", tool_use_id: block.id, content: result });
       }
 
@@ -381,17 +481,19 @@ REGRAS:
     const reply = textContent?.text || "Desculpe, nao consegui processar sua solicitacao.";
 
     // Log usage
-    await prisma.aiUsageLog.create({
-      data: {
-        userId: dbUser.id,
-        operation: "assistant",
-        provider: "anthropic",
-        model: "claude-sonnet-4-20250514",
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        costUsd: response.usage.input_tokens * 0.000003 + response.usage.output_tokens * 0.000015,
-      },
-    }).catch(() => {});
+    await prisma.aiUsageLog
+      .create({
+        data: {
+          userId: dbUser.id,
+          operation: "assistant",
+          provider: "anthropic",
+          model: "claude-sonnet-4-20250514",
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+          costUsd: response.usage.input_tokens * 0.000003 + response.usage.output_tokens * 0.000015,
+        },
+      })
+      .catch(() => {});
 
     return NextResponse.json({ reply });
   } catch (error) {

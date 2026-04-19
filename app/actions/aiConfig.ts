@@ -35,9 +35,13 @@ export async function getAIConfig(): Promise<AIConfigData | null> {
     provider: config?.provider ?? "openai",
     model: config?.model ?? "gpt-4o-mini",
     capabilities: config?.capabilities ?? "text",
-    apiKey: apiKey ? apiKey.slice(0, 4) + "•".repeat(Math.max(0, apiKey.length - 8)) + apiKey.slice(-4) : "",
+    apiKey: apiKey
+      ? apiKey.slice(0, 4) + "•".repeat(Math.max(0, apiKey.length - 8)) + apiKey.slice(-4)
+      : "",
     voiceClonePrompt: config?.voiceClonePrompt ?? "",
-    openaiKey: openaiKey ? openaiKey.slice(0, 4) + "•".repeat(Math.max(0, openaiKey.length - 8)) + openaiKey.slice(-4) : "",
+    openaiKey: openaiKey
+      ? openaiKey.slice(0, 4) + "•".repeat(Math.max(0, openaiKey.length - 8)) + openaiKey.slice(-4)
+      : "",
   };
 }
 
@@ -47,8 +51,8 @@ export async function saveAIConfig(data: AIConfigData): Promise<ActionResult> {
 
   // If keys contain mask chars (•), keep existing value
   const isMasked = (v: string) => v.includes("•");
-  const apiKey = isMasked(data.apiKey) ? undefined : (data.apiKey || null);
-  const openaiKey = isMasked(data.openaiKey) ? undefined : (data.openaiKey || null);
+  const apiKey = isMasked(data.apiKey) ? undefined : data.apiKey || null;
+  const openaiKey = isMasked(data.openaiKey) ? undefined : data.openaiKey || null;
 
   try {
     await prisma.aIConfig.upsert({

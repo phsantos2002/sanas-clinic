@@ -50,7 +50,8 @@ const ALERT_RULES: AlertRule[] = [
         type: "HIGH_FREQUENCY",
         severity: highFreqAd.frequency >= 5 ? "CRITICAL" : "WARNING",
         message: `Frequência alta no anúncio "${highFreqAd.name}" (${highFreqAd.frequency.toFixed(1)}x)`,
-        suggestion: "O público está vendo o anúncio muitas vezes. Considere pausar e criar um novo criativo ou expandir o público.",
+        suggestion:
+          "O público está vendo o anúncio muitas vezes. Considere pausar e criar um novo criativo ou expandir o público.",
         campaignId: campaign.id,
         adId: highFreqAd.id,
       };
@@ -67,7 +68,8 @@ const ALERT_RULES: AlertRule[] = [
         type: "CREATIVE_FATIGUE",
         severity: "WARNING",
         message: `Criativo "${fatiguedAd.name}" está saturando (freq: ${fatiguedAd.frequency.toFixed(1)}x, CTR: ${fatiguedAd.ctr.toFixed(2)}%)`,
-        suggestion: "O criativo perdeu eficácia. Prepare um substituto com novo visual ou copy diferente.",
+        suggestion:
+          "O criativo perdeu eficácia. Prepare um substituto com novo visual ou copy diferente.",
         campaignId: campaign.id,
         adId: fatiguedAd.id,
       };
@@ -82,7 +84,8 @@ const ALERT_RULES: AlertRule[] = [
         type: "HIGH_CPM",
         severity: campaign.cpm >= 100 ? "CRITICAL" : "WARNING",
         message: `CPM alto: R$ ${campaign.cpm.toFixed(2)} (campanha "${campaign.name}")`,
-        suggestion: "CPM elevado indica público saturado ou leilão muito competitivo. Teste públicos mais amplos ou ajuste o bid cap.",
+        suggestion:
+          "CPM elevado indica público saturado ou leilão muito competitivo. Teste públicos mais amplos ou ajuste o bid cap.",
         campaignId: campaign.id,
       };
     },
@@ -96,7 +99,8 @@ const ALERT_RULES: AlertRule[] = [
         type: "LOW_CTR",
         severity: campaign.ctr < 0.2 ? "CRITICAL" : "WARNING",
         message: `CTR baixo: ${campaign.ctr.toFixed(2)}% (campanha "${campaign.name}")`,
-        suggestion: "Poucos cliques em relação às impressões. Revise os criativos, headlines e a segmentação do público.",
+        suggestion:
+          "Poucos cliques em relação às impressões. Revise os criativos, headlines e a segmentação do público.",
         campaignId: campaign.id,
       };
     },
@@ -112,7 +116,8 @@ const ALERT_RULES: AlertRule[] = [
         type: "BUDGET_EXHAUSTED",
         severity: spendRatio >= 0.95 ? "CRITICAL" : "WARNING",
         message: `Verba quase esgotada: ${(spendRatio * 100).toFixed(0)}% do orçamento mensal consumido`,
-        suggestion: "O gasto está próximo do limite mensal. Considere reduzir o orçamento diário ou pausar campanhas menos eficientes.",
+        suggestion:
+          "O gasto está próximo do limite mensal. Considere reduzir o orçamento diário ou pausar campanhas menos eficientes.",
         campaignId: campaign.id,
       };
     },
@@ -128,7 +133,8 @@ const ALERT_RULES: AlertRule[] = [
         type: "LEARNING_LIMITED",
         severity: "WARNING",
         message: `Conta em fase de aprendizado com poucos sinais de conversão`,
-        suggestion: "Evite fazer mudanças frequentes na campanha durante a fase de aprendizado. Aguarde 50+ conversões antes de otimizar.",
+        suggestion:
+          "Evite fazer mudanças frequentes na campanha durante a fase de aprendizado. Aguarde 50+ conversões antes de otimizar.",
         campaignId: campaign.id,
       };
     },
@@ -254,15 +260,17 @@ export async function resolveAlert(alertId: string): Promise<{ success: boolean 
 
 // ─── Get Alerts ───
 
-export async function getAlerts(userId: string): Promise<Array<{
-  id: string;
-  type: string;
-  severity: string;
-  message: string;
-  suggestion: string;
-  resolved: boolean;
-  createdAt: Date;
-}>> {
+export async function getAlerts(userId: string): Promise<
+  Array<{
+    id: string;
+    type: string;
+    severity: string;
+    message: string;
+    suggestion: string;
+    resolved: boolean;
+    createdAt: Date;
+  }>
+> {
   try {
     return await prisma.alert.findMany({
       where: { userId, resolved: false },

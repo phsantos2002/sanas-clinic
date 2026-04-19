@@ -4,11 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { getCadence } from "@/app/actions/cadences";
 import { CadenceBuilder } from "@/components/prospeccao/CadenceBuilder";
 
-export default async function EditCadenciaPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditCadenciaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const cadence = await getCadence(id);
   if (!cadence) notFound();
@@ -24,7 +20,9 @@ export default async function EditCadenciaPage({
 
       <div>
         <h1 className="text-xl font-bold text-slate-900">Editar Cadência</h1>
-        <p className="text-sm text-slate-500 mt-1">{cadence.enrolledCount} leads inscritos no total.</p>
+        <p className="text-sm text-slate-500 mt-1">
+          {cadence.enrolledCount} leads inscritos no total.
+        </p>
       </div>
 
       <CadenceBuilder

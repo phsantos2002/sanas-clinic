@@ -100,9 +100,9 @@ export async function saveContentGenKeys(data: {
       create: {
         userId: user.id,
         aiImageProvider: data.aiImageProvider,
-        aiImageApiKey: isMasked(data.aiImageApiKey) ? null : (data.aiImageApiKey || null),
+        aiImageApiKey: isMasked(data.aiImageApiKey) ? null : data.aiImageApiKey || null,
         aiVideoProvider: data.aiVideoProvider,
-        aiVideoApiKey: isMasked(data.aiVideoApiKey) ? null : (data.aiVideoApiKey || null),
+        aiVideoApiKey: isMasked(data.aiVideoApiKey) ? null : data.aiVideoApiKey || null,
       },
     });
 
@@ -167,7 +167,9 @@ export async function saveBusinessProfile(data: Record<string, string>): Promise
     });
     revalidatePath("/dashboard/settings");
     return { success: true };
-  } catch { return { success: false, error: "Erro ao salvar perfil" }; }
+  } catch {
+    return { success: false, error: "Erro ao salvar perfil" };
+  }
 }
 
 // ── Automations ──────────────────────────────────────────────
@@ -190,5 +192,7 @@ export async function saveAutomations(data: Record<string, boolean>): Promise<Ac
     });
     revalidatePath("/dashboard/settings");
     return { success: true };
-  } catch { return { success: false, error: "Erro ao salvar automacoes" }; }
+  } catch {
+    return { success: false, error: "Erro ao salvar automacoes" };
+  }
 }

@@ -7,11 +7,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/__tests__/**/*.test.ts", "**/*.test.ts", "**/*.spec.ts"],
-    exclude: [
-      "node_modules",
-      ".next",
-      "**/__tests__/e2e/**",
-    ],
+    exclude: ["node_modules", ".next", "**/__tests__/e2e/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
@@ -25,9 +21,9 @@ export default defineConfig({
       ],
       thresholds: {
         // Meta de cobertura mínima — aumentar a cada sprint
-        lines:     40,
+        lines: 40,
         functions: 40,
-        branches:  30,
+        branches: 30,
         statements: 40,
       },
     },

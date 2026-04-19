@@ -36,21 +36,20 @@ export function SourceCards({ stats, activeFilter, onFilter }: Props) {
             onClick={() => onFilter(isActive ? null : card.key)}
             className={`
               relative flex items-center gap-2 sm:gap-3 p-2.5 sm:p-4 rounded-2xl border-2 transition-all duration-200
-              ${isActive
-                ? `${config?.bg ?? "bg-indigo-50"} ${config?.border ?? "border-indigo-200"} shadow-md scale-[1.02]`
-                : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm"
+              ${
+                isActive
+                  ? `${config?.bg ?? "bg-indigo-50"} ${config?.border ?? "border-indigo-200"} shadow-md scale-[1.02]`
+                  : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm"
               }
             `}
           >
-            <div className={`
+            <div
+              className={`
               flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0
               ${config?.bg ?? "bg-indigo-50"}
-            `}>
-              {card.key ? (
-                <SourceIcon source={card.key} size={22} />
-              ) : (
-                <ChatBubbleIcon size={22} />
-              )}
+            `}
+            >
+              {card.key ? <SourceIcon source={card.key} size={22} /> : <ChatBubbleIcon size={22} />}
             </div>
 
             <div className="text-left min-w-0">

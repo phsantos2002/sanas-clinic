@@ -29,8 +29,10 @@ export function IntelClient() {
       focus,
     });
     setLoading(false);
-    if (res.success && res.data) { setResult(res.data); toast.success("Analise completa!"); }
-    else toast.error(res.success ? "Erro" : res.error);
+    if (res.success && res.data) {
+      setResult(res.data);
+      toast.success("Analise completa!");
+    } else toast.error(res.success ? "Erro" : res.error);
   };
 
   const copyText = (text: string, id: string) => {
@@ -45,7 +47,9 @@ export function IntelClient() {
         <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
           <Radar className="h-5 w-5 text-violet-600" /> Inteligencia de Mercado
         </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">Analise de concorrentes, gaps e oportunidades com IA</p>
+        <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          Analise de concorrentes, gaps e oportunidades com IA
+        </p>
       </div>
 
       {/* Input */}
@@ -53,15 +57,25 @@ export function IntelClient() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-medium text-slate-700 mb-1 block">Nicho / Setor</label>
-            <input type="text" value={niche} onChange={(e) => setNiche(e.target.value)}
+            <input
+              type="text"
+              value={niche}
+              onChange={(e) => setNiche(e.target.value)}
               placeholder="Ex: clinica estetica, odontologia, salao"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700 mb-1 block">Concorrentes (opcional)</label>
-            <input type="text" value={competitors} onChange={(e) => setCompetitors(e.target.value)}
+            <label className="text-sm font-medium text-slate-700 mb-1 block">
+              Concorrentes (opcional)
+            </label>
+            <input
+              type="text"
+              value={competitors}
+              onChange={(e) => setCompetitors(e.target.value)}
               placeholder="Nome1, Nome2, Nome3"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
           </div>
         </div>
         <div>
@@ -73,18 +87,34 @@ export function IntelClient() {
               { id: "content" as const, label: "Conteudo" },
               { id: "positioning" as const, label: "Posicionamento" },
             ].map((f) => (
-              <button key={f.id} onClick={() => setFocus(f.id)}
+              <button
+                key={f.id}
+                onClick={() => setFocus(f.id)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  focus === f.id ? "bg-violet-50 text-violet-700 border border-violet-200" : "bg-slate-50 text-slate-500 border border-transparent"
-                }`}>
+                  focus === f.id
+                    ? "bg-violet-50 text-violet-700 border border-violet-200"
+                    : "bg-slate-50 text-slate-500 border border-transparent"
+                }`}
+              >
                 {f.label}
               </button>
             ))}
           </div>
         </div>
-        <button onClick={handleAnalyze} disabled={loading}
-          className="w-full py-2.5 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 disabled:opacity-50 flex items-center justify-center gap-2">
-          {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Analisando...</> : <><Search className="h-4 w-4" /> Analisar Mercado</>}
+        <button
+          onClick={handleAnalyze}
+          disabled={loading}
+          className="w-full py-2.5 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Analisando...
+            </>
+          ) : (
+            <>
+              <Search className="h-4 w-4" /> Analisar Mercado
+            </>
+          )}
         </button>
       </div>
 
@@ -146,7 +176,9 @@ export function IntelClient() {
               <div className="space-y-4">
                 {result.copyVariations.map((cv, ai) => (
                   <div key={ai}>
-                    <p className="text-xs font-semibold text-indigo-600 uppercase mb-2">{cv.angle}</p>
+                    <p className="text-xs font-semibold text-indigo-600 uppercase mb-2">
+                      {cv.angle}
+                    </p>
                     <div className="space-y-2">
                       {cv.copies.map((copy, ci) => (
                         <div key={ci} className="bg-slate-50 rounded-xl p-3 flex items-start gap-2">

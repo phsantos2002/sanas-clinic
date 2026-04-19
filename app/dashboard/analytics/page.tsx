@@ -3,7 +3,13 @@ import { getLeadSourceStats } from "@/app/actions/leads";
 import { getCurrentUser } from "@/app/actions/user";
 import { listCampaignsForSelector } from "@/app/actions/meta";
 import { getAllCampaignConfigs } from "@/app/actions/pixel";
-import { getAdvancedFunnel, getLTVBySource, getCACByChannel, getScoreDistribution, getAIUsageReport } from "@/app/actions/advancedAnalytics";
+import {
+  getAdvancedFunnel,
+  getLTVBySource,
+  getCACByChannel,
+  getScoreDistribution,
+  getAIUsageReport,
+} from "@/app/actions/advancedAnalytics";
 import { prisma } from "@/lib/prisma";
 import {
   AnalyticsClient,
@@ -13,17 +19,19 @@ import {
 } from "@/components/dashboard/AnalyticsDynamic";
 
 export default async function AnalyticsPage() {
-  const [data, sourceStats, creatives, user, funnel, ltv, cac, scores, aiUsage] = await Promise.all([
-    getAnalytics().catch(() => null),
-    getLeadSourceStats().catch(() => null),
-    getAdCreativeReport().catch(() => []),
-    getCurrentUser().catch(() => null),
-    getAdvancedFunnel().catch(() => null),
-    getLTVBySource().catch(() => []),
-    getCACByChannel().catch(() => []),
-    getScoreDistribution().catch(() => []),
-    getAIUsageReport().catch(() => null),
-  ]);
+  const [data, sourceStats, creatives, user, funnel, ltv, cac, scores, aiUsage] = await Promise.all(
+    [
+      getAnalytics().catch(() => null),
+      getLeadSourceStats().catch(() => null),
+      getAdCreativeReport().catch(() => []),
+      getCurrentUser().catch(() => null),
+      getAdvancedFunnel().catch(() => null),
+      getLTVBySource().catch(() => []),
+      getCACByChannel().catch(() => []),
+      getScoreDistribution().catch(() => []),
+      getAIUsageReport().catch(() => null),
+    ]
+  );
 
   if (!data) {
     return (
@@ -31,8 +39,13 @@ export default async function AnalyticsPage() {
         <AnalyticsNarrative />
         <div className="text-center text-slate-500 py-12">
           <p className="text-lg font-semibold mb-2">Sem dados de analytics</p>
-          <p className="text-sm">Configure suas integracoes (Meta Ads, Pipeline) para ver metricas aqui.</p>
-          <a href="/dashboard/settings/integrations" className="inline-block mt-4 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">
+          <p className="text-sm">
+            Configure suas integracoes (Meta Ads, Pipeline) para ver metricas aqui.
+          </p>
+          <a
+            href="/dashboard/settings/integrations"
+            className="inline-block mt-4 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
+          >
             Configurar integracoes
           </a>
         </div>
@@ -56,7 +69,13 @@ export default async function AnalyticsPage() {
   if (user) {
     const pixel = await prisma.pixel.findUnique({
       where: { userId: user.id },
-      select: { bidStrategy: true, campaignObjective: true, businessSegment: true, coverageArea: true, conversionValue: true },
+      select: {
+        bidStrategy: true,
+        campaignObjective: true,
+        businessSegment: true,
+        coverageArea: true,
+        conversionValue: true,
+      },
     });
     if (pixel) {
       pixelConfig = {
@@ -69,7 +88,10 @@ export default async function AnalyticsPage() {
     }
   }
 
-  const configMap: Record<string, { bidStrategy: string | null; campaignObjective: string | null; businessSegment: string | null }> = {};
+  const configMap: Record<
+    string,
+    { bidStrategy: string | null; campaignObjective: string | null; businessSegment: string | null }
+  > = {};
   for (const cfg of campaignConfigs) {
     configMap[cfg.campaignId] = {
       bidStrategy: cfg.bidStrategy ?? null,
@@ -83,7 +105,9 @@ export default async function AnalyticsPage() {
       <AnalyticsNarrative />
       <AnalyticsClient
         data={data}
-        sourceStats={sourceStats ?? { total: 0, meta: 0, google: 0, whatsapp: 0, manual: 0, unknown: 0 }}
+        sourceStats={
+          sourceStats ?? { total: 0, meta: 0, google: 0, whatsapp: 0, manual: 0, unknown: 0 }
+        }
         pixelConfig={pixelConfig}
         campaignsList={campaignsList}
         campaignConfigMap={configMap}
@@ -95,8 +119,18 @@ export default async function AnalyticsPage() {
         funnel={funnel ?? []}
         ltv={ltv}
         cac={cac}
-        scores={Array.isArray(scores) ? { frio: 0, morno: 0, quente: 0, vip: 0, avgScore: 0 } : scores}
-        aiUsage={aiUsage ?? { totalOperations: 0, totalCostUsd: 0, byOperation: [], byProvider: [], dailyCost: [] }}
+        scores={
+          Array.isArray(scores) ? { frio: 0, morno: 0, quente: 0, vip: 0, avgScore: 0 } : scores
+        }
+        aiUsage={
+          aiUsage ?? {
+            totalOperations: 0,
+            totalCostUsd: 0,
+            byOperation: [],
+            byProvider: [],
+            dailyCost: [],
+          }
+        }
       />
     </div>
   );

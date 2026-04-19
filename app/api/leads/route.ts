@@ -28,17 +28,27 @@ export async function POST(req: NextRequest) {
     log.warn("leads_rate_limited", { ip });
     return NextResponse.json(
       { error: "Muitas requisições. Tente novamente em instantes." },
-      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) },
+      }
     );
   }
 
   try {
     const body = await req.json();
     const {
-      userId, name, phone,
-      source, medium, campaign,
-      adSetName, adName, adAccountName,
-      platform, referrer,
+      userId,
+      name,
+      phone,
+      source,
+      medium,
+      campaign,
+      adSetName,
+      adName,
+      adAccountName,
+      platform,
+      referrer,
     } = body;
 
     // ── Validação de campos obrigatórios ──────────────────────────────────
@@ -93,15 +103,15 @@ export async function POST(req: NextRequest) {
           name,
           phone: cleanPhone,
           userId,
-          stageId:        firstStage?.id   ?? null,
-          source:         source           ?? null,
-          medium:         medium           ?? null,
-          campaign:       campaign         ?? null,
-          adSetName:      adSetName        ?? null,
-          adName:         adName           ?? null,
-          adAccountName:  adAccountName    ?? null,
-          platform:       platform         ?? null,
-          referrer:       referrer         ?? null,
+          stageId: firstStage?.id ?? null,
+          source: source ?? null,
+          medium: medium ?? null,
+          campaign: campaign ?? null,
+          adSetName: adSetName ?? null,
+          adName: adName ?? null,
+          adAccountName: adAccountName ?? null,
+          platform: platform ?? null,
+          referrer: referrer ?? null,
           lastInteractionAt: new Date(),
         },
       });
@@ -117,7 +127,6 @@ export async function POST(req: NextRequest) {
 
     log.info("leads_api_created", { leadId: lead.id, source, platform });
     return NextResponse.json({ id: lead.id, created: true }, { status: 201 });
-
   } catch (err: unknown) {
     if (err instanceof ValidationError) {
       return NextResponse.json({ error: err.message, code: err.code }, { status: 400 });

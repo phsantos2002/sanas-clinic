@@ -3,10 +3,7 @@ import { getWorkflows } from "@/app/actions/workflows";
 import { AutomationsForm } from "@/components/settings/AutomationsForm";
 
 export default async function AutomationsPage() {
-  const [automations, workflows] = await Promise.all([
-    getAutomations(),
-    getWorkflows(),
-  ]);
+  const [automations, workflows] = await Promise.all([getAutomations(), getWorkflows()]);
 
   const activeWorkflows = workflows.filter((w) => w.isActive).length;
   const totalWorkflows = workflows.length;
@@ -19,10 +16,14 @@ export default async function AutomationsPage() {
           <div>
             <h2 className="text-base font-semibold text-slate-900">Workflows Personalizados</h2>
             <p className="text-sm text-slate-400 mt-0.5">
-              {activeWorkflows} ativo{activeWorkflows !== 1 ? "s" : ""} de {totalWorkflows} workflow{totalWorkflows !== 1 ? "s" : ""}
+              {activeWorkflows} ativo{activeWorkflows !== 1 ? "s" : ""} de {totalWorkflows} workflow
+              {totalWorkflows !== 1 ? "s" : ""}
             </p>
           </div>
-          <a href="/dashboard/workflows" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+          <a
+            href="/dashboard/workflows"
+            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+          >
             Gerenciar workflows →
           </a>
         </div>

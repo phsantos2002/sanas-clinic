@@ -44,7 +44,9 @@ export function CustomSelect({ options, value, onChange, placeholder, className 
         <span className="flex-1 text-left truncate">
           {selected?.label ?? placeholder ?? "Selecione..."}
         </span>
-        <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-3.5 w-3.5 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {open && (

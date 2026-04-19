@@ -4,10 +4,7 @@ import { ManageStagesSection } from "@/components/settings/ManageStagesSection";
 import { TeamClient } from "@/components/chat/TeamClient";
 
 export default async function PipelineSettingsPage() {
-  const [stages, attendants] = await Promise.all([
-    getStages(),
-    getAttendants(),
-  ]);
+  const [stages, attendants] = await Promise.all([getStages(), getAttendants()]);
 
   return (
     <div className="space-y-4 max-w-2xl">

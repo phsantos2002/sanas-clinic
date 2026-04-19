@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Link2,
-  Check,
-  ExternalLink,
-  AlertCircle,
-} from "lucide-react";
+import { Link2, Check, ExternalLink, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { SocialConnectionData } from "@/app/actions/social";
-import { saveSocialConnection, disconnectPlatform, testSocialConnection } from "@/app/actions/social";
+import {
+  saveSocialConnection,
+  disconnectPlatform,
+  testSocialConnection,
+} from "@/app/actions/social";
 
 type Platform = {
   id: string;
@@ -83,11 +82,7 @@ type ConnectModalState = {
   platform: Platform | null;
 };
 
-export function ConnectPlatformsClient({
-  connections,
-}: {
-  connections: SocialConnectionData[];
-}) {
+export function ConnectPlatformsClient({ connections }: { connections: SocialConnectionData[] }) {
   const [connectModal, setConnectModal] = useState<ConnectModalState>({
     open: false,
     platform: null,
@@ -172,9 +167,7 @@ export function ConnectPlatformsClient({
             <Link2 className="h-5 w-5 text-indigo-600" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
-              Conexoes de Plataformas
-            </h2>
+            <h2 className="text-base font-semibold text-slate-900">Conexoes de Plataformas</h2>
             <p className="text-sm text-slate-400">
               Conecte suas redes sociais para publicar automaticamente
             </p>
@@ -195,8 +188,8 @@ export function ConnectPlatformsClient({
                 isConnected
                   ? "border-green-200 shadow-sm"
                   : platform.available
-                  ? "border-slate-100 hover:border-slate-200 hover:shadow-sm"
-                  : "border-slate-50 opacity-60"
+                    ? "border-slate-100 hover:border-slate-200 hover:shadow-sm"
+                    : "border-slate-50 opacity-60"
               }`}
             >
               {/* Platform header */}
@@ -208,9 +201,7 @@ export function ConnectPlatformsClient({
                     {platform.icon}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-slate-900 text-sm">
-                      {platform.name}
-                    </h3>
+                    <h3 className="font-semibold text-slate-900 text-sm">{platform.name}</h3>
                     <p className="text-xs text-slate-400">{platform.description}</p>
                   </div>
                 </div>
@@ -257,24 +248,13 @@ export function ConnectPlatformsClient({
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
           <div>
-            <h3 className="font-medium text-amber-800 text-sm">
-              Instagram e Facebook
-            </h3>
+            <h3 className="font-medium text-amber-800 text-sm">Instagram e Facebook</h3>
             <p className="text-xs text-amber-600 mt-1">
               Para conectar Instagram e Facebook, utilize o mesmo token da Meta Graph API
               configurado no modulo Meta Ads. Voce precisara expandir as permissoes para incluir{" "}
-              <code className="bg-amber-100 px-1 rounded text-xs">
-                pages_manage_posts
-              </code>
-              ,{" "}
-              <code className="bg-amber-100 px-1 rounded text-xs">
-                instagram_content_publish
-              </code>{" "}
-              e{" "}
-              <code className="bg-amber-100 px-1 rounded text-xs">
-                instagram_basic
-              </code>
-              .
+              <code className="bg-amber-100 px-1 rounded text-xs">pages_manage_posts</code>,{" "}
+              <code className="bg-amber-100 px-1 rounded text-xs">instagram_content_publish</code> e{" "}
+              <code className="bg-amber-100 px-1 rounded text-xs">instagram_basic</code>.
             </p>
             <a
               href="https://developers.facebook.com/docs/pages-api/overview"
@@ -302,9 +282,7 @@ export function ConnectPlatformsClient({
                 <h3 className="font-semibold text-slate-900">
                   Conectar {connectModal.platform.name}
                 </h3>
-                <p className="text-xs text-slate-400">
-                  Insira as credenciais de acesso
-                </p>
+                <p className="text-xs text-slate-400">Insira as credenciais de acesso</p>
               </div>
             </div>
 

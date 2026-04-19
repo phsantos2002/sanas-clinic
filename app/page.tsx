@@ -29,17 +29,33 @@ export default async function LandingPage() {
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Sanas Pulse" width={32} height={32} className="rounded-lg" />
+            <Image
+              src="/logo.png"
+              alt="Sanas Pulse"
+              width={32}
+              height={32}
+              className="rounded-lg"
+            />
             <span className="font-semibold tracking-tight">Sanas Pulse</span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
-            <a href="#como-funciona" className="hover:text-slate-900">Como funciona</a>
-            <a href="#features" className="hover:text-slate-900">Recursos</a>
-            <a href="#verticais" className="hover:text-slate-900">Para quem é</a>
-            <Link href="/pricing" className="hover:text-slate-900">Planos</Link>
+            <a href="#como-funciona" className="hover:text-slate-900">
+              Como funciona
+            </a>
+            <a href="#features" className="hover:text-slate-900">
+              Recursos
+            </a>
+            <a href="#verticais" className="hover:text-slate-900">
+              Para quem é
+            </a>
+            <Link href="/pricing" className="hover:text-slate-900">
+              Planos
+            </Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/login" className="text-sm text-slate-600 hover:text-slate-900 px-3 py-1.5">Entrar</Link>
+            <Link href="/login" className="text-sm text-slate-600 hover:text-slate-900 px-3 py-1.5">
+              Entrar
+            </Link>
             <Link
               href="/login"
               className="text-sm font-medium bg-indigo-600 text-white rounded-xl px-4 py-2 hover:bg-indigo-700 inline-flex items-center gap-1.5"
@@ -57,10 +73,13 @@ export default async function LandingPage() {
             <Activity className="h-3.5 w-3.5" /> CRM de Performance para quem anuncia no Meta
           </span>
           <h1 className="mt-6 text-4xl md:text-6xl font-extrabold tracking-tight bg-gradient-to-br from-slate-900 to-indigo-700 bg-clip-text text-transparent">
-            Do clique no Meta Ads<br />ao cliente agendado.
+            Do clique no Meta Ads
+            <br />
+            ao cliente agendado.
           </h1>
           <p className="mt-5 text-lg text-slate-600 max-w-2xl mx-auto">
-            Rastreie cada real investido até virar agendamento. Pixel + CAPI, atribuição real, WhatsApp com IA e pipeline que fecha sozinho — tudo em uma tela.
+            Rastreie cada real investido até virar agendamento. Pixel + CAPI, atribuição real,
+            WhatsApp com IA e pipeline que fecha sozinho — tudo em uma tela.
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <Link
@@ -77,9 +96,15 @@ export default async function LandingPage() {
             </Link>
           </div>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-500">
-            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Pixel + CAPI nativos</span>
-            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> WhatsApp oficial ou Uazapi</span>
-            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Conformidade LGPD</span>
+            <span className="inline-flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Pixel + CAPI nativos
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> WhatsApp oficial ou Uazapi
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Conformidade LGPD
+            </span>
           </div>
         </div>
       </section>
@@ -88,14 +113,25 @@ export default async function LandingPage() {
         <div className="text-center mb-10">
           <h2 className="text-2xl md:text-3xl font-bold">O problema de quem anuncia no Brasil</h2>
           <p className="mt-3 text-slate-600 max-w-2xl mx-auto">
-            Você gasta em Meta Ads, o lead cai no WhatsApp, alguém atende, e depois… ninguém sabe qual campanha trouxe cliente. A planilha mente, a IA da Meta não conversa com seu WhatsApp, e o ROI vira chute.
+            Você gasta em Meta Ads, o lead cai no WhatsApp, alguém atende, e depois… ninguém sabe
+            qual campanha trouxe cliente. A planilha mente, a IA da Meta não conversa com seu
+            WhatsApp, e o ROI vira chute.
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-4">
           {[
-            { title: "Gasto sem rastro", desc: "Lead some entre o clique e o agendamento. Sem Pixel + CAPI, você otimiza no escuro." },
-            { title: "WhatsApp desconectado", desc: "Atendente responde, não loga. Histórico perdido, zero métrica de conversão." },
-            { title: "Relatório manual", desc: "Planilha que o time preenche quando lembra. Decisão de verba baseada em achismo." },
+            {
+              title: "Gasto sem rastro",
+              desc: "Lead some entre o clique e o agendamento. Sem Pixel + CAPI, você otimiza no escuro.",
+            },
+            {
+              title: "WhatsApp desconectado",
+              desc: "Atendente responde, não loga. Histórico perdido, zero métrica de conversão.",
+            },
+            {
+              title: "Relatório manual",
+              desc: "Planilha que o time preenche quando lembra. Decisão de verba baseada em achismo.",
+            },
           ].map((p) => (
             <div key={p.title} className="rounded-2xl border border-slate-100 bg-white p-6">
               <p className="text-base font-semibold text-slate-900">{p.title}</p>
@@ -113,9 +149,21 @@ export default async function LandingPage() {
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { n: "1", title: "Conecta o Pixel + Meta Ads", desc: "Em 2 minutos: Pixel ID, token de CAPI e conta de anúncios. A gente traz campanhas, ad sets e anúncios automaticamente." },
-              { n: "2", title: "IA atende no WhatsApp", desc: "Lead chega pelo anúncio, a IA responde, qualifica e passa para o atendente humano no momento certo — sem perder o contexto." },
-              { n: "3", title: "Fecha no agendamento", desc: "Pipeline Kanban + Google Calendar. O evento Purchase dispara de volta no Pixel, alimentando a IA da Meta com conversões reais." },
+              {
+                n: "1",
+                title: "Conecta o Pixel + Meta Ads",
+                desc: "Em 2 minutos: Pixel ID, token de CAPI e conta de anúncios. A gente traz campanhas, ad sets e anúncios automaticamente.",
+              },
+              {
+                n: "2",
+                title: "IA atende no WhatsApp",
+                desc: "Lead chega pelo anúncio, a IA responde, qualifica e passa para o atendente humano no momento certo — sem perder o contexto.",
+              },
+              {
+                n: "3",
+                title: "Fecha no agendamento",
+                desc: "Pipeline Kanban + Google Calendar. O evento Purchase dispara de volta no Pixel, alimentando a IA da Meta com conversões reais.",
+              },
             ].map((step) => (
               <div key={step.n} className="rounded-2xl bg-white border border-slate-100 p-6">
                 <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-bold flex items-center justify-center shadow-md shadow-indigo-500/20">
@@ -132,7 +180,9 @@ export default async function LandingPage() {
       <section id="features" className="max-w-6xl mx-auto px-5 py-20">
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-bold">Tudo no mesmo sistema</h2>
-          <p className="mt-3 text-slate-600">Sem integrações por fora. Sem Zapier no meio do caminho.</p>
+          <p className="mt-3 text-slate-600">
+            Sem integrações por fora. Sem Zapier no meio do caminho.
+          </p>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           {[
@@ -180,31 +230,57 @@ export default async function LandingPage() {
         <div className="max-w-6xl mx-auto px-5 py-20">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold">Feito para quem anuncia local</h2>
-            <p className="mt-3 text-slate-600">Dois perfis onde a gente já viu resultado rodando Meta Ads todos os dias.</p>
+            <p className="mt-3 text-slate-600">
+              Dois perfis onde a gente já viu resultado rodando Meta Ads todos os dias.
+            </p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="rounded-2xl border border-slate-100 bg-white p-8">
               <p className="text-xs font-semibold tracking-wider text-indigo-600">CLÍNICAS</p>
               <p className="mt-2 text-xl font-bold">Estética, odontológica, saúde</p>
               <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-                Anúncios de Click-to-WhatsApp + IA que pré-qualifica + agendamento no Google Calendar + evento Purchase voltando no Pixel. Cada procedimento vira um serviço com preço e duração, e a atribuição mostra qual anúncio fechou.
+                Anúncios de Click-to-WhatsApp + IA que pré-qualifica + agendamento no Google
+                Calendar + evento Purchase voltando no Pixel. Cada procedimento vira um serviço com
+                preço e duração, e a atribuição mostra qual anúncio fechou.
               </p>
               <ul className="mt-5 space-y-2 text-sm text-slate-700">
-                <li className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Procedimentos cadastrados com preço e duração</li>
-                <li className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Agenda integrada ao Google Calendar</li>
-                <li className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> LGPD: exportação, anonimização e exclusão de paciente</li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />{" "}
+                  Procedimentos cadastrados com preço e duração
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Agenda
+                  integrada ao Google Calendar
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> LGPD:
+                  exportação, anonimização e exclusão de paciente
+                </li>
               </ul>
             </div>
             <div className="rounded-2xl border border-slate-100 bg-white p-8">
-              <p className="text-xs font-semibold tracking-wider text-violet-600">SERVIÇOS LOCAIS</p>
+              <p className="text-xs font-semibold tracking-wider text-violet-600">
+                SERVIÇOS LOCAIS
+              </p>
               <p className="mt-2 text-xl font-bold">Academia, restaurante, imobiliária</p>
               <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-                Anúncio regional + WhatsApp + conversão medida. Alerta quando frequência explode, CPL sobe ou criativo cansa. Reativação automática de leads parados há 7+ dias. Equipe de atendimento com round-robin.
+                Anúncio regional + WhatsApp + conversão medida. Alerta quando frequência explode,
+                CPL sobe ou criativo cansa. Reativação automática de leads parados há 7+ dias.
+                Equipe de atendimento com round-robin.
               </p>
               <ul className="mt-5 space-y-2 text-sm text-slate-700">
-                <li className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Segmentação por cidade e região</li>
-                <li className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Alertas IA: CPL, frequência, fadiga de criativo</li>
-                <li className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Reativação automática de leads inativos</li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Segmentação
+                  por cidade e região
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Alertas IA:
+                  CPL, frequência, fadiga de criativo
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Reativação
+                  automática de leads inativos
+                </li>
               </ul>
             </div>
           </div>
@@ -215,7 +291,8 @@ export default async function LandingPage() {
         <Zap className="h-8 w-8 text-indigo-600 mx-auto" />
         <h2 className="mt-4 text-2xl md:text-3xl font-bold">Pare de anunciar no escuro.</h2>
         <p className="mt-3 text-slate-600 max-w-xl mx-auto">
-          Você já gasta em Meta Ads. O mínimo que o dinheiro merece é ser rastreado até o cliente fechado.
+          Você já gasta em Meta Ads. O mínimo que o dinheiro merece é ser rastreado até o cliente
+          fechado.
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
           <Link
@@ -236,13 +313,25 @@ export default async function LandingPage() {
       <footer className="border-t border-slate-100 bg-slate-50/60">
         <div className="max-w-6xl mx-auto px-5 py-10 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-500">
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Sanas Pulse" width={24} height={24} className="rounded-md" />
+            <Image
+              src="/logo.png"
+              alt="Sanas Pulse"
+              width={24}
+              height={24}
+              className="rounded-md"
+            />
             <span>© {new Date().getFullYear()} Sanas Pulse</span>
           </div>
           <div className="flex items-center gap-5">
-            <Link href="/pricing" className="hover:text-slate-900">Planos</Link>
-            <Link href="/login" className="hover:text-slate-900">Entrar</Link>
-            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /> LGPD-ready</span>
+            <Link href="/pricing" className="hover:text-slate-900">
+              Planos
+            </Link>
+            <Link href="/login" className="hover:text-slate-900">
+              Entrar
+            </Link>
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck className="h-4 w-4" /> LGPD-ready
+            </span>
           </div>
         </div>
       </footer>

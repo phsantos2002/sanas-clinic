@@ -59,7 +59,10 @@ export function CommandPalette() {
   }, [open]);
 
   const doSearch = useCallback(async (q: string) => {
-    if (q.length < 2) { setResults([]); return; }
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
     setLoading(true);
     const r = await globalSearch(q);
     setResults(r);
@@ -78,9 +81,16 @@ export function CommandPalette() {
     router.push(url);
   };
 
-  const allItems = query.length >= 2
-    ? results
-    : QUICK_ACTIONS.map((a, i) => ({ id: `action-${i}`, type: "action" as const, title: a.label, subtitle: "", url: a.url }));
+  const allItems =
+    query.length >= 2
+      ? results
+      : QUICK_ACTIONS.map((a, i) => ({
+          id: `action-${i}`,
+          type: "action" as const,
+          title: a.label,
+          subtitle: "",
+          url: a.url,
+        }));
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
@@ -103,7 +113,10 @@ export function CommandPalette() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]" onClick={() => setOpen(false)}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
+      onClick={() => setOpen(false)}
+    >
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
       <div
         className="relative w-full max-w-lg rounded-xl border border-slate-200 bg-white shadow-2xl overflow-hidden"
@@ -133,7 +146,9 @@ export function CommandPalette() {
         <div className="max-h-72 overflow-y-auto">
           {query.length < 2 ? (
             <div className="p-2">
-              <p className="px-3 py-1.5 text-[10px] font-medium text-slate-400 uppercase tracking-wider">Acoes rapidas</p>
+              <p className="px-3 py-1.5 text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                Acoes rapidas
+              </p>
               {QUICK_ACTIONS.map((action, i) => {
                 const Icon = action.icon;
                 return (
@@ -141,7 +156,9 @@ export function CommandPalette() {
                     key={i}
                     onClick={() => navigate(action.url)}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      selectedIndex === i ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50"
+                      selectedIndex === i
+                        ? "bg-indigo-50 text-indigo-700"
+                        : "text-slate-600 hover:bg-slate-50"
                     }`}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
@@ -153,7 +170,9 @@ export function CommandPalette() {
           ) : loading ? (
             <div className="py-8 text-center text-sm text-slate-400">Buscando...</div>
           ) : results.length === 0 ? (
-            <div className="py-8 text-center text-sm text-slate-400">Nenhum resultado para &quot;{query}&quot;</div>
+            <div className="py-8 text-center text-sm text-slate-400">
+              Nenhum resultado para &quot;{query}&quot;
+            </div>
           ) : (
             <div className="p-2">
               {Object.entries(grouped).map(([type, items]) => {
@@ -170,7 +189,9 @@ export function CommandPalette() {
                           key={item.id}
                           onClick={() => navigate(item.url)}
                           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                            selectedIndex === idx ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50"
+                            selectedIndex === idx
+                              ? "bg-indigo-50 text-indigo-700"
+                              : "text-slate-600 hover:bg-slate-50"
                           }`}
                         >
                           <Icon className="h-4 w-4 shrink-0 text-slate-400" />

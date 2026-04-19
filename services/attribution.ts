@@ -94,10 +94,7 @@ export async function calculateAttribution(
     .sort((a, b) => b.credit - a.credit);
 }
 
-function applyModel(
-  touchpoints: TouchPoint[],
-  model: AttributionModel
-): Record<string, number> {
+function applyModel(touchpoints: TouchPoint[], model: AttributionModel): Record<string, number> {
   const credits: Record<string, number> = {};
 
   if (touchpoints.length === 0) return credits;

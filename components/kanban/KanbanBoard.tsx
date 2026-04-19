@@ -26,7 +26,14 @@ type Props = {
   selectionMode?: boolean;
 };
 
-export function KanbanBoard({ columns: initialColumns, onClickLead, onEditLead, selectedIds, onToggleSelect, selectionMode }: Props) {
+export function KanbanBoard({
+  columns: initialColumns,
+  onClickLead,
+  onEditLead,
+  selectedIds,
+  onToggleSelect,
+  selectionMode,
+}: Props) {
   const [columns, setColumns] = useState(initialColumns);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -34,9 +41,7 @@ export function KanbanBoard({ columns: initialColumns, onClickLead, onEditLead, 
     setColumns(initialColumns);
   }, [initialColumns]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const activeLead = activeId
     ? columns.flatMap((c) => c.leads).find((l) => l.id === activeId)
@@ -55,9 +60,7 @@ export function KanbanBoard({ columns: initialColumns, onClickLead, onEditLead, 
     const leadId = active.id as string;
     const overId = over.id as string;
 
-    const sourceColumn = columns.find((c) =>
-      c.leads.some((l) => l.id === leadId)
-    );
+    const sourceColumn = columns.find((c) => c.leads.some((l) => l.id === leadId));
 
     const targetColumn =
       columns.find((c) => c.id === overId) ??
@@ -67,9 +70,7 @@ export function KanbanBoard({ columns: initialColumns, onClickLead, onEditLead, 
     if (sourceColumn.id === targetColumn.id) return;
 
     setColumns((prev) => {
-      const lead = prev
-        .find((c) => c.id === sourceColumn.id)
-        ?.leads.find((l) => l.id === leadId);
+      const lead = prev.find((c) => c.id === sourceColumn.id)?.leads.find((l) => l.id === leadId);
       if (!lead) return prev;
 
       return prev.map((col) => {
@@ -114,9 +115,7 @@ export function KanbanBoard({ columns: initialColumns, onClickLead, onEditLead, 
         ))}
       </div>
 
-      <DragOverlay>
-        {activeLead ? <LeadCard lead={activeLead} /> : null}
-      </DragOverlay>
+      <DragOverlay>{activeLead ? <LeadCard lead={activeLead} /> : null}</DragOverlay>
     </DndContext>
   );
 }

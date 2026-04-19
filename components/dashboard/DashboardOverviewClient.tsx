@@ -86,8 +86,18 @@ export function DashboardOverviewClient({ initialStats }: Props) {
 
   const sourceCards = [
     { key: "meta", label: "Meta Ads", count: stats.bySource.meta, color: "bg-blue-500" },
-    { key: "other", label: "Outras Origens", count: stats.bySource.google + stats.bySource.whatsapp + stats.bySource.manual, color: "bg-slate-400" },
-    { key: "unknown", label: "Não Rastreada", count: stats.bySource.unknown, color: "bg-orange-400" },
+    {
+      key: "other",
+      label: "Outras Origens",
+      count: stats.bySource.google + stats.bySource.whatsapp + stats.bySource.manual,
+      color: "bg-slate-400",
+    },
+    {
+      key: "unknown",
+      label: "Não Rastreada",
+      count: stats.bySource.unknown,
+      color: "bg-orange-400",
+    },
   ];
 
   return (
@@ -99,11 +109,7 @@ export function DashboardOverviewClient({ initialStats }: Props) {
           <p className="text-xs sm:text-sm text-slate-400 mt-1">Início → Dashboard</p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-          <DateRangePicker
-            startDate={startDate}
-            endDate={endDate}
-            onChange={applyDateFilter}
-          />
+          <DateRangePicker startDate={startDate} endDate={endDate} onChange={applyDateFilter} />
 
           <div className="flex items-center gap-2">
             <CustomSelect
@@ -125,16 +131,16 @@ export function DashboardOverviewClient({ initialStats }: Props) {
         </div>
       </div>
 
-      {isPending && (
-        <div className="text-xs text-slate-400 text-center">Carregando...</div>
-      )}
+      {isPending && <div className="text-xs text-slate-400 text-center">Carregando...</div>}
 
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Visão Geral das Conversas */}
         <Card className="lg:col-span-1 border-slate-100 rounded-2xl shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base font-bold text-slate-900">Visão Geral das Conversas</CardTitle>
+            <CardTitle className="text-base font-bold text-slate-900">
+              Visão Geral das Conversas
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
@@ -183,7 +189,9 @@ export function DashboardOverviewClient({ initialStats }: Props) {
         {/* Origem das Conversas */}
         <Card className="lg:col-span-2 border-slate-100 rounded-2xl shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base font-bold text-slate-900">Origem das Conversas</CardTitle>
+            <CardTitle className="text-base font-bold text-slate-900">
+              Origem das Conversas
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">

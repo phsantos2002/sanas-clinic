@@ -17,9 +17,7 @@ function verifySignatureWithSecret(rawBody: string, signature: string, appSecret
   const [algo, hash] = signature.split("=");
   if (algo !== "sha256" || !hash) return false;
 
-  const expectedHash = createHmac("sha256", appSecret)
-    .update(rawBody, "utf8")
-    .digest("hex");
+  const expectedHash = createHmac("sha256", appSecret).update(rawBody, "utf8").digest("hex");
 
   try {
     return timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(expectedHash, "hex"));
@@ -69,8 +67,8 @@ async function verifyMetaSignature(rawBody: string, signature: string | null): P
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const mode      = searchParams.get("hub.mode");
-  const token     = searchParams.get("hub.verify_token");
+  const mode = searchParams.get("hub.mode");
+  const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
   if (mode === "subscribe") {
@@ -99,7 +97,13 @@ export async function POST(req: NextRequest) {
 
   // Sprint 5: parse + validate with Zod schema (replaces manual TypeScript types)
   const parsed = MetaWebhookPayloadSchema.safeParse(
-    (() => { try { return JSON.parse(rawBody); } catch { return null; } })()
+    (() => {
+      try {
+        return JSON.parse(rawBody);
+      } catch {
+        return null;
+      }
+    })()
   );
 
   if (!parsed.success) {
@@ -116,9 +120,9 @@ export async function POST(req: NextRequest) {
     for (const change of entry.changes) {
       if (change.field !== "messages") continue;
 
-      const value         = change.value;
+      const value = change.value;
       const phoneNumberId = value.metadata.phone_number_id;
-      const messages      = value.messages;
+      const messages = value.messages;
       if (!messages?.length) continue;
 
       const whatsappConfig = await prisma.whatsAppConfig.findFirst({
@@ -134,25 +138,27 @@ export async function POST(req: NextRequest) {
         const capturedContacts = value.contacts;
 
         // Sprint 3: enqueue for async processing — caller gets 200 immediately
-        webhookQueue.enqueue(() =>
-          processIncomingMessage({
-            userId:            capturedConfig.userId,
-            phone:             msg.from,
-            text:              msg.text!.body.trim(),
-            pushName:          capturedContacts?.[0]?.profile?.name ?? "",
-            externalMessageId: msg.id,
-            attribution: referral
-              ? {
-                  adId:         referral.ad_id,
-                  adSetId:      referral.ads_context_metadata?.adset_id,
-                  campaignId:   referral.ads_context_metadata?.campaign_id,
-                  adName:       referral.ads_context_metadata?.ad_title,
-                  campaignName: referral.headline,
-                }
-              : undefined,
-            sendReply: (phone, text) => sendMessage(capturedConfig, phone, text),
-          })
-        ).catch((err) => log.error("meta_webhook_queue_error", { msgId: msg.id, err }));
+        webhookQueue
+          .enqueue(() =>
+            processIncomingMessage({
+              userId: capturedConfig.userId,
+              phone: msg.from,
+              text: msg.text!.body.trim(),
+              pushName: capturedContacts?.[0]?.profile?.name ?? "",
+              externalMessageId: msg.id,
+              attribution: referral
+                ? {
+                    adId: referral.ad_id,
+                    adSetId: referral.ads_context_metadata?.adset_id,
+                    campaignId: referral.ads_context_metadata?.campaign_id,
+                    adName: referral.ads_context_metadata?.ad_title,
+                    campaignName: referral.headline,
+                  }
+                : undefined,
+              sendReply: (phone, text) => sendMessage(capturedConfig, phone, text),
+            })
+          )
+          .catch((err) => log.error("meta_webhook_queue_error", { msgId: msg.id, err }));
       }
     }
   }

@@ -33,7 +33,7 @@ jobs:
         run: npx prisma generate
         env:
           DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
-          DIRECT_URL:   "postgresql://user:pass@localhost:5432/db"
+          DIRECT_URL: "postgresql://user:pass@localhost:5432/db"
 
       - name: TypeScript check
         run: npm run typecheck
@@ -57,7 +57,7 @@ jobs:
         run: npx prisma generate
         env:
           DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
-          DIRECT_URL:   "postgresql://user:pass@localhost:5432/db"
+          DIRECT_URL: "postgresql://user:pass@localhost:5432/db"
 
       - name: ESLint
         run: npm run lint
@@ -81,17 +81,17 @@ jobs:
         run: npx prisma generate
         env:
           DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
-          DIRECT_URL:   "postgresql://user:pass@localhost:5432/db"
+          DIRECT_URL: "postgresql://user:pass@localhost:5432/db"
 
       - name: Run tests
         run: npm run test:coverage
         env:
-          NODE_ENV:     test
-          LOG_LEVEL:    error
+          NODE_ENV: test
+          LOG_LEVEL: error
           DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
-          DIRECT_URL:   "postgresql://user:pass@localhost:5432/db"
-          CRON_SECRET:  "ci-cron-secret"
-          NEXT_PUBLIC_SUPABASE_URL:      "https://test.supabase.co"
+          DIRECT_URL: "postgresql://user:pass@localhost:5432/db"
+          CRON_SECRET: "ci-cron-secret"
+          NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co"
           NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key"
 
       - name: Upload coverage
@@ -121,11 +121,11 @@ jobs:
       - name: Build Next.js
         run: npm run build
         env:
-          DATABASE_URL:                  "postgresql://user:pass@localhost:5432/db"
-          DIRECT_URL:                    "postgresql://user:pass@localhost:5432/db"
-          NEXT_PUBLIC_SUPABASE_URL:      "https://test.supabase.co"
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
+          DIRECT_URL: "postgresql://user:pass@localhost:5432/db"
+          NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co"
           NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key"
-          CRON_SECRET:                   "ci-cron-secret"
+          CRON_SECRET: "ci-cron-secret"
           # Build não precisa de secrets reais — apenas não falhar
-          OPENAI_API_KEY:     "sk-test"
-          META_APP_SECRET:    "meta-test"
+          OPENAI_API_KEY: "sk-test"
+          META_APP_SECRET: "meta-test"

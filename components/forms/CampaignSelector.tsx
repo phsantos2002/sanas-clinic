@@ -46,9 +46,12 @@ export function CampaignSelector({ campaigns, selectedCampaignId }: Props) {
     ...campaigns.map((c) => ({
       value: c.id,
       label: `${c.name}`,
-      icon: c.status === "ACTIVE"
-        ? <Zap className="h-3 w-3 text-emerald-500" />
-        : <ZapOff className="h-3 w-3 text-slate-400" />,
+      icon:
+        c.status === "ACTIVE" ? (
+          <Zap className="h-3 w-3 text-emerald-500" />
+        ) : (
+          <ZapOff className="h-3 w-3 text-slate-400" />
+        ),
     })),
   ];
 
@@ -61,12 +64,7 @@ export function CampaignSelector({ campaigns, selectedCampaignId }: Props) {
         placeholder="Selecione a campanha principal"
       />
       <div className="flex items-center gap-3">
-        <Button
-          size="sm"
-          onClick={handleSave}
-          disabled={isPending}
-          className="rounded-xl"
-        >
+        <Button size="sm" onClick={handleSave} disabled={isPending} className="rounded-xl">
           {isPending ? "Salvando..." : "Salvar Campanha"}
         </Button>
         {value && (
@@ -76,7 +74,8 @@ export function CampaignSelector({ campaigns, selectedCampaignId }: Props) {
         )}
       </div>
       <p className="text-xs text-slate-400">
-        A campanha selecionada será usada nas abas Meta e Analytics para exibir insights e gerenciar criativos.
+        A campanha selecionada será usada nas abas Meta e Analytics para exibir insights e gerenciar
+        criativos.
       </p>
     </div>
   );

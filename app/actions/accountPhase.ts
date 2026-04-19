@@ -79,7 +79,8 @@ export async function diagnoseAccountPhase(
     return {
       phase: "MATURE",
       reason: `Conta madura com ${totalConversions} conversões/mês e histórico de 3+ meses. ${eventCounts["Purchase"] ?? 0} vendas registradas.`,
-      recommendation: "Sua conta já está consolidada. Use estratégias avançadas como ROAS mínimo ou Bid Cap agressivo para maximizar retorno.",
+      recommendation:
+        "Sua conta já está consolidada. Use estratégias avançadas como ROAS mínimo ou Bid Cap agressivo para maximizar retorno.",
       suggestedBidStrategy: "ROAS_MIN",
       suggestedEvent: dest === "WHATSAPP" ? "Purchase" : "Purchase",
     };
@@ -90,7 +91,8 @@ export async function diagnoseAccountPhase(
     return {
       phase: "SCALING",
       reason: `${totalConversions} conversões e ${metaLeads} leads Meta no mês. Taxa de conversão: ${conversionRate.toFixed(1)}%.`,
-      recommendation: "Conta pronta para escalar. Defina um custo por resultado alvo e use Bid Cap para controlar gastos enquanto aumenta orçamento.",
+      recommendation:
+        "Conta pronta para escalar. Defina um custo por resultado alvo e use Bid Cap para controlar gastos enquanto aumenta orçamento.",
       suggestedBidStrategy: "BID_CAP",
       suggestedEvent: getSuggestedEvent("SCALING", dest),
     };
@@ -101,7 +103,8 @@ export async function diagnoseAccountPhase(
     return {
       phase: "STABILIZING",
       reason: `${totalConversions} conversões e ${metaLeads} leads Meta no mês. Conta saindo da fase de aprendizado.`,
-      recommendation: "A Meta está aprendendo sobre seu público. Use Cost Cap para controlar custos sem restringir demais a entrega.",
+      recommendation:
+        "A Meta está aprendendo sobre seu público. Use Cost Cap para controlar custos sem restringir demais a entrega.",
       suggestedBidStrategy: "COST_CAP",
       suggestedEvent: getSuggestedEvent("STABILIZING", dest),
     };
@@ -111,16 +114,14 @@ export async function diagnoseAccountPhase(
   return {
     phase: "LEARNING",
     reason: `${totalConversions} conversões e ${metaLeads} leads Meta no mês. A conta precisa de mais dados para otimizar.`,
-    recommendation: "Foque em gerar volume. Use Menor Custo sem limite e otimize para eventos de topo de funil para acelerar o aprendizado.",
+    recommendation:
+      "Foque em gerar volume. Use Menor Custo sem limite e otimize para eventos de topo de funil para acelerar o aprendizado.",
     suggestedBidStrategy: "LOWEST_COST",
     suggestedEvent: getSuggestedEvent("LEARNING", dest),
   };
 }
 
-function getSuggestedEvent(
-  phase: string,
-  destination: string
-): string {
+function getSuggestedEvent(phase: string, destination: string): string {
   if (phase === "LEARNING") {
     if (destination === "WHATSAPP") return "MESSAGING_CONVERSATION_STARTED_7D";
     if (destination === "WEBSITE") return "LANDING_PAGE_VIEWS";

@@ -13,7 +13,10 @@ export function OfflineBanner() {
       setShowReconnected(true);
       setTimeout(() => setShowReconnected(false), 3000);
     };
-    const handleOffline = () => { setOnline(false); setShowReconnected(false); };
+    const handleOffline = () => {
+      setOnline(false);
+      setShowReconnected(false);
+    };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
@@ -30,9 +33,7 @@ export function OfflineBanner() {
   return (
     <div
       className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium transition-all ${
-        online
-          ? "bg-emerald-500 text-white"
-          : "bg-red-500 text-white"
+        online ? "bg-emerald-500 text-white" : "bg-red-500 text-white"
       }`}
     >
       {online ? (

@@ -62,8 +62,8 @@ export function GoogleBusinessForm({ config }: Props) {
             className="text-indigo-500 hover:underline inline-flex items-center gap-0.5"
           >
             Google Cloud Console <ExternalLink className="h-2.5 w-2.5" />
-          </a>
-          {" "}com a <strong>Places API (New)</strong> ativada.
+          </a>{" "}
+          com a <strong>Places API (New)</strong> ativada.
         </p>
       </div>
 
@@ -85,8 +85,8 @@ export function GoogleBusinessForm({ config }: Props) {
             className="text-indigo-500 hover:underline inline-flex items-center gap-0.5"
           >
             Place ID Finder <ExternalLink className="h-2.5 w-2.5" />
-          </a>
-          {" "}buscando o nome do seu negócio.
+          </a>{" "}
+          buscando o nome do seu negócio.
         </p>
       </div>
 

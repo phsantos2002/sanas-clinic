@@ -215,7 +215,10 @@ export async function getWorkflowExecutions(workflowId?: string): Promise<Execut
 
 // ── Canvas Visual (Sprint 5) ────────────────────────────────
 
-export async function saveWorkflowCanvas(workflowId: string, canvas: { nodes: unknown[]; edges: unknown[] }) {
+export async function saveWorkflowCanvas(
+  workflowId: string,
+  canvas: { nodes: unknown[]; edges: unknown[] }
+) {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 
@@ -231,7 +234,11 @@ export async function saveWorkflowCanvas(workflowId: string, canvas: { nodes: un
   return { success: true };
 }
 
-export async function createWorkflowFromTemplate(name: string, canvas: { nodes: unknown[]; edges: unknown[] }, trigger: unknown) {
+export async function createWorkflowFromTemplate(
+  name: string,
+  canvas: { nodes: unknown[]; edges: unknown[] },
+  trigger: unknown
+) {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 

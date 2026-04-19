@@ -58,9 +58,7 @@ export async function fetchMetaAdsInsightsDetailed(
   accessToken: string,
   datePreset = "last_30d"
 ): Promise<InsightsResult> {
-  const accountId = adAccountId.startsWith("act_")
-    ? adAccountId
-    : `act_${adAccountId}`;
+  const accountId = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
 
   const fields = [
     "spend",
@@ -118,8 +116,15 @@ export async function fetchCampaignInsightsDetailed(
   datePreset = "last_30d"
 ): Promise<InsightsResult> {
   const fields = [
-    "spend", "impressions", "reach", "clicks", "ctr", "cpm", "cpc",
-    "actions", "cost_per_action_type",
+    "spend",
+    "impressions",
+    "reach",
+    "clicks",
+    "ctr",
+    "cpm",
+    "cpc",
+    "actions",
+    "cost_per_action_type",
   ].join(",");
 
   const url = `${GRAPH_URL}/${campaignId}/insights?fields=${fields}&date_preset=${datePreset}&access_token=${accessToken}`;
@@ -161,9 +166,7 @@ export async function fetchMetaCampaigns(
   accessToken: string,
   datePreset = "last_30d"
 ): Promise<MetaCampaign[]> {
-  const accountId = adAccountId.startsWith("act_")
-    ? adAccountId
-    : `act_${adAccountId}`;
+  const accountId = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
 
   const insightFields = "spend,impressions,reach,clicks,ctr,cpm,cpc";
   const url = `${GRAPH_URL}/${accountId}/campaigns?fields=id,name,status,insights.date_preset(${datePreset}){${insightFields}}&effective_status=["ACTIVE","PAUSED"]&limit=20&access_token=${accessToken}`;
@@ -178,7 +181,12 @@ export async function fetchMetaCampaigns(
     }
 
     return (json.data ?? []).map(
-      (c: { id: string; name: string; status: string; insights?: { data?: Record<string, string>[] } }) => {
+      (c: {
+        id: string;
+        name: string;
+        status: string;
+        insights?: { data?: Record<string, string>[] };
+      }) => {
         const ins = c.insights?.data?.[0];
         return {
           id: c.id,

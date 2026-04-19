@@ -199,11 +199,11 @@ describe("AppError.toJSON", () => {
     const err = new ValidationError("campo inválido", { field: "email" });
     const json = err.toJSON();
     expect(json).toEqual({
-      name:       "ValidationError",
-      code:       "VALIDATION_ERROR",
-      message:    "campo inválido",
+      name: "ValidationError",
+      code: "VALIDATION_ERROR",
+      message: "campo inválido",
       statusCode: 400,
-      meta:       { field: "email" },
+      meta: { field: "email" },
     });
   });
 });

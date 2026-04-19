@@ -34,14 +34,23 @@ function resizeImage(file: File, maxSize: number): Promise<string> {
       let w = img.width;
       let h = img.height;
       if (w > h) {
-        if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; }
+        if (w > maxSize) {
+          h = Math.round((h * maxSize) / w);
+          w = maxSize;
+        }
       } else {
-        if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; }
+        if (h > maxSize) {
+          w = Math.round((w * maxSize) / h);
+          h = maxSize;
+        }
       }
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext("2d");
-      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+      if (!ctx) {
+        reject(new Error("Canvas not supported"));
+        return;
+      }
       ctx.drawImage(img, 0, 0, w, h);
       resolve(canvas.toDataURL("image/jpeg", 0.8));
     };
@@ -60,7 +69,13 @@ export function AccountPageClient({ account }: Props) {
         </p>
       </div>
 
-      <ProfileHeader name={account.name} email={account.email} photoUrl={account.photoUrl} provider={account.provider} createdAt={account.createdAt} />
+      <ProfileHeader
+        name={account.name}
+        email={account.email}
+        photoUrl={account.photoUrl}
+        provider={account.provider}
+        createdAt={account.createdAt}
+      />
       <NameSection name={account.name} />
       <EmailSection email={account.email} />
       <PasswordSection />
@@ -71,8 +86,18 @@ export function AccountPageClient({ account }: Props) {
 
 // ─── Profile Header ───
 
-function ProfileHeader({ name, email, photoUrl, provider, createdAt }: {
-  name: string; email: string; photoUrl: string | null; provider: string; createdAt: Date;
+function ProfileHeader({
+  name,
+  email,
+  photoUrl,
+  provider,
+  createdAt,
+}: {
+  name: string;
+  email: string;
+  photoUrl: string | null;
+  provider: string;
+  createdAt: Date;
 }) {
   const [photo, setPhoto] = useState<string | null>(photoUrl);
   const [uploading, setUploading] = useState(false);
@@ -161,7 +186,9 @@ function ProfileHeader({ name, email, photoUrl, provider, createdAt }: {
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
                 <Shield className="h-3 w-3 text-slate-400" />
-                <span className="capitalize">{provider === "email" ? "Email e senha" : provider}</span>
+                <span className="capitalize">
+                  {provider === "email" ? "Email e senha" : provider}
+                </span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
                 <Calendar className="h-3 w-3 text-slate-400" />
@@ -205,9 +232,18 @@ function NameSection({ name }: { name: string }) {
       <div className="flex items-end gap-3 max-w-md">
         <div className="flex-1 space-y-1.5">
           <Label htmlFor="name">Nome completo</Label>
-          <Input id="name" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Seu nome" />
+          <Input
+            id="name"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="Seu nome"
+          />
         </div>
-        <Button onClick={handleSave} disabled={loading || value.trim() === name} className="rounded-xl">
+        <Button
+          onClick={handleSave}
+          disabled={loading || value.trim() === name}
+          className="rounded-xl"
+        >
           {loading ? "Salvando..." : "Salvar"}
         </Button>
       </div>
@@ -249,9 +285,19 @@ function EmailSection({ email }: { email: string }) {
       <div className="flex items-end gap-3 max-w-md">
         <div className="flex-1 space-y-1.5">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" value={value} onChange={(e) => setValue(e.target.value)} placeholder="seu@email.com" />
+          <Input
+            id="email"
+            type="email"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="seu@email.com"
+          />
         </div>
-        <Button onClick={handleSave} disabled={loading || value.trim() === email} className="rounded-xl">
+        <Button
+          onClick={handleSave}
+          disabled={loading || value.trim() === email}
+          className="rounded-xl"
+        >
           {loading ? "Salvando..." : "Salvar"}
         </Button>
       </div>
@@ -299,11 +345,23 @@ function PasswordSection() {
       <div className="space-y-3 max-w-md">
         <div className="space-y-1.5">
           <Label htmlFor="newPassword">Nova senha</Label>
-          <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+          <Input
+            id="newPassword"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Mínimo 6 caracteres"
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="confirmPassword">Confirmar nova senha</Label>
-          <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repita a nova senha" />
+          <Input
+            id="confirmPassword"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Repita a nova senha"
+          />
         </div>
         <Button onClick={handleChangePassword} disabled={loading} className="rounded-xl">
           {loading ? "Atualizando..." : "Alterar senha"}
@@ -355,8 +413,8 @@ function DangerZone() {
       ) : (
         <div className="space-y-3 bg-red-50 rounded-xl p-4">
           <p className="text-xs text-red-700 font-medium">
-            Isso vai excluir permanentemente sua conta, todos os leads, conversas, configurações e dados.
-            Esta ação não pode ser desfeita.
+            Isso vai excluir permanentemente sua conta, todos os leads, conversas, configurações e
+            dados. Esta ação não pode ser desfeita.
           </p>
           <div className="space-y-1.5">
             <Label className="text-xs text-red-600">
@@ -379,7 +437,10 @@ function DangerZone() {
             </Button>
             <Button
               variant="ghost"
-              onClick={() => { setShowConfirm(false); setConfirmText(""); }}
+              onClick={() => {
+                setShowConfirm(false);
+                setConfirmText("");
+              }}
               className="rounded-xl text-slate-500"
             >
               Cancelar

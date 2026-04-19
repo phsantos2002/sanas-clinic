@@ -4,10 +4,7 @@ import { AIResponseConfigForm } from "@/components/settings/AIResponseConfigForm
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
 
 export default async function AISettingsPage() {
-  const [responseConfig, aiConfig] = await Promise.all([
-    getAIResponseConfig(),
-    getAIConfig(),
-  ]);
+  const [responseConfig, aiConfig] = await Promise.all([getAIResponseConfig(), getAIConfig()]);
 
   return (
     <div className="space-y-4 max-w-2xl">
@@ -19,11 +16,21 @@ export default async function AISettingsPage() {
             Escolha o modelo, API key, nome da clinica e prompt personalizado
           </p>
         </div>
-        <AIConfigForm config={aiConfig ?? {
-          clinicName: "Sanas Pulse", systemPrompt: "", sendAudio: false,
-          provider: "openai", model: "gpt-4o-mini", capabilities: "text",
-          apiKey: "", voiceClonePrompt: "", openaiKey: "",
-        }} />
+        <AIConfigForm
+          config={
+            aiConfig ?? {
+              clinicName: "Sanas Pulse",
+              systemPrompt: "",
+              sendAudio: false,
+              provider: "openai",
+              model: "gpt-4o-mini",
+              capabilities: "text",
+              apiKey: "",
+              voiceClonePrompt: "",
+              openaiKey: "",
+            }
+          }
+        />
       </div>
 
       {/* AI Response Config (delays, filters, etc) */}

@@ -116,7 +116,10 @@ export async function getSDRMetrics(): Promise<SDRMetrics> {
       where: { userId: user.id, leadType: "outbound", tags: { has: "sql" } },
     }),
     prisma.stage.findFirst({
-      where: { userId: user.id, OR: [{ eventName: "Schedule" }, { name: { contains: "agen", mode: "insensitive" } }] },
+      where: {
+        userId: user.id,
+        OR: [{ eventName: "Schedule" }, { name: { contains: "agen", mode: "insensitive" } }],
+      },
       select: { id: true },
     }),
   ]);
@@ -154,7 +157,9 @@ export async function getSDRMetrics(): Promise<SDRMetrics> {
   );
 
   const sdrCount = attendants.filter((a) => a.role === "sdr" || a.role === "sdr_manager").length;
-  const closerCount = attendants.filter((a) => a.role === "closer" || a.role === "closer_manager").length;
+  const closerCount = attendants.filter(
+    (a) => a.role === "closer" || a.role === "closer_manager"
+  ).length;
 
   // Approximate "SQLs handed off today" = leads tagged sql + updated today
   const sqlsHandedOff = await prisma.lead.count({

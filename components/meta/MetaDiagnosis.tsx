@@ -23,7 +23,9 @@ export function MetaDiagnosis() {
     setLoading(false);
   };
 
-  useEffect(() => { fetch_(); }, []);
+  useEffect(() => {
+    fetch_();
+  }, []);
 
   if (loading) {
     return (
@@ -37,9 +39,24 @@ export function MetaDiagnosis() {
   if (!data) return null;
 
   const severityStyles = {
-    info: { bg: "from-blue-50 to-indigo-50", border: "border-blue-100", icon: TrendingUp, iconColor: "text-blue-500" },
-    warning: { bg: "from-amber-50 to-orange-50", border: "border-amber-100", icon: AlertTriangle, iconColor: "text-amber-500" },
-    critical: { bg: "from-red-50 to-rose-50", border: "border-red-100", icon: Pause, iconColor: "text-red-500" },
+    info: {
+      bg: "from-blue-50 to-indigo-50",
+      border: "border-blue-100",
+      icon: TrendingUp,
+      iconColor: "text-blue-500",
+    },
+    warning: {
+      bg: "from-amber-50 to-orange-50",
+      border: "border-amber-100",
+      icon: AlertTriangle,
+      iconColor: "text-amber-500",
+    },
+    critical: {
+      bg: "from-red-50 to-rose-50",
+      border: "border-red-100",
+      icon: Pause,
+      iconColor: "text-red-500",
+    },
   };
 
   const style = severityStyles[data.severity];
@@ -54,7 +71,10 @@ export function MetaDiagnosis() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-slate-400">{data.generatedAt}</span>
-          <button onClick={() => fetch_(true)} className="p-1 text-slate-400 hover:text-slate-600 rounded">
+          <button
+            onClick={() => fetch_(true)}
+            className="p-1 text-slate-400 hover:text-slate-600 rounded"
+          >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>

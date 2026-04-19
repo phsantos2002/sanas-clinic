@@ -59,21 +59,37 @@ import { createClient } from "@/lib/supabase/server";
 
 async function getUazapiConfig() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
 
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
   if (!dbUser) return null;
 
   const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-  if (!config || config.provider !== "uazapi" || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+  if (
+    !config ||
+    config.provider !== "uazapi" ||
+    !config.uazapiServerUrl ||
+    !config.uazapiInstanceToken
+  ) {
     return null;
   }
 
-  return { serverUrl: config.uazapiServerUrl.trim().replace(/\/+$/, ""), token: config.uazapiInstanceToken.trim() };
+  return {
+    serverUrl: config.uazapiServerUrl.trim().replace(/\/+$/, ""),
+    token: config.uazapiInstanceToken.trim(),
+  };
 }
 
-async function uazapi(serverUrl: string, token: string, method: string, path: string, body?: unknown) {
+async function uazapi(
+  serverUrl: string,
+  token: string,
+  method: string,
+  path: string,
+  body?: unknown
+) {
   const headers: Record<string, string> = { token: token.trim() };
   if (body) headers["Content-Type"] = "application/json";
 
@@ -119,17 +135,22 @@ export async function GET(req: NextRequest) {
         const chats = data.chats ?? data ?? [];
 
         // Enrich first 20 chats with profile pics in parallel
-        const toEnrich = chats.slice(0, 20).filter(
-          (c: Record<string, unknown>) => !c.imagePreview && c.wa_chatid
-        );
+        const toEnrich = chats
+          .slice(0, 20)
+          .filter((c: Record<string, unknown>) => !c.imagePreview && c.wa_chatid);
         await Promise.allSettled(
           toEnrich.map(async (chat: Record<string, unknown>) => {
             const phone = (chat.wa_chatid as string).split("@")[0];
             try {
-              const detail = await uazapi(config.serverUrl, config.token, "POST", "/chat/details", { number: phone, preview: true });
+              const detail = await uazapi(config.serverUrl, config.token, "POST", "/chat/details", {
+                number: phone,
+                preview: true,
+              });
               chat.imagePreview = detail.imagePreview || "";
               chat.image = detail.image || "";
-            } catch { /* skip */ }
+            } catch {
+              /* skip */
+            }
           })
         );
 
@@ -183,7 +204,10 @@ export async function GET(req: NextRequest) {
 
       case "details": {
         const number = searchParams.get("number") ?? "";
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/details", { number, preview: true });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/details", {
+          number,
+          preview: true,
+        });
         return NextResponse.json(data);
       }
 
@@ -195,19 +219,29 @@ export async function GET(req: NextRequest) {
       case "contacts": {
         const limit = parseInt(searchParams.get("limit") ?? "500");
         const offset = parseInt(searchParams.get("offset") ?? "0");
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/contact/find", { limit, offset });
-        return NextResponse.json({ contacts: data.contacts ?? data ?? [], total: data.pagination?.total });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/contact/find", {
+          limit,
+          offset,
+        });
+        return NextResponse.json({
+          contacts: data.contacts ?? data ?? [],
+          total: data.pagination?.total,
+        });
       }
 
       case "download": {
         const messageid = searchParams.get("messageid") ?? "";
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/message/download", { messageid });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/message/download", {
+          messageid,
+        });
         return NextResponse.json(data);
       }
 
       case "check-number": {
         const number = (searchParams.get("number") ?? "").replace(/\D/g, "");
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/contact/check", { number });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/contact/check", {
+          number,
+        });
         return NextResponse.json({
           exists: data.exists ?? data.numberExists ?? !!data.jid,
           jid: data.jid,
@@ -216,31 +250,45 @@ export async function GET(req: NextRequest) {
 
       case "profile-pic": {
         const number = (searchParams.get("number") ?? "").replace(/\D/g, "");
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/contact/profile-pic", { number });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/contact/profile-pic", {
+          number,
+        });
         return NextResponse.json({ url: data.url ?? data.imgUrl ?? data.profilePic });
       }
 
       case "business-profile": {
         const number = (searchParams.get("number") ?? "").replace(/\D/g, "");
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/contact/business-profile", { number });
+        const data = await uazapi(
+          config.serverUrl,
+          config.token,
+          "POST",
+          "/contact/business-profile",
+          { number }
+        );
         return NextResponse.json(data);
       }
 
       case "group-info": {
         const groupid = searchParams.get("groupid") ?? "";
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/group/info", { groupid });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/group/info", {
+          groupid,
+        });
         return NextResponse.json(data);
       }
 
       case "group-participants": {
         const groupid = searchParams.get("groupid") ?? "";
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/group/participants", { groupid });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/group/participants", {
+          groupid,
+        });
         return NextResponse.json(data);
       }
 
       case "group-invite-link": {
         const groupid = searchParams.get("groupid") ?? "";
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/group/invite-link", { groupid });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/group/invite-link", {
+          groupid,
+        });
         return NextResponse.json(data);
       }
 
@@ -280,12 +328,16 @@ export async function POST(req: NextRequest) {
     switch (action) {
       // ─── Message actions ───
       case "mark-read": {
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/read", { chatid: body.chatid });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/read", {
+          chatid: body.chatid,
+        });
         return NextResponse.json({ success: true, data });
       }
 
       case "mark-unread": {
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/unread", { chatid: body.chatid });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/unread", {
+          chatid: body.chatid,
+        });
         return NextResponse.json({ success: true, data });
       }
 
@@ -377,12 +429,16 @@ export async function POST(req: NextRequest) {
       }
 
       case "clear-chat": {
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/clear", { chatid: body.chatid });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/clear", {
+          chatid: body.chatid,
+        });
         return NextResponse.json({ success: true, data });
       }
 
       case "delete-chat": {
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/delete", { chatid: body.chatid });
+        const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/delete", {
+          chatid: body.chatid,
+        });
         return NextResponse.json({ success: true, data });
       }
 

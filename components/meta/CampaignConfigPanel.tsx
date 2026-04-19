@@ -1,7 +1,18 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { ChevronDown, ChevronRight, Settings, Save, X, Zap, DollarSign, Target, TrendingUp, Lock } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Settings,
+  Save,
+  X,
+  Zap,
+  DollarSign,
+  Target,
+  TrendingUp,
+  Lock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,24 +64,41 @@ const SEGMENT_OPTIONS = [
 ];
 
 const OBJECTIVE_ICONS: Record<string, string> = {
-  MESSAGES: "💬", CONVERSIONS: "🛒", LEADS: "📋", ENGAGEMENT: "📸",
-  TRAFFIC: "🌐", SALES: "🛒", AWARENESS: "📢",
+  MESSAGES: "💬",
+  CONVERSIONS: "🛒",
+  LEADS: "📋",
+  ENGAGEMENT: "📸",
+  TRAFFIC: "🌐",
+  SALES: "🛒",
+  AWARENESS: "📢",
 };
 
 const DESTINATION_LABELS: Record<string, string> = {
-  WHATSAPP: "WhatsApp", WEBSITE: "Website", INSTAGRAM: "Instagram",
-  FORM: "Formulário", STORE: "Loja",
+  WHATSAPP: "WhatsApp",
+  WEBSITE: "Website",
+  INSTAGRAM: "Instagram",
+  FORM: "Formulário",
+  STORE: "Loja",
 };
 
 const SEGMENT_LABELS: Record<string, string> = {
-  HEALTH: "Saúde", EDUCATION: "Educação", ECOMMERCE: "E-commerce",
-  SERVICES: "Serviços", REAL_ESTATE: "Imobiliário", FOOD: "Alimentação",
-  FITNESS: "Fitness", BEAUTY: "Beleza", LEGAL: "Jurídico", OTHER: "Outro",
+  HEALTH: "Saúde",
+  EDUCATION: "Educação",
+  ECOMMERCE: "E-commerce",
+  SERVICES: "Serviços",
+  REAL_ESTATE: "Imobiliário",
+  FOOD: "Alimentação",
+  FITNESS: "Fitness",
+  BEAUTY: "Beleza",
+  LEGAL: "Jurídico",
+  OTHER: "Outro",
 };
 
 const BID_LABELS: Record<string, string> = {
-  LOWEST_COST: "Menor Custo", COST_CAP: "Cost Cap",
-  BID_CAP: "Bid Cap", ROAS_MIN: "ROAS Mínimo",
+  LOWEST_COST: "Menor Custo",
+  COST_CAP: "Cost Cap",
+  BID_CAP: "Bid Cap",
+  ROAS_MIN: "ROAS Mínimo",
 };
 
 type StrategyCard = {
@@ -91,34 +119,75 @@ type StrategyCard = {
 
 const STRATEGY_CARDS: StrategyCard[] = [
   {
-    value: "LOWEST_COST", label: "Menor Custo", subtitle: "Automático",
-    description: "Ideal para começar", icon: Zap,
-    color: "text-emerald-700", border: "border-emerald-300", bg: "bg-emerald-50",
-    needsField: false, fieldLabel: "", fieldPlaceholder: "", fieldStep: "",
+    value: "LOWEST_COST",
+    label: "Menor Custo",
+    subtitle: "Automático",
+    description: "Ideal para começar",
+    icon: Zap,
+    color: "text-emerald-700",
+    border: "border-emerald-300",
+    bg: "bg-emerald-50",
+    needsField: false,
+    fieldLabel: "",
+    fieldPlaceholder: "",
+    fieldStep: "",
   },
   {
-    value: "COST_CAP", label: "Cost Cap", subtitle: "Custo médio controlado",
-    description: "Ideal para controlar gasto", icon: DollarSign,
-    color: "text-blue-700", border: "border-blue-300", bg: "bg-blue-50",
-    needsField: true, fieldLabel: "Custo Máx. por Resultado (R$)", fieldPlaceholder: "Ex: 25", fieldStep: "1",
+    value: "COST_CAP",
+    label: "Cost Cap",
+    subtitle: "Custo médio controlado",
+    description: "Ideal para controlar gasto",
+    icon: DollarSign,
+    color: "text-blue-700",
+    border: "border-blue-300",
+    bg: "bg-blue-50",
+    needsField: true,
+    fieldLabel: "Custo Máx. por Resultado (R$)",
+    fieldPlaceholder: "Ex: 25",
+    fieldStep: "1",
   },
   {
-    value: "BID_CAP", label: "Bid Cap", subtitle: "Lance máximo por clique",
-    description: "Ideal para controle total", icon: Target,
-    color: "text-violet-700", border: "border-violet-300", bg: "bg-violet-50",
-    needsField: true, fieldLabel: "Lance Máximo (R$)", fieldPlaceholder: "Ex: 10", fieldStep: "0.5",
+    value: "BID_CAP",
+    label: "Bid Cap",
+    subtitle: "Lance máximo por clique",
+    description: "Ideal para controle total",
+    icon: Target,
+    color: "text-violet-700",
+    border: "border-violet-300",
+    bg: "bg-violet-50",
+    needsField: true,
+    fieldLabel: "Lance Máximo (R$)",
+    fieldPlaceholder: "Ex: 10",
+    fieldStep: "0.5",
   },
   {
-    value: "ROAS_MIN", label: "ROAS Mínimo", subtitle: "Retorno garantido",
-    description: "Ideal para vendas diretas", icon: TrendingUp,
-    color: "text-amber-700", border: "border-amber-300", bg: "bg-amber-50",
-    needsField: true, fieldLabel: "ROAS Mínimo", fieldPlaceholder: "Ex: 3.0", fieldStep: "0.1",
+    value: "ROAS_MIN",
+    label: "ROAS Mínimo",
+    subtitle: "Retorno garantido",
+    description: "Ideal para vendas diretas",
+    icon: TrendingUp,
+    color: "text-amber-700",
+    border: "border-amber-300",
+    bg: "bg-amber-50",
+    needsField: true,
+    fieldLabel: "ROAS Mínimo",
+    fieldPlaceholder: "Ex: 3.0",
+    fieldStep: "0.1",
   },
 ];
 
-function fmtBrl(n: number) { return `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`; }
+function fmtBrl(n: number) {
+  return `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
 
-export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved, forceExpanded, accountPhase }: Props) {
+export function CampaignConfigPanel({
+  campaignId,
+  campaignName,
+  config,
+  onSaved,
+  forceExpanded,
+  accountPhase,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -138,8 +207,14 @@ export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved,
   const isLearning = accountPhase === "LEARNING";
 
   function handleSave() {
-    if (!objective) { toast.error("Selecione o objetivo da campanha"); return; }
-    if (!destination) { toast.error("Selecione o destino de conversão"); return; }
+    if (!objective) {
+      toast.error("Selecione o objetivo da campanha");
+      return;
+    }
+    if (!destination) {
+      toast.error("Selecione o destino de conversão");
+      return;
+    }
 
     startTransition(async () => {
       const result = await saveCampaignConfig({
@@ -170,10 +245,14 @@ export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved,
     if (!config) return "";
     const parts: string[] = [];
     const objIcon = OBJECTIVE_ICONS[config.campaignObjective] ?? "⚙";
-    const objLabel = OBJECTIVE_OPTIONS.find((o) => o.value === config.campaignObjective)?.label ?? config.campaignObjective;
-    const destLabel = DESTINATION_LABELS[config.conversionDestination] ?? config.conversionDestination;
+    const objLabel =
+      OBJECTIVE_OPTIONS.find((o) => o.value === config.campaignObjective)?.label ??
+      config.campaignObjective;
+    const destLabel =
+      DESTINATION_LABELS[config.conversionDestination] ?? config.conversionDestination;
     parts.push(`${objIcon} ${objLabel} → ${destLabel}`);
-    if (config.businessSegment) parts.push(SEGMENT_LABELS[config.businessSegment] ?? config.businessSegment);
+    if (config.businessSegment)
+      parts.push(SEGMENT_LABELS[config.businessSegment] ?? config.businessSegment);
     if (config.monthlyBudget) parts.push(`${fmtBrl(config.monthlyBudget)}/mês`);
     parts.push(BID_LABELS[config.bidStrategy] ?? config.bidStrategy);
     if (config.maxCostPerResult) parts.push(`R$ ${config.maxCostPerResult}`);
@@ -191,7 +270,9 @@ export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved,
           <Settings className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
           <span className="text-xs font-semibold text-slate-700 flex-shrink-0">Configuração</span>
           {config ? (
-            <span className="text-[10px] text-slate-400 truncate hidden sm:inline">{getSummary()}</span>
+            <span className="text-[10px] text-slate-400 truncate hidden sm:inline">
+              {getSummary()}
+            </span>
           ) : (
             <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">
               Não configurado
@@ -202,7 +283,11 @@ export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved,
           {config && !expanded && (
             <span className="text-[10px] text-indigo-600 font-medium">Editar</span>
           )}
-          {expanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+          {expanded ? (
+            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+          )}
         </div>
       </button>
 
@@ -210,26 +295,45 @@ export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved,
         <div className="px-4 pb-4 space-y-4 border-t border-slate-50">
           {/* Block 1: Objetivo & Destino */}
           <div className="pt-3 space-y-3">
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Objetivo & Destino</p>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+              Objetivo & Destino
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-[11px]">Objetivo</Label>
-                <CustomSelect options={OBJECTIVE_OPTIONS} value={objective} onChange={setObjective} placeholder="Selecione" />
+                <CustomSelect
+                  options={OBJECTIVE_OPTIONS}
+                  value={objective}
+                  onChange={setObjective}
+                  placeholder="Selecione"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-[11px]">Destino de Conversão</Label>
-                <CustomSelect options={DESTINATION_OPTIONS} value={destination} onChange={setDestination} placeholder="Selecione" />
+                <CustomSelect
+                  options={DESTINATION_OPTIONS}
+                  value={destination}
+                  onChange={setDestination}
+                  placeholder="Selecione"
+                />
               </div>
             </div>
           </div>
 
           {/* Block 2: Meu Negócio */}
           <div className="space-y-3 pt-3 border-t border-slate-50">
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Meu Negócio</p>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+              Meu Negócio
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-[11px]">Segmento</Label>
-                <CustomSelect options={SEGMENT_OPTIONS} value={segment} onChange={setSegment} placeholder="Selecione" />
+                <CustomSelect
+                  options={SEGMENT_OPTIONS}
+                  value={segment}
+                  onChange={setSegment}
+                  placeholder="Selecione"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-[11px]">Valor por Conversão (R$)</Label>
@@ -248,7 +352,9 @@ export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved,
 
           {/* Block 3: Orçamento */}
           <div className="space-y-3 pt-3 border-t border-slate-50">
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Orçamento</p>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+              Orçamento
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-[11px]">Verba Mensal (R$)</Label>
@@ -279,11 +385,14 @@ export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved,
 
           {/* Block 4: Estratégia de Lance — Cards */}
           <div className="space-y-3 pt-3 border-t border-slate-50">
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Estratégia de Lance</p>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+              Estratégia de Lance
+            </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {STRATEGY_CARDS.map((card) => {
                 const isSelected = bidStrategy === card.value;
-                const isLocked = isLearning && (card.value === "BID_CAP" || card.value === "ROAS_MIN");
+                const isLocked =
+                  isLearning && (card.value === "BID_CAP" || card.value === "ROAS_MIN");
                 const Icon = card.icon;
 
                 return (
@@ -305,15 +414,25 @@ export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved,
                         <Lock className="h-3 w-3 text-slate-400" />
                       </div>
                     )}
-                    <Icon className={`h-4 w-4 mb-1.5 ${isSelected ? card.color : "text-slate-400"}`} />
-                    <p className={`text-[11px] font-bold ${isSelected ? card.color : "text-slate-700"}`}>{card.label}</p>
+                    <Icon
+                      className={`h-4 w-4 mb-1.5 ${isSelected ? card.color : "text-slate-400"}`}
+                    />
+                    <p
+                      className={`text-[11px] font-bold ${isSelected ? card.color : "text-slate-700"}`}
+                    >
+                      {card.label}
+                    </p>
                     <p className="text-[9px] text-slate-400 mt-0.5">{card.subtitle}</p>
                     <p className="text-[9px] text-slate-400 mt-1">{card.description}</p>
                     {isSelected && card.value === "LOWEST_COST" && (
-                      <span className="text-[8px] text-emerald-600 font-medium mt-1 inline-block">Recomendado ✓</span>
+                      <span className="text-[8px] text-emerald-600 font-medium mt-1 inline-block">
+                        Recomendado ✓
+                      </span>
                     )}
                     {isLocked && (
-                      <p className="text-[8px] text-slate-400 mt-1">Disponível após estabilização</p>
+                      <p className="text-[8px] text-slate-400 mt-1">
+                        Disponível após estabilização
+                      </p>
                     )}
                   </button>
                 );
@@ -321,7 +440,9 @@ export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved,
             </div>
 
             {/* Bid value field below cards */}
-            {(bidStrategy === "COST_CAP" || bidStrategy === "BID_CAP" || bidStrategy === "ROAS_MIN") && (
+            {(bidStrategy === "COST_CAP" ||
+              bidStrategy === "BID_CAP" ||
+              bidStrategy === "ROAS_MIN") && (
               <div className="max-w-xs space-y-1">
                 <Label className="text-[11px]">
                   {STRATEGY_CARDS.find((c) => c.value === bidStrategy)?.fieldLabel ?? "Valor"}
@@ -329,8 +450,14 @@ export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved,
                 <Input
                   type="number"
                   value={bidStrategy === "BID_CAP" ? bidValue : maxCost}
-                  onChange={(e) => bidStrategy === "BID_CAP" ? setBidValue(e.target.value) : setMaxCost(e.target.value)}
-                  placeholder={STRATEGY_CARDS.find((c) => c.value === bidStrategy)?.fieldPlaceholder ?? ""}
+                  onChange={(e) =>
+                    bidStrategy === "BID_CAP"
+                      ? setBidValue(e.target.value)
+                      : setMaxCost(e.target.value)
+                  }
+                  placeholder={
+                    STRATEGY_CARDS.find((c) => c.value === bidStrategy)?.fieldPlaceholder ?? ""
+                  }
                   className="h-8 text-xs rounded-lg"
                   min="0"
                   step={STRATEGY_CARDS.find((c) => c.value === bidStrategy)?.fieldStep ?? "1"}
@@ -341,10 +468,14 @@ export function CampaignConfigPanel({ campaignId, campaignName, config, onSaved,
             {/* Phase-based tip */}
             {accountPhase && (
               <p className="text-[10px] text-slate-500">
-                {accountPhase === "LEARNING" && "💡 Recomendamos Menor Custo agora. Após 50 conversões, o Cost Cap se torna mais eficiente."}
-                {accountPhase === "STABILIZING" && "💡 Você já tem histórico suficiente para usar Cost Cap com segurança."}
-                {accountPhase === "SCALING" && "💡 Bid Cap pode reduzir custos agora que você conhece seu CPL ideal."}
-                {accountPhase === "MATURE" && "💡 Sua conta está madura — teste ROAS Mínimo para maximizar retorno."}
+                {accountPhase === "LEARNING" &&
+                  "💡 Recomendamos Menor Custo agora. Após 50 conversões, o Cost Cap se torna mais eficiente."}
+                {accountPhase === "STABILIZING" &&
+                  "💡 Você já tem histórico suficiente para usar Cost Cap com segurança."}
+                {accountPhase === "SCALING" &&
+                  "💡 Bid Cap pode reduzir custos agora que você conhece seu CPL ideal."}
+                {accountPhase === "MATURE" &&
+                  "💡 Sua conta está madura — teste ROAS Mínimo para maximizar retorno."}
               </p>
             )}
           </div>

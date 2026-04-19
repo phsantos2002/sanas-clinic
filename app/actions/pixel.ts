@@ -38,8 +38,13 @@ export async function savePixel(
   try {
     const existing = await prisma.pixel.findUnique({ where: { userId: user.id } });
 
-    const finalAccessToken = isMasked(accessToken) ? existing?.accessToken ?? "" : accessToken.trim();
-    const finalMetaAdsToken = metaAdsToken && !isMasked(metaAdsToken) ? metaAdsToken.trim() : (existing?.metaAdsToken ?? null);
+    const finalAccessToken = isMasked(accessToken)
+      ? (existing?.accessToken ?? "")
+      : accessToken.trim();
+    const finalMetaAdsToken =
+      metaAdsToken && !isMasked(metaAdsToken)
+        ? metaAdsToken.trim()
+        : (existing?.metaAdsToken ?? null);
 
     const pixel = await prisma.pixel.upsert({
       where: { userId: user.id },
@@ -58,15 +63,20 @@ export async function savePixel(
       },
     });
     revalidatePath("/dashboard/settings");
-    return { success: true, data: { ...pixel, accessToken: maskToken(pixel.accessToken), metaAdsToken: pixel.metaAdsToken ? maskToken(pixel.metaAdsToken) : null } as Pixel };
+    return {
+      success: true,
+      data: {
+        ...pixel,
+        accessToken: maskToken(pixel.accessToken),
+        metaAdsToken: pixel.metaAdsToken ? maskToken(pixel.metaAdsToken) : null,
+      } as Pixel,
+    };
   } catch {
     return { success: false, error: "Erro ao salvar pixel" };
   }
 }
 
-export async function saveSelectedCampaign(
-  campaignId: string | null
-): Promise<ActionResult> {
+export async function saveSelectedCampaign(campaignId: string | null): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Não autenticado" };
 
@@ -106,7 +116,9 @@ export async function saveCampaignObjective(data: {
         conversionDestination: data.conversionDestination || null,
         monthlyBudget: data.monthlyBudget,
         ...(data.bidStrategy !== undefined ? { bidStrategy: data.bidStrategy || null } : {}),
-        ...(data.businessSegment !== undefined ? { businessSegment: data.businessSegment || null } : {}),
+        ...(data.businessSegment !== undefined
+          ? { businessSegment: data.businessSegment || null }
+          : {}),
         ...(data.coverageArea !== undefined ? { coverageArea: data.coverageArea || null } : {}),
         ...(data.conversionValue !== undefined ? { conversionValue: data.conversionValue } : {}),
         ...(data.maxCostPerResult !== undefined ? { maxCostPerResult: data.maxCostPerResult } : {}),

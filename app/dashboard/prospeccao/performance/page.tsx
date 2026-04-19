@@ -68,12 +68,7 @@ export default async function PerformancePage() {
           value={metrics.totalAttendants.all}
           color="indigo"
         />
-        <KpiCard
-          icon={Target}
-          label="SDRs"
-          value={metrics.totalAttendants.sdr}
-          color="violet"
-        />
+        <KpiCard icon={Target} label="SDRs" value={metrics.totalAttendants.sdr} color="violet" />
         <KpiCard
           icon={Award}
           label="Closers"
@@ -154,10 +149,7 @@ export default async function PerformancePage() {
         {metrics.funnel.outboundLeads === 0 && (
           <p className="text-xs text-slate-400 text-center py-6">
             Nenhum lead outbound ainda —{" "}
-            <Link
-              href="/dashboard/prospeccao/import"
-              className="text-indigo-600 hover:underline"
-            >
+            <Link href="/dashboard/prospeccao/import" className="text-indigo-600 hover:underline">
               importe uma lista
             </Link>
             .
@@ -168,9 +160,7 @@ export default async function PerformancePage() {
       {/* Per-attendant */}
       {metrics.attendants.length > 0 && (
         <div className="bg-white border border-slate-100 rounded-2xl p-5">
-          <h3 className="font-semibold text-slate-900 text-sm mb-4">
-            Atividade por pessoa (hoje)
-          </h3>
+          <h3 className="font-semibold text-slate-900 text-sm mb-4">Atividade por pessoa (hoje)</h3>
           <div className="space-y-2">
             {metrics.attendants
               .sort((a, b) => b.todayActivity - a.todayActivity)
@@ -182,14 +172,9 @@ export default async function PerformancePage() {
                 const barColor =
                   pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : "bg-slate-300";
                 return (
-                  <div
-                    key={a.id}
-                    className="grid grid-cols-[1fr,auto,auto] gap-3 items-center"
-                  >
+                  <div key={a.id} className="grid grid-cols-[1fr,auto,auto] gap-3 items-center">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">
-                        {a.name}
-                      </p>
+                      <p className="text-sm font-medium text-slate-800 truncate">{a.name}</p>
                       <p className="text-[10px] text-slate-400">
                         {ROLE_LABELS[a.role] || a.role} · {a.activeLeads} leads
                       </p>

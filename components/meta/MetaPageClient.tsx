@@ -39,10 +39,21 @@ type Props = {
 };
 
 export function MetaPageClient({
-  campaigns, hasConfig, pixelId, events, stages,
-  selectedCampaign, selectedAdSets, selectedInsights, selectedCampaignId, apiError,
-  accountPhase, bidStrategy, conversionDestination,
-  userId, campaignConfigs: initialConfigs,
+  campaigns,
+  hasConfig,
+  pixelId,
+  events,
+  stages,
+  selectedCampaign,
+  selectedAdSets,
+  selectedInsights,
+  selectedCampaignId,
+  apiError,
+  accountPhase,
+  bidStrategy,
+  conversionDestination,
+  userId,
+  campaignConfigs: initialConfigs,
 }: Props) {
   const router = useRouter();
   const [configMap, setConfigMap] = useState<Record<string, CampaignConfig>>(() => {
@@ -54,13 +65,14 @@ export function MetaPageClient({
   });
 
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(() => {
-    if (selectedCampaignId && campaigns.some((c) => c.id === selectedCampaignId)) return selectedCampaignId;
+    if (selectedCampaignId && campaigns.some((c) => c.id === selectedCampaignId))
+      return selectedCampaignId;
     const active = campaigns.find((c) => c.status === "ACTIVE");
     return active?.id ?? campaigns[0]?.id ?? null;
   });
 
   const activeCampaign = campaigns.find((c) => c.id === activeCampaignId) ?? null;
-  const activeConfig = activeCampaignId ? configMap[activeCampaignId] ?? null : null;
+  const activeConfig = activeCampaignId ? (configMap[activeCampaignId] ?? null) : null;
   const isPreFetched = activeCampaignId === selectedCampaignId;
   const currentAdSets = isPreFetched ? selectedAdSets : undefined;
   const currentInsights = isPreFetched ? selectedInsights : null;
@@ -73,9 +85,12 @@ export function MetaPageClient({
     // Config is now set during campaign creation, no live editing needed
   }, []);
 
-  const handleCampaignCreated = useCallback((_campaignId: string) => {
-    router.refresh();
-  }, [router]);
+  const handleCampaignCreated = useCallback(
+    (_campaignId: string) => {
+      router.refresh();
+    },
+    [router]
+  );
 
   // ─── Not configured ───
   if (!hasConfig) {
@@ -84,11 +99,16 @@ export function MetaPageClient({
         <Header onNewCampaign={() => setShowWizard(true)} />
         <Card className="border-slate-100 rounded-2xl">
           <CardContent className="py-12 text-center space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto"><MetaIcon size={28} /></div>
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto">
+              <MetaIcon size={28} />
+            </div>
             <p className="text-sm font-semibold text-slate-700">Conecte sua conta Meta Ads</p>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Configure o Ad Account ID e o Token de Acesso em<br />
-              <span className="font-medium text-indigo-600">Configurações &rarr; Pixel do Facebook</span>
+              Configure o Ad Account ID e o Token de Acesso em
+              <br />
+              <span className="font-medium text-indigo-600">
+                Configurações &rarr; Pixel do Facebook
+              </span>
             </p>
           </CardContent>
         </Card>
@@ -108,8 +128,9 @@ export function MetaPageClient({
             </div>
             <p className="text-sm font-semibold text-slate-700">Nenhuma campanha encontrada</p>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Verifique se o token de acesso tem permissão <span className="font-mono">ads_read</span> e
-              se a conta de anúncios está correta em <span className="font-medium text-indigo-600">Configurações</span>.
+              Verifique se o token de acesso tem permissão{" "}
+              <span className="font-mono">ads_read</span> e se a conta de anúncios está correta em{" "}
+              <span className="font-medium text-indigo-600">Configurações</span>.
             </p>
             {apiError && (
               <p className="text-xs font-mono text-red-600 bg-red-50 rounded-lg px-3 py-2 max-w-lg mx-auto break-all">
@@ -172,7 +193,9 @@ export function MetaPageClient({
       ) : (
         <Card className="border-slate-100 rounded-2xl">
           <CardContent className="py-8 text-center">
-            <p className="text-sm text-slate-400">Selecione uma campanha acima para ver os detalhes.</p>
+            <p className="text-sm text-slate-400">
+              Selecione uma campanha acima para ver os detalhes.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -197,11 +220,7 @@ function Header({ onNewCampaign }: { onNewCampaign: () => void }) {
         </h1>
         <p className="text-sm text-slate-400 mt-0.5">Gerencie campanhas, métricas e criativos</p>
       </div>
-      <Button
-        size="sm"
-        className="h-8 text-xs rounded-xl gap-1.5"
-        onClick={onNewCampaign}
-      >
+      <Button size="sm" className="h-8 text-xs rounded-xl gap-1.5" onClick={onNewCampaign}>
         <Plus className="h-3.5 w-3.5" />
         <span className="hidden sm:inline">Nova Campanha</span>
       </Button>

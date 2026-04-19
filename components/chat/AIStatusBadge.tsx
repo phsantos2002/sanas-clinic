@@ -16,7 +16,11 @@ export function AIStatusBadge({ aiEnabled, onToggle }: Props) {
           ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
           : "bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200"
       }`}
-      title={aiEnabled ? "IA respondendo automaticamente. Clique para pausar." : "IA pausada. Clique para ativar."}
+      title={
+        aiEnabled
+          ? "IA respondendo automaticamente. Clique para pausar."
+          : "IA pausada. Clique para ativar."
+      }
     >
       {aiEnabled ? (
         <>

@@ -210,10 +210,7 @@ export async function updateLead(
 
 // ── Move Lead (with Transaction) ─────────────────────────────
 
-export async function moveLead(
-  leadId: string,
-  newStageId: string
-): Promise<ActionResult> {
+export async function moveLead(leadId: string, newStageId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 
@@ -285,7 +282,14 @@ export async function getLeadSourceStats(): Promise<LeadSourceStats> {
     _count: { id: true },
   });
 
-  const stats: LeadSourceStats = { total: 0, meta: 0, google: 0, whatsapp: 0, manual: 0, unknown: 0 };
+  const stats: LeadSourceStats = {
+    total: 0,
+    meta: 0,
+    google: 0,
+    whatsapp: 0,
+    manual: 0,
+    unknown: 0,
+  };
   for (const g of groups) {
     const count = g._count.id;
     stats.total += count;
@@ -325,8 +329,11 @@ export async function getDashboardStats(
   const user = await getCurrentUser();
   if (!user) {
     return {
-      total: 0, tracked: 0, untracked: 0,
-      trackedPercent: 0, untrackedPercent: 0,
+      total: 0,
+      tracked: 0,
+      untracked: 0,
+      trackedPercent: 0,
+      untrackedPercent: 0,
       bySource: { total: 0, meta: 0, google: 0, whatsapp: 0, manual: 0, unknown: 0 },
       daily: [],
     };
@@ -335,8 +342,10 @@ export async function getDashboardStats(
   const where: Record<string, unknown> = { userId: user.id };
   if (startDate || endDate) {
     where.createdAt = {};
-    if (startDate) (where.createdAt as Record<string, unknown>).gte = new Date(startDate + "T00:00:00Z");
-    if (endDate) (where.createdAt as Record<string, unknown>).lte = new Date(endDate + "T23:59:59Z");
+    if (startDate)
+      (where.createdAt as Record<string, unknown>).gte = new Date(startDate + "T00:00:00Z");
+    if (endDate)
+      (where.createdAt as Record<string, unknown>).lte = new Date(endDate + "T23:59:59Z");
   }
 
   const leads = await prisma.lead.findMany({
@@ -346,10 +355,19 @@ export async function getDashboardStats(
   });
 
   const total = leads.length;
-  const tracked = leads.filter((l) => l.source && ["meta", "google", "whatsapp", "manual"].includes(l.source)).length;
+  const tracked = leads.filter(
+    (l) => l.source && ["meta", "google", "whatsapp", "manual"].includes(l.source)
+  ).length;
   const untracked = total - tracked;
 
-  const bySource: LeadSourceStats = { total, meta: 0, google: 0, whatsapp: 0, manual: 0, unknown: 0 };
+  const bySource: LeadSourceStats = {
+    total,
+    meta: 0,
+    google: 0,
+    whatsapp: 0,
+    manual: 0,
+    unknown: 0,
+  };
   const dailyMap = new Map<string, DailyOriginStats>();
 
   for (const lead of leads) {
@@ -530,7 +548,9 @@ export async function getLeadTimeline(leadId: string): Promise<TimelineEvent[]> 
 
 // ── Recalculate single lead score ────────────────────────────
 
-export async function refreshLeadScore(leadId: string): Promise<ActionResult<{ score: number; label: string }>> {
+export async function refreshLeadScore(
+  leadId: string
+): Promise<ActionResult<{ score: number; label: string }>> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 

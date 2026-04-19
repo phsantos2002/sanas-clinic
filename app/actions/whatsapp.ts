@@ -9,7 +9,9 @@ import type { ActionResult } from "@/types";
 
 async function getAuthenticatedUser() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
   return prisma.user.findUnique({ where: { email: user.email! } });
 }
@@ -41,9 +43,7 @@ export async function saveWhatsAppConfig(
     // Only update metaAppSecret if a non-empty value was provided;
     // if the field is omitted or blank, keep the existing value (upsert will overwrite
     // only the fields passed in `update`, so we conditionally include it).
-    const secretUpdate = metaAppSecret?.trim()
-      ? { metaAppSecret: metaAppSecret.trim() }
-      : {};
+    const secretUpdate = metaAppSecret?.trim() ? { metaAppSecret: metaAppSecret.trim() } : {};
 
     await prisma.whatsAppConfig.upsert({
       where: { userId: dbUser.id },
@@ -75,7 +75,10 @@ export async function saveUazapiConfig(): Promise<ActionResult<{ qrcode?: string
     const adminToken = (process.env.UAZAPI_ADMIN_TOKEN || "").trim();
 
     if (!serverUrl || !adminToken) {
-      return { success: false, error: "Uazapi não configurado no servidor. Contate o administrador." };
+      return {
+        success: false,
+        error: "Uazapi não configurado no servidor. Contate o administrador.",
+      };
     }
 
     const { createUazapiInstance, connectUazapiInstance, setUazapiWebhook } =
@@ -91,7 +94,9 @@ export async function saveUazapiConfig(): Promise<ActionResult<{ qrcode?: string
       // Check if instance already exists on Uazapi (avoid duplicates)
       const allInstances = await fetch(`${serverUrl}/instance/all`, {
         headers: { admintoken: adminToken },
-      }).then(r => r.json()).catch(() => []);
+      })
+        .then((r) => r.json())
+        .catch(() => []);
 
       const existingInstance = Array.isArray(allInstances)
         ? allInstances.find((i: { name: string; token: string }) => i.name === instanceName)
@@ -114,8 +119,9 @@ export async function saveUazapiConfig(): Promise<ActionResult<{ qrcode?: string
     }
 
     // Configure webhook
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-      ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
     await setUazapiWebhook(serverUrl, instanceToken, `${baseUrl}/api/webhook/evolution`);
 
@@ -156,7 +162,12 @@ export async function getUazapiQR(): Promise<ActionResult<{ qrcode: string }>> {
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "uazapi" || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+    if (
+      !config ||
+      config.provider !== "uazapi" ||
+      !config.uazapiServerUrl ||
+      !config.uazapiInstanceToken
+    ) {
       return { success: false, error: "Uazapi não configurado" };
     }
 
@@ -175,13 +186,20 @@ export async function getUazapiQR(): Promise<ActionResult<{ qrcode: string }>> {
 
 // ─── Connection status (Uazapi) ───
 
-export async function getUazapiStatus(): Promise<ActionResult<{ connected: boolean; state?: string }>> {
+export async function getUazapiStatus(): Promise<
+  ActionResult<{ connected: boolean; state?: string }>
+> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "uazapi" || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+    if (
+      !config ||
+      config.provider !== "uazapi" ||
+      !config.uazapiServerUrl ||
+      !config.uazapiInstanceToken
+    ) {
       return { success: false, error: "Uazapi não configurado" };
     }
 
@@ -208,7 +226,10 @@ export async function testWhatsAppConnection(): Promise<ActionResult> {
       const status = await getUazapiStatus();
       if (!status.success) return status;
       if (status.data?.connected) return { success: true };
-      return { success: false, error: `Não conectado (estado: ${status.data?.state ?? "desconhecido"})` };
+      return {
+        success: false,
+        error: `Não conectado (estado: ${status.data?.state ?? "desconhecido"})`,
+      };
     }
 
     // Test Official API
@@ -263,13 +284,20 @@ export async function disconnectUazapi(): Promise<ActionResult> {
 
 // ─── Sync WhatsApp chats → leads + messages ───
 
-export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: number; messagesImported: number }>> {
+export async function syncWhatsAppChats(): Promise<
+  ActionResult<{ imported: number; messagesImported: number }>
+> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "uazapi" || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+    if (
+      !config ||
+      config.provider !== "uazapi" ||
+      !config.uazapiServerUrl ||
+      !config.uazapiInstanceToken
+    ) {
       return { success: false, error: "Uazapi não configurado" };
     }
 
@@ -303,9 +331,7 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
 
       const name = chat.wa_contactName || chat.phone || phone;
       // Uazapi timestamps are in milliseconds
-      const chatDate = chat.wa_lastMsgTimestamp
-        ? new Date(chat.wa_lastMsgTimestamp)
-        : new Date();
+      const chatDate = chat.wa_lastMsgTimestamp ? new Date(chat.wa_lastMsgTimestamp) : new Date();
 
       // Check if lead already exists
       const phoneSuffix = phone.slice(-9);
@@ -367,13 +393,20 @@ export async function syncWhatsAppChats(): Promise<ActionResult<{ imported: numb
 
 // ─── Sync messages in batches ───
 
-export async function syncWhatsAppMessages(): Promise<ActionResult<{ messagesImported: number; remaining: number }>> {
+export async function syncWhatsAppMessages(): Promise<
+  ActionResult<{ messagesImported: number; remaining: number }>
+> {
   try {
     const dbUser = await getAuthenticatedUser();
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "uazapi" || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+    if (
+      !config ||
+      config.provider !== "uazapi" ||
+      !config.uazapiServerUrl ||
+      !config.uazapiInstanceToken
+    ) {
       return { success: false, error: "Uazapi não configurado" };
     }
 

@@ -103,7 +103,11 @@ export async function saveSocialConnection(data: {
   }
 }
 
-export async function testSocialConnection(platform: string, accessToken: string, pageId?: string): Promise<ActionResult<{ name: string; picture?: string }>> {
+export async function testSocialConnection(
+  platform: string,
+  accessToken: string,
+  pageId?: string
+): Promise<ActionResult<{ name: string; picture?: string }>> {
   try {
     if (platform === "instagram" || platform === "facebook") {
       // Test Meta Graph API token
@@ -126,7 +130,10 @@ export async function testSocialConnection(platform: string, accessToken: string
         }
         const igAccount = igData.instagram_business_account;
         if (!igAccount) {
-          return { success: false, error: "Nenhuma conta Instagram Business encontrada nesta Page" };
+          return {
+            success: false,
+            error: "Nenhuma conta Instagram Business encontrada nesta Page",
+          };
         }
         return {
           success: true,
@@ -142,10 +149,9 @@ export async function testSocialConnection(platform: string, accessToken: string
 
     if (platform === "google_business") {
       // Test Google Business Profile API
-      const res = await fetch(
-        "https://mybusinessaccountmanagement.googleapis.com/v1/accounts",
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      const res = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       const data = await res.json();
       if (data.error) {
         return { success: false, error: data.error.message || "Token invalido" };
@@ -357,14 +363,13 @@ export async function getSocialStats() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [totalPosts, publishedPosts, scheduledPosts, draftPosts, connections] =
-    await Promise.all([
-      prisma.socialPost.count({ where: { userId: user.id } }),
-      prisma.socialPost.count({ where: { userId: user.id, status: "published" } }),
-      prisma.socialPost.count({ where: { userId: user.id, status: "scheduled" } }),
-      prisma.socialPost.count({ where: { userId: user.id, status: "draft" } }),
-      prisma.socialConnection.count({ where: { userId: user.id, isActive: true } }),
-    ]);
+  const [totalPosts, publishedPosts, scheduledPosts, draftPosts, connections] = await Promise.all([
+    prisma.socialPost.count({ where: { userId: user.id } }),
+    prisma.socialPost.count({ where: { userId: user.id, status: "published" } }),
+    prisma.socialPost.count({ where: { userId: user.id, status: "scheduled" } }),
+    prisma.socialPost.count({ where: { userId: user.id, status: "draft" } }),
+    prisma.socialConnection.count({ where: { userId: user.id, isActive: true } }),
+  ]);
 
   return { totalPosts, publishedPosts, scheduledPosts, draftPosts, connections };
 }
@@ -407,8 +412,13 @@ export async function suggestBestPostTime(platform: string) {
   for (const post of posts) {
     if (!post.publishedAt) continue;
     const hour = new Date(post.publishedAt).getHours();
-    const engagement = post.engagementData as { likes?: number; comments?: number; shares?: number } | null;
-    const total = (engagement?.likes || 0) + (engagement?.comments || 0) * 3 + (engagement?.shares || 0) * 5;
+    const engagement = post.engagementData as {
+      likes?: number;
+      comments?: number;
+      shares?: number;
+    } | null;
+    const total =
+      (engagement?.likes || 0) + (engagement?.comments || 0) * 3 + (engagement?.shares || 0) * 5;
     (hourEngagement[hour] ||= []).push(total);
   }
 
@@ -416,7 +426,10 @@ export async function suggestBestPostTime(platform: string) {
   let bestAvg = 0;
   for (const [hour, values] of Object.entries(hourEngagement)) {
     const avg = values.reduce((a, b) => a + b, 0) / values.length;
-    if (avg > bestAvg) { bestAvg = avg; bestHour = parseInt(hour); }
+    if (avg > bestAvg) {
+      bestAvg = avg;
+      bestHour = parseInt(hour);
+    }
   }
 
   // Find best day

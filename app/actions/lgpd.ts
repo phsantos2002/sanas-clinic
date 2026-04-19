@@ -125,7 +125,9 @@ export async function eraseLeadData(leadId: string): Promise<ActionResult> {
 
 // ── Bulk anonymize old leads (for data hygiene) ──────────────
 
-export async function anonymizeOldLeads(olderThanDays: number = 365): Promise<ActionResult<{ count: number }>> {
+export async function anonymizeOldLeads(
+  olderThanDays: number = 365
+): Promise<ActionResult<{ count: number }>> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 

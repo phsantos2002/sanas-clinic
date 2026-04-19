@@ -205,7 +205,9 @@ export async function getImportBatches(limit = 20): Promise<
 /**
  * Delete all leads in a specific import batch (undo import).
  */
-export async function revertImportBatch(batchId: string): Promise<ActionResult<{ deleted: number }>> {
+export async function revertImportBatch(
+  batchId: string
+): Promise<ActionResult<{ deleted: number }>> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 
@@ -281,9 +283,7 @@ export async function handoffToCloser(
     data: {
       assignedTo: closerId,
       tags: { push: "sql" }, // Sales Qualified Lead
-      notes: note
-        ? `[Passado para ${closer.name}] ${note}`
-        : undefined,
+      notes: note ? `[Passado para ${closer.name}] ${note}` : undefined,
     },
   });
 

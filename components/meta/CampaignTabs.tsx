@@ -13,8 +13,13 @@ type Props = {
 };
 
 const OBJECTIVE_ICONS: Record<string, string> = {
-  MESSAGES: "💬", CONVERSIONS: "🛒", LEADS: "📋", ENGAGEMENT: "📸",
-  TRAFFIC: "🌐", SALES: "🛒", AWARENESS: "📢",
+  MESSAGES: "💬",
+  CONVERSIONS: "🛒",
+  LEADS: "📋",
+  ENGAGEMENT: "📸",
+  TRAFFIC: "🌐",
+  SALES: "🛒",
+  AWARENESS: "📢",
 };
 
 export function CampaignTabs({ campaigns, configs, activeCampaignId, onSelect }: Props) {
@@ -26,7 +31,9 @@ export function CampaignTabs({ campaigns, configs, activeCampaignId, onSelect }:
     if (!el) return;
     function check() {
       if (!el) return;
-      setShowScrollHint(el.scrollWidth > el.clientWidth && el.scrollLeft + el.clientWidth < el.scrollWidth - 10);
+      setShowScrollHint(
+        el.scrollWidth > el.clientWidth && el.scrollLeft + el.clientWidth < el.scrollWidth - 10
+      );
     }
     check();
     el.addEventListener("scroll", check);
@@ -67,15 +74,20 @@ export function CampaignTabs({ campaigns, configs, activeCampaignId, onSelect }:
               <span className="text-sm leading-none">{objectiveIcon}</span>
 
               {/* Status dot */}
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                isActive ? "bg-emerald-500" : "bg-slate-300"
-              }`} />
+              <span
+                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                  isActive ? "bg-emerald-500" : "bg-slate-300"
+                }`}
+              />
 
               <span className="truncate max-w-[120px]">{c.name}</span>
 
               {/* No config indicator */}
               {!hasConfig && (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Sem configuração" />
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0"
+                  title="Sem configuração"
+                />
               )}
             </button>
           );

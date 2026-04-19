@@ -60,7 +60,9 @@ export function ConfirmDialog({
         {requireConfirmText && (
           <div className="space-y-2">
             <p className="text-xs text-slate-500">
-              Digite <span className="font-mono font-bold text-slate-700">{requireConfirmText}</span> para confirmar:
+              Digite{" "}
+              <span className="font-mono font-bold text-slate-700">{requireConfirmText}</span> para
+              confirmar:
             </p>
             <input
               type="text"

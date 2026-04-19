@@ -13,7 +13,9 @@ export async function GET() {
   try {
     // 1. Check auth
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
@@ -57,7 +59,8 @@ export async function GET() {
         });
         const webhookData = await webhookRes.json().catch(() => ({}));
         // Uazapi returns the full webhook config — try multiple paths
-        const webhookUrl = webhookData?.url || webhookData?.webhook?.url || webhookData?.webhookUrl || null;
+        const webhookUrl =
+          webhookData?.url || webhookData?.webhook?.url || webhookData?.webhookUrl || null;
         const webhookEnabled = webhookData?.enabled ?? webhookData?.webhook?.enabled ?? null;
         diagnostics.webhook = {
           status: webhookRes.status,
@@ -84,9 +87,15 @@ export async function GET() {
       where: { lead: { userId: dbUser.id } },
       orderBy: { createdAt: "desc" },
       take: 5,
-      select: { id: true, role: true, content: true, createdAt: true, lead: { select: { name: true, phone: true } } },
+      select: {
+        id: true,
+        role: true,
+        content: true,
+        createdAt: true,
+        lead: { select: { name: true, phone: true } },
+      },
     });
-    diagnostics.recentMessages = recentMessages.map(m => ({
+    diagnostics.recentMessages = recentMessages.map((m) => ({
       role: m.role,
       content: m.content.slice(0, 80),
       time: m.createdAt,
@@ -140,7 +149,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
     const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
@@ -171,8 +182,13 @@ export async function POST(req: NextRequest) {
     // --- Try OLD format (header: token) ---
     try {
       const getRes = await fetch(`${serverUrl}/webhook`, { headers: { token } });
-      results.oldFormat_GET = { status: getRes.status, body: await getRes.json().catch(() => getRes.text()) };
-    } catch (err) { results.oldFormat_GET = { error: String(err) }; }
+      results.oldFormat_GET = {
+        status: getRes.status,
+        body: await getRes.json().catch(() => getRes.text()),
+      };
+    } catch (err) {
+      results.oldFormat_GET = { error: String(err) };
+    }
 
     // --- Try NEW format (Authorization: Bearer, /instance/NAME/webhook) ---
     if (instanceName) {
@@ -181,8 +197,13 @@ export async function POST(req: NextRequest) {
         const getRes = await fetch(`${serverUrl}/instance/${instanceName}/webhook`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        results.newFormat_GET = { status: getRes.status, body: await getRes.json().catch(() => getRes.text()) };
-      } catch (err) { results.newFormat_GET = { error: String(err) }; }
+        results.newFormat_GET = {
+          status: getRes.status,
+          body: await getRes.json().catch(() => getRes.text()),
+        };
+      } catch (err) {
+        results.newFormat_GET = { error: String(err) };
+      }
 
       // SET webhook via new format
       try {
@@ -196,8 +217,13 @@ export async function POST(req: NextRequest) {
             excludeEvents: ["wasSentByApi", "isGroupYes"],
           }),
         });
-        results.newFormat_SET = { status: setRes.status, body: await setRes.json().catch(() => setRes.text()) };
-      } catch (err) { results.newFormat_SET = { error: String(err) }; }
+        results.newFormat_SET = {
+          status: setRes.status,
+          body: await setRes.json().catch(() => setRes.text()),
+        };
+      } catch (err) {
+        results.newFormat_SET = { error: String(err) };
+      }
     } else {
       results.newFormat = "SKIP — no instanceName stored in DB";
     }
@@ -214,8 +240,13 @@ export async function POST(req: NextRequest) {
           excludeMessages: ["wasSentByApi"],
         }),
       });
-      results.oldFormat_SET = { status: setRes.status, body: await setRes.json().catch(() => setRes.text()) };
-    } catch (err) { results.oldFormat_SET = { error: String(err) }; }
+      results.oldFormat_SET = {
+        status: setRes.status,
+        body: await setRes.json().catch(() => setRes.text()),
+      };
+    } catch (err) {
+      results.oldFormat_SET = { error: String(err) };
+    }
 
     // --- Try with admin token if available ---
     if (adminToken && instanceName) {
@@ -230,15 +261,22 @@ export async function POST(req: NextRequest) {
             excludeEvents: ["wasSentByApi"],
           }),
         });
-        results.adminFormat_SET = { status: setRes.status, body: await setRes.json().catch(() => setRes.text()) };
-      } catch (err) { results.adminFormat_SET = { error: String(err) }; }
+        results.adminFormat_SET = {
+          status: setRes.status,
+          body: await setRes.json().catch(() => setRes.text()),
+        };
+      } catch (err) {
+        results.adminFormat_SET = { error: String(err) };
+      }
     }
 
     // --- Instance status ---
     try {
       const statusRes = await fetch(`${serverUrl}/instance/status`, { headers: { token } });
       results.instanceStatus_old = await statusRes.json().catch(() => statusRes.text());
-    } catch (err) { results.instanceStatus_old = { error: String(err) }; }
+    } catch (err) {
+      results.instanceStatus_old = { error: String(err) };
+    }
 
     if (instanceName) {
       try {
@@ -246,7 +284,9 @@ export async function POST(req: NextRequest) {
           headers: { Authorization: `Bearer ${token}` },
         });
         results.instanceStatus_new = await statusRes.json().catch(() => statusRes.text());
-      } catch (err) { results.instanceStatus_new = { error: String(err) }; }
+      } catch (err) {
+        results.instanceStatus_new = { error: String(err) };
+      }
     }
 
     return NextResponse.json(results);

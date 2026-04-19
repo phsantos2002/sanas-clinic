@@ -17,7 +17,9 @@ export function AnalyticsNarrative() {
     setLoading(false);
   };
 
-  useEffect(() => { fetch_(); }, []);
+  useEffect(() => {
+    fetch_();
+  }, []);
 
   if (loading) {
     return (
@@ -40,7 +42,10 @@ export function AnalyticsNarrative() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-violet-400">{timestamp}</span>
-          <button onClick={() => fetch_(true)} className="p-1 text-violet-400 hover:text-violet-600 rounded">
+          <button
+            onClick={() => fetch_(true)}
+            className="p-1 text-violet-400 hover:text-violet-600 rounded"
+          >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>

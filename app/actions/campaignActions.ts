@@ -51,16 +51,18 @@ export async function recordCampaignAction(data: {
 
 // ─── Get Recent Actions ───
 
-export async function getCampaignActions(limit = 20): Promise<Array<{
-  id: string;
-  type: string;
-  entityType: string;
-  entityId: string;
-  entityName: string;
-  before: string | null;
-  after: string | null;
-  createdAt: Date;
-}>> {
+export async function getCampaignActions(limit = 20): Promise<
+  Array<{
+    id: string;
+    type: string;
+    entityType: string;
+    entityId: string;
+    entityName: string;
+    before: string | null;
+    after: string | null;
+    createdAt: Date;
+  }>
+> {
   try {
     const user = await getCurrentUser();
     if (!user) return [];

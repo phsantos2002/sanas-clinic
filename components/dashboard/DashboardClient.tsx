@@ -82,7 +82,13 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
     setSelectionMode(false);
   }, []);
 
-  const hasActiveFilters = !!(search.trim() || sourceFilter || stageFilter || scoreFilter || tagFilter);
+  const hasActiveFilters = !!(
+    search.trim() ||
+    sourceFilter ||
+    stageFilter ||
+    scoreFilter ||
+    tagFilter
+  );
 
   const clearFilters = useCallback(() => {
     setSearch("");
@@ -111,11 +117,14 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
     setShowSavedDropdown(false);
   }, []);
 
-  const removeSavedFilter = useCallback((index: number) => {
-    const updated = savedFilters.filter((_, i) => i !== index);
-    setSavedFilters(updated);
-    persistSavedFilters(updated);
-  }, [savedFilters]);
+  const removeSavedFilter = useCallback(
+    (index: number) => {
+      const updated = savedFilters.filter((_, i) => i !== index);
+      setSavedFilters(updated);
+      persistSavedFilters(updated);
+    },
+    [savedFilters]
+  );
 
   const filteredLeads = useMemo(() => {
     let result = leads;
@@ -146,8 +155,10 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
 
     if (scoreFilter) {
       if (scoreFilter === "vip") result = result.filter((l) => l.score >= 80);
-      else if (scoreFilter === "quente") result = result.filter((l) => l.score >= 50 && l.score < 80);
-      else if (scoreFilter === "morno") result = result.filter((l) => l.score >= 25 && l.score < 50);
+      else if (scoreFilter === "quente")
+        result = result.filter((l) => l.score >= 50 && l.score < 80);
+      else if (scoreFilter === "morno")
+        result = result.filter((l) => l.score >= 25 && l.score < 50);
       else if (scoreFilter === "frio") result = result.filter((l) => l.score < 25);
     }
 
@@ -292,7 +303,10 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
                         {f.name}
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); removeSavedFilter(i); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeSavedFilter(i);
+                        }}
                         className="text-slate-300 hover:text-red-500 ml-2 transition-colors"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -345,7 +359,9 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
           <button
             onClick={() => setView("kanban")}
             className={`p-2 rounded-lg transition-all ${
-              view === "kanban" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+              view === "kanban"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-400 hover:text-slate-600"
             }`}
           >
             <Kanban className="h-4 w-4" />
@@ -353,7 +369,9 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
           <button
             onClick={() => setView("table")}
             className={`p-2 rounded-lg transition-all ${
-              view === "table" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+              view === "table"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-400 hover:text-slate-600"
             }`}
           >
             <List className="h-4 w-4" />
@@ -379,7 +397,11 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
           selectionMode={selectionMode}
         />
       ) : (
-        <LeadsTable leads={filteredLeads} onClickLead={setSelectedLeadId} onEditLead={handleEditLead} />
+        <LeadsTable
+          leads={filteredLeads}
+          onClickLead={setSelectedLeadId}
+          onEditLead={handleEditLead}
+        />
       )}
 
       <LeadDetailModal

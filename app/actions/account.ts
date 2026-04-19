@@ -7,7 +7,9 @@ import type { ActionResult } from "@/types";
 
 export async function getAccountData() {
   const supabase = await createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
   if (!authUser) return null;
 
   const dbUser = await getCurrentUser();
@@ -75,9 +77,7 @@ export async function updateAccountPhoto(photoUrl: string | null): Promise<Actio
   }
 }
 
-export async function updateAccountPassword(
-  newPassword: string
-): Promise<ActionResult> {
+export async function updateAccountPassword(newPassword: string): Promise<ActionResult> {
   try {
     const supabase = await createClient();
     const { error } = await supabase.auth.updateUser({ password: newPassword });

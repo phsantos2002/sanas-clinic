@@ -68,8 +68,8 @@ export function scoreCPC(cpc: number): Quality {
 
 export const qualityConfig: Record<Quality, { label: string; color: string; bar: string }> = {
   good: { label: "Ótimo", color: "text-emerald-600", bar: "bg-emerald-500" },
-  ok:   { label: "Regular", color: "text-amber-600", bar: "bg-amber-400" },
-  bad:  { label: "Fraco", color: "text-red-500", bar: "bg-red-400" },
+  ok: { label: "Regular", color: "text-amber-600", bar: "bg-amber-400" },
+  bad: { label: "Fraco", color: "text-red-500", bar: "bg-red-400" },
 };
 
 // ─── Benchmark-aware scoring ───
@@ -77,17 +77,26 @@ export const qualityConfig: Record<Quality, { label: string; color: string; bar:
 import { classifyMetric, type BenchmarkMetrics } from "@/lib/benchmarks";
 
 export function scoreCtr(ctr: number, bench: BenchmarkMetrics | null): Quality {
-  if (bench) { const q = classifyMetric("ctr", ctr, bench); return q === "good" ? "good" : q === "average" ? "ok" : "bad"; }
+  if (bench) {
+    const q = classifyMetric("ctr", ctr, bench);
+    return q === "good" ? "good" : q === "average" ? "ok" : "bad";
+  }
   return scoreCTR(ctr);
 }
 
 export function scoreCpm(cpm: number, bench: BenchmarkMetrics | null): Quality {
-  if (bench) { const q = classifyMetric("cpm", cpm, bench); return q === "good" ? "good" : q === "average" ? "ok" : "bad"; }
+  if (bench) {
+    const q = classifyMetric("cpm", cpm, bench);
+    return q === "good" ? "good" : q === "average" ? "ok" : "bad";
+  }
   return scoreCPM(cpm);
 }
 
 export function scoreCpc(cpc: number, bench: BenchmarkMetrics | null): Quality {
-  if (bench) { const q = classifyMetric("cpc", cpc, bench); return q === "good" ? "good" : q === "average" ? "ok" : "bad"; }
+  if (bench) {
+    const q = classifyMetric("cpc", cpc, bench);
+    return q === "good" ? "good" : q === "average" ? "ok" : "bad";
+  }
   return scoreCPC(cpc);
 }
 
@@ -104,12 +113,45 @@ export function getCreativeHealth(ad: MetaAd): CreativeHealth {
   return "performing";
 }
 
-export const healthConfig: Record<CreativeHealth, { label: string; color: string; bg: string; icon: LucideIcon; tip: string }> = {
-  performing: { label: "Performando", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: TrendingUp, tip: "Criativo com bom desempenho. Mantenha ativo." },
-  saturating: { label: "Saturando", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: Activity, tip: "Frequência alta e CTR caindo. Prepare um criativo substituto." },
-  declining:  { label: "Esgotar/Pausar", color: "text-red-700", bg: "bg-red-50 border-red-200", icon: TrendingDown, tip: "Frequência muito alta ou CTR muito baixo. Considere pausar e substituir." },
-  paused:     { label: "Pausado", color: "text-slate-500", bg: "bg-slate-50 border-slate-200", icon: Pause, tip: "Criativo pausado." },
-  new:        { label: "Novo", color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: Sparkles, tip: "Sem dados suficientes ainda. Aguarde 2-3 dias para avaliar." },
+export const healthConfig: Record<
+  CreativeHealth,
+  { label: string; color: string; bg: string; icon: LucideIcon; tip: string }
+> = {
+  performing: {
+    label: "Performando",
+    color: "text-emerald-700",
+    bg: "bg-emerald-50 border-emerald-200",
+    icon: TrendingUp,
+    tip: "Criativo com bom desempenho. Mantenha ativo.",
+  },
+  saturating: {
+    label: "Saturando",
+    color: "text-amber-700",
+    bg: "bg-amber-50 border-amber-200",
+    icon: Activity,
+    tip: "Frequência alta e CTR caindo. Prepare um criativo substituto.",
+  },
+  declining: {
+    label: "Esgotar/Pausar",
+    color: "text-red-700",
+    bg: "bg-red-50 border-red-200",
+    icon: TrendingDown,
+    tip: "Frequência muito alta ou CTR muito baixo. Considere pausar e substituir.",
+  },
+  paused: {
+    label: "Pausado",
+    color: "text-slate-500",
+    bg: "bg-slate-50 border-slate-200",
+    icon: Pause,
+    tip: "Criativo pausado.",
+  },
+  new: {
+    label: "Novo",
+    color: "text-blue-700",
+    bg: "bg-blue-50 border-blue-200",
+    icon: Sparkles,
+    tip: "Sem dados suficientes ainda. Aguarde 2-3 dias para avaliar.",
+  },
 };
 
 // ─── Shared Types ───
@@ -117,9 +159,4 @@ export const healthConfig: Record<CreativeHealth, { label: string; color: string
 export type Stage = { id: string; name: string; eventName: string };
 
 // Re-export types from meta actions for convenience
-export type {
-  MetaCampaignFull,
-  MetaAdSet,
-  MetaAd,
-  MetaCampaignInsights,
-} from "@/app/actions/meta";
+export type { MetaCampaignFull, MetaAdSet, MetaAd, MetaCampaignInsights } from "@/app/actions/meta";

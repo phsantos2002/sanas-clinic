@@ -95,7 +95,9 @@ export function ChatPanel({ lead, onViewDetails }: Props) {
         </div>
         <div className="flex items-center gap-2">
           {lead.stage && stageColor && (
-            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg ${stageColor.bg} ${stageColor.text}`}>
+            <span
+              className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg ${stageColor.bg} ${stageColor.text}`}
+            >
               {lead.stage.name}
             </span>
           )}
@@ -142,7 +144,9 @@ export function ChatPanel({ lead, onViewDetails }: Props) {
               }`}
             >
               <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-              <p className={`text-[10px] mt-1 ${msg.role === "assistant" ? "text-indigo-200" : "text-slate-400"}`}>
+              <p
+                className={`text-[10px] mt-1 ${msg.role === "assistant" ? "text-indigo-200" : "text-slate-400"}`}
+              >
                 {formatTime(msg.createdAt)}
               </p>
             </div>

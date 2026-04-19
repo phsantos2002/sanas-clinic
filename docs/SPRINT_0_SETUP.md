@@ -2,25 +2,25 @@
 
 ## O que foi feito (já está no projeto)
 
-| Arquivo | Descrição |
-|---------|-----------|
-| `lib/logger.ts` | Logger estruturado (JSON em prod, colorido em dev). Sem dependências externas. |
-| `lib/errors.ts` | Hierarquia de erros tipados (`ValidationError`, `AuthError`, `NotFoundError`, etc.) |
-| `lib/apiHandler.ts` | Wrapper para rotas API com try/catch, logging e status correto automático |
-| `prisma/seed.ts` | Seed com usuário demo, 5 stages padrão, AIConfig, leads de exemplo |
-| `vitest.config.ts` | Configuração do Vitest com coverage V8 |
-| `vitest.setup.ts` | Setup de variáveis de ambiente para testes |
-| `tsconfig.test.json` | tsconfig separado para os arquivos de teste |
-| `__tests__/lib/errors.test.ts` | 30+ testes unitários para lib/errors |
-| `__tests__/lib/logger.test.ts` | Testes do logger estruturado |
-| `__tests__/lib/apiHandler.test.ts` | Testes da lógica de classificação de erros |
-| `__tests__/lib/rateLimit.test.ts` | Testes do rate limiter |
-| `.github/workflows/ci.yml` | Pipeline CI: typecheck → lint → test → build |
-| `.husky/pre-commit` | Hook: typecheck + lint-staged antes de cada commit |
-| `.husky/commit-msg` | Valida Conventional Commits |
-| `.lintstagedrc.json` | Lint + prettier só nos arquivos staged |
-| `.prettierrc.json` | Configuração do Prettier |
-| `eslint.config.mjs` | ESLint com Next.js + regras customizadas |
+| Arquivo                            | Descrição                                                                           |
+| ---------------------------------- | ----------------------------------------------------------------------------------- |
+| `lib/logger.ts`                    | Logger estruturado (JSON em prod, colorido em dev). Sem dependências externas.      |
+| `lib/errors.ts`                    | Hierarquia de erros tipados (`ValidationError`, `AuthError`, `NotFoundError`, etc.) |
+| `lib/apiHandler.ts`                | Wrapper para rotas API com try/catch, logging e status correto automático           |
+| `prisma/seed.ts`                   | Seed com usuário demo, 5 stages padrão, AIConfig, leads de exemplo                  |
+| `vitest.config.ts`                 | Configuração do Vitest com coverage V8                                              |
+| `vitest.setup.ts`                  | Setup de variáveis de ambiente para testes                                          |
+| `tsconfig.test.json`               | tsconfig separado para os arquivos de teste                                         |
+| `__tests__/lib/errors.test.ts`     | 30+ testes unitários para lib/errors                                                |
+| `__tests__/lib/logger.test.ts`     | Testes do logger estruturado                                                        |
+| `__tests__/lib/apiHandler.test.ts` | Testes da lógica de classificação de erros                                          |
+| `__tests__/lib/rateLimit.test.ts`  | Testes do rate limiter                                                              |
+| `.github/workflows/ci.yml`         | Pipeline CI: typecheck → lint → test → build                                        |
+| `.husky/pre-commit`                | Hook: typecheck + lint-staged antes de cada commit                                  |
+| `.husky/commit-msg`                | Valida Conventional Commits                                                         |
+| `.lintstagedrc.json`               | Lint + prettier só nos arquivos staged                                              |
+| `.prettierrc.json`                 | Configuração do Prettier                                                            |
+| `eslint.config.mjs`                | ESLint com Next.js + regras customizadas                                            |
 
 ## Passos para ativar (rodar no terminal do projeto)
 
@@ -96,12 +96,12 @@ npm run db:studio
 
 ## Cobertura mínima configurada
 
-| Métrica | Threshold atual | Meta Sprint 5+ |
-|---------|----------------|---------------|
-| Lines | 40% | 60% |
-| Functions | 40% | 60% |
-| Branches | 30% | 50% |
-| Statements | 40% | 60% |
+| Métrica    | Threshold atual | Meta Sprint 5+ |
+| ---------- | --------------- | -------------- |
+| Lines      | 40%             | 60%            |
+| Functions  | 40%             | 60%            |
+| Branches   | 30%             | 50%            |
+| Statements | 40%             | 60%            |
 
 ## Conventional Commits (obrigatório após ativar Husky)
 

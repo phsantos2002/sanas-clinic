@@ -34,11 +34,7 @@ export function TeamPerformanceMini({ metrics }: { metrics: SDRMetrics }) {
       <div className="grid grid-cols-3 gap-3 pb-4 mb-4 border-b border-slate-50">
         <MiniStat label="Mensagens" value={metrics.today.messagesSent} />
         <MiniStat label="Emails" value={metrics.today.emailsSent} />
-        <MiniStat
-          label="SQLs passados"
-          value={metrics.today.sqlsHandedOff}
-          accent
-        />
+        <MiniStat label="SQLs passados" value={metrics.today.sqlsHandedOff} accent />
       </div>
 
       {/* Ranking */}
@@ -46,9 +42,7 @@ export function TeamPerformanceMini({ metrics }: { metrics: SDRMetrics }) {
         {topAttendants.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center py-8">
             <TrendingUp className="h-8 w-8 text-slate-200 mb-2" />
-            <p className="text-xs text-slate-400 max-w-[220px]">
-              Nenhum membro cadastrado.
-            </p>
+            <p className="text-xs text-slate-400 max-w-[220px]">Nenhum membro cadastrado.</p>
             <Link
               href="/dashboard/chat/team"
               className="text-[11px] text-indigo-600 hover:underline mt-2"
@@ -63,11 +57,7 @@ export function TeamPerformanceMini({ metrics }: { metrics: SDRMetrics }) {
                 ? Math.min(100, Math.round((a.todayActivity / a.dailyActivityGoal) * 100))
                 : 0;
             const barColor =
-              pct >= 80
-                ? "bg-green-500"
-                : pct >= 50
-                  ? "bg-amber-500"
-                  : "bg-slate-300";
+              pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : "bg-slate-300";
 
             return (
               <div key={a.id} className="space-y-1">
@@ -97,15 +87,7 @@ export function TeamPerformanceMini({ metrics }: { metrics: SDRMetrics }) {
   );
 }
 
-function MiniStat({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent?: boolean;
-}) {
+function MiniStat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
     <div>
       <p

@@ -9,7 +9,7 @@ export type AIResponse = {
 };
 
 export type AIProviderConfig = {
-  provider: string;   // "openai" | "gemini"
+  provider: string; // "openai" | "gemini"
   model: string;
   apiKey: string;
   clinicName?: string;
@@ -58,7 +58,7 @@ async function generateWithOpenAI(
   apiKey: string,
   model: string,
   systemPrompt: string,
-  messages: ChatMessage[],
+  messages: ChatMessage[]
 ): Promise<string> {
   const openai = new OpenAI({ apiKey });
 
@@ -78,7 +78,7 @@ async function generateWithGemini(
   apiKey: string,
   model: string,
   systemPrompt: string,
-  messages: ChatMessage[],
+  messages: ChatMessage[]
 ): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey);
   const genModel = genAI.getGenerativeModel({
@@ -87,7 +87,7 @@ async function generateWithGemini(
   });
 
   const history = messages.slice(0, -1).map((m) => ({
-    role: m.role === "assistant" ? "model" as const : "user" as const,
+    role: m.role === "assistant" ? ("model" as const) : ("user" as const),
     parts: [{ text: m.content }],
   }));
 
@@ -102,7 +102,7 @@ async function generateWithGemini(
 export async function generateAIReply(
   messages: ChatMessage[],
   leadName: string,
-  config: AIProviderConfig,
+  config: AIProviderConfig
 ): Promise<AIResponse> {
   const clinicName = config.clinicName ?? "Sanas Pulse";
   const systemPrompt = buildSystemPrompt(clinicName, config.systemPrompt);
@@ -114,9 +114,19 @@ export async function generateAIReply(
     let fullText: string;
 
     if (config.provider === "gemini") {
-      fullText = await generateWithGemini(config.apiKey, config.model, systemWithName, recentMessages);
+      fullText = await generateWithGemini(
+        config.apiKey,
+        config.model,
+        systemWithName,
+        recentMessages
+      );
     } else {
-      fullText = await generateWithOpenAI(config.apiKey, config.model, systemWithName, recentMessages);
+      fullText = await generateWithOpenAI(
+        config.apiKey,
+        config.model,
+        systemWithName,
+        recentMessages
+      );
     }
 
     return parseResponse(fullText);

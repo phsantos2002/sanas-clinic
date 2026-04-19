@@ -18,16 +18,23 @@ const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL
 export async function GET() {
   // Check if Google is configured
   if (!GOOGLE_CLIENT_ID) {
-    return NextResponse.json({
-      error: "Google Calendar nao configurado",
-      detail: "Env vars GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET nao definidas no Vercel",
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Google Calendar nao configurado",
+        detail: "Env vars GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET nao definidas no Vercel",
+      },
+      { status: 500 }
+    );
   }
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user?.email) {
-    return NextResponse.redirect(new URL("/login", REDIRECT_URI.replace("/api/auth/google-calendar/callback", "")));
+    return NextResponse.redirect(
+      new URL("/login", REDIRECT_URI.replace("/api/auth/google-calendar/callback", ""))
+    );
   }
 
   const dbUser = await prisma.user.findUnique({ where: { email: user.email } });

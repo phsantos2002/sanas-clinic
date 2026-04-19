@@ -2,11 +2,7 @@ import { Header } from "@/components/dashboard/Header";
 import { CommandPalette } from "@/components/dashboard/CommandPalette";
 import { SetupChecklist } from "@/components/onboarding/SetupChecklist";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       <Header />

@@ -48,7 +48,9 @@ export function AIConfigForm({ config }: Props) {
   const [model, setModel] = useState(config.model);
   const [capabilities, setCapabilities] = useState(config.capabilities);
   const [apiKey, setApiKey] = useState(config.apiKey);
-  const [voiceClonePrompt, setVoiceClonePrompt] = useState(config.voiceClonePrompt || VOICE_CLONE_PROMPT);
+  const [voiceClonePrompt, setVoiceClonePrompt] = useState(
+    config.voiceClonePrompt || VOICE_CLONE_PROMPT
+  );
   const [openaiKey, setOpenaiKey] = useState(config.openaiKey);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -199,7 +201,8 @@ export function AIConfigForm({ config }: Props) {
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 resize-none"
         />
         <p className="text-xs text-slate-400">
-          Descreva os serviços, horários, preços e o tom de voz da IA. Se vazio, usa o comportamento padrão.
+          Descreva os serviços, horários, preços e o tom de voz da IA. Se vazio, usa o comportamento
+          padrão.
         </p>
       </div>
 
@@ -298,7 +301,10 @@ export function AIConfigForm({ config }: Props) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => { setAudioFile(null); setAudioUrl(null); }}
+                    onClick={() => {
+                      setAudioFile(null);
+                      setAudioUrl(null);
+                    }}
                     className="p-1 rounded-lg hover:bg-slate-200 transition-colors"
                   >
                     <X className="h-4 w-4 text-slate-400" />

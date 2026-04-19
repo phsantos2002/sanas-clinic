@@ -16,8 +16,7 @@ export default async function ProspeccaoPage() {
     }),
   ]);
 
-  const conversionPct =
-    outboundCount > 0 ? Math.round((sqlCount / outboundCount) * 100) : 0;
+  const conversionPct = outboundCount > 0 ? Math.round((sqlCount / outboundCount) * 100) : 0;
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -71,7 +70,9 @@ export default async function ProspeccaoPage() {
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-slate-900 text-sm">Cadências</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Sequências multi-toque (WhatsApp + email)</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Sequências multi-toque (WhatsApp + email)
+              </p>
             </div>
           </div>
         </Link>

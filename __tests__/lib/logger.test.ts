@@ -154,7 +154,7 @@ describe("logger", () => {
       expect(log.event).toBe("minimal_event");
       // Não deve ter chaves inesperadas além das obrigatórias
       const expectedKeys = new Set(["ts", "level", "event"]);
-      const actualKeys = Object.keys(log).filter(k => !expectedKeys.has(k));
+      const actualKeys = Object.keys(log).filter((k) => !expectedKeys.has(k));
       expect(actualKeys).toHaveLength(0);
     });
   });

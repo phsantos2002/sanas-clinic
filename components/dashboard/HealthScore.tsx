@@ -26,8 +26,14 @@ export function HealthScore() {
     );
   }
 
-  const color = data.score >= 70 ? "text-emerald-600" : data.score >= 40 ? "text-amber-600" : "text-red-600";
-  const bgColor = data.score >= 70 ? "stroke-emerald-500" : data.score >= 40 ? "stroke-amber-500" : "stroke-red-500";
+  const color =
+    data.score >= 70 ? "text-emerald-600" : data.score >= 40 ? "text-amber-600" : "text-red-600";
+  const bgColor =
+    data.score >= 70
+      ? "stroke-emerald-500"
+      : data.score >= 40
+        ? "stroke-amber-500"
+        : "stroke-red-500";
   const circumference = 2 * Math.PI * 45;
   const offset = circumference - (data.score / 100) * circumference;
 
@@ -42,8 +48,14 @@ export function HealthScore() {
           <svg className="h-24 w-24 -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="45" fill="none" stroke="#e2e8f0" strokeWidth="8" />
             <circle
-              cx="50" cy="50" r="45" fill="none" className={bgColor} strokeWidth="8"
-              strokeDasharray={circumference} strokeDashoffset={offset}
+              cx="50"
+              cy="50"
+              r="45"
+              fill="none"
+              className={bgColor}
+              strokeWidth="8"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
               strokeLinecap="round"
             />
           </svg>
@@ -61,7 +73,11 @@ export function HealthScore() {
               <div className="w-16 h-1.5 bg-slate-100 rounded-full">
                 <div
                   className={`h-full rounded-full ${
-                    item.value >= 70 ? "bg-emerald-500" : item.value >= 40 ? "bg-amber-500" : "bg-red-500"
+                    item.value >= 70
+                      ? "bg-emerald-500"
+                      : item.value >= 40
+                        ? "bg-amber-500"
+                        : "bg-red-500"
                   }`}
                   style={{ width: `${item.value}%` }}
                 />
@@ -73,9 +89,7 @@ export function HealthScore() {
       </div>
 
       {data.weakest && (
-        <p className="text-[10px] text-slate-400 mt-2 text-center">
-          Ponto fraco: {data.weakest}
-        </p>
+        <p className="text-[10px] text-slate-400 mt-2 text-center">Ponto fraco: {data.weakest}</p>
       )}
     </div>
   );

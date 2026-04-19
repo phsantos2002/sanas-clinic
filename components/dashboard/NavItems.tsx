@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Kanban, BarChart3, MessageCircle, Settings, CalendarDays, Target } from "lucide-react";
+import {
+  LayoutDashboard,
+  Kanban,
+  BarChart3,
+  MessageCircle,
+  Settings,
+  CalendarDays,
+  Target,
+} from "lucide-react";
 import { MetaIcon } from "@/components/icons/SourceIcons";
 
 const navItems = [
@@ -30,9 +38,7 @@ export function NavItems({ mobile }: { mobile?: boolean }) {
               key={item.href}
               href={item.href}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                isActive
-                  ? "bg-indigo-50 text-indigo-700"
-                  : "text-slate-400 hover:text-slate-600"
+                isActive ? "bg-indigo-50 text-indigo-700" : "text-slate-400 hover:text-slate-600"
               }`}
             >
               {item.iconCustom ?? (item.icon && <item.icon className="h-3.5 w-3.5" />)}
@@ -54,9 +60,7 @@ export function NavItems({ mobile }: { mobile?: boolean }) {
             key={item.href}
             href={item.href}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-              isActive
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-400 hover:text-slate-600"
+              isActive ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
             }`}
           >
             {item.iconCustom ?? (item.icon && <item.icon className="h-4 w-4" />)}

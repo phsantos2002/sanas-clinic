@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 import {
-  MessageCircle, Heart, AlertCircle, Users, Filter,
-  CheckCircle2, ThumbsUp, UserPlus, Clock,
+  MessageCircle,
+  Heart,
+  AlertCircle,
+  Users,
+  Filter,
+  CheckCircle2,
+  ThumbsUp,
+  UserPlus,
+  Clock,
 } from "lucide-react";
 
 // Placeholder data — in production this would come from Instagram/Facebook Graph API
@@ -39,7 +46,9 @@ export function EngagementClient() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-semibold text-slate-900">Engajamento</h2>
-          <p className="text-xs text-slate-400">Comentarios, mencoes e interacoes das redes sociais</p>
+          <p className="text-xs text-slate-400">
+            Comentarios, mencoes e interacoes das redes sociais
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -60,12 +69,24 @@ export function EngagementClient() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Pendentes", value: 0, icon: Clock, color: "text-amber-600 bg-amber-50" },
-          { label: "Respondidos", value: 0, icon: CheckCircle2, color: "text-green-600 bg-green-50" },
+          {
+            label: "Respondidos",
+            value: 0,
+            icon: CheckCircle2,
+            color: "text-green-600 bg-green-50",
+          },
           { label: "Leads detectados", value: 0, icon: Users, color: "text-blue-600 bg-blue-50" },
-          { label: "Novos seguidores", value: 0, icon: UserPlus, color: "text-violet-600 bg-violet-50" },
+          {
+            label: "Novos seguidores",
+            value: 0,
+            icon: UserPlus,
+            color: "text-violet-600 bg-violet-50",
+          },
         ].map((stat) => (
           <div key={stat.label} className="bg-white border border-slate-100 rounded-xl p-3">
-            <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${stat.color} mb-1`}>
+            <div
+              className={`h-8 w-8 rounded-lg flex items-center justify-center ${stat.color} mb-1`}
+            >
               <stat.icon className="h-4 w-4" />
             </div>
             <p className="text-lg font-bold text-slate-900">{stat.value}</p>
@@ -81,14 +102,21 @@ export function EngagementClient() {
           <div>
             <h3 className="font-medium text-indigo-800 text-sm">Central de Engajamento</h3>
             <p className="text-xs text-indigo-600 mt-1">
-              Esta secao coleta automaticamente comentarios do Instagram, Facebook e TikTok.
-              A IA classifica cada comentario (pergunta, elogio, lead, reclamacao) e sugere respostas personalizadas.
+              Esta secao coleta automaticamente comentarios do Instagram, Facebook e TikTok. A IA
+              classifica cada comentario (pergunta, elogio, lead, reclamacao) e sugere respostas
+              personalizadas.
             </p>
             <div className="mt-3 space-y-1.5">
               <p className="text-xs text-indigo-700 font-medium">Para ativar:</p>
-              <p className="text-xs text-indigo-600">1. Conecte suas redes sociais em Conteudo → Conexoes</p>
-              <p className="text-xs text-indigo-600">2. Os comentarios serao coletados automaticamente</p>
-              <p className="text-xs text-indigo-600">3. A IA gera respostas sugeridas — voce aprova com 1 toque</p>
+              <p className="text-xs text-indigo-600">
+                1. Conecte suas redes sociais em Conteudo → Conexoes
+              </p>
+              <p className="text-xs text-indigo-600">
+                2. Os comentarios serao coletados automaticamente
+              </p>
+              <p className="text-xs text-indigo-600">
+                3. A IA gera respostas sugeridas — voce aprova com 1 toque
+              </p>
             </div>
           </div>
         </div>
@@ -99,11 +127,31 @@ export function EngagementClient() {
         <h3 className="font-semibold text-slate-900 text-sm mb-3">Como funciona</h3>
         <div className="space-y-3">
           {[
-            { step: "1", title: "Coleta automatica", desc: "CRON busca comentarios de todas as plataformas conectadas" },
-            { step: "2", title: "Classificacao IA", desc: "Cada comentario e classificado: pergunta, elogio, lead, reclamacao, spam" },
-            { step: "3", title: "Resposta sugerida", desc: "IA gera resposta personalizada usando contexto do seu negocio" },
-            { step: "4", title: "Aprovacao 1-toque", desc: "Voce aprova, edita ou descarta — a resposta e enviada automaticamente" },
-            { step: "5", title: "Captura de leads", desc: "Comentarios como 'quanto custa?' sao detectados e viram leads no Pipeline" },
+            {
+              step: "1",
+              title: "Coleta automatica",
+              desc: "CRON busca comentarios de todas as plataformas conectadas",
+            },
+            {
+              step: "2",
+              title: "Classificacao IA",
+              desc: "Cada comentario e classificado: pergunta, elogio, lead, reclamacao, spam",
+            },
+            {
+              step: "3",
+              title: "Resposta sugerida",
+              desc: "IA gera resposta personalizada usando contexto do seu negocio",
+            },
+            {
+              step: "4",
+              title: "Aprovacao 1-toque",
+              desc: "Voce aprova, edita ou descarta — a resposta e enviada automaticamente",
+            },
+            {
+              step: "5",
+              title: "Captura de leads",
+              desc: "Comentarios como 'quanto custa?' sao detectados e viram leads no Pipeline",
+            },
           ].map((item) => (
             <div key={item.step} className="flex items-start gap-3">
               <div className="h-6 w-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0">

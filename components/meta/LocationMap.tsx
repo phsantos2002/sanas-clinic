@@ -100,10 +100,10 @@ export function LocationMap({ pins, onAddPin, height = 260, addMode, onPinPlaced
         fillOpacity: 1,
         weight: 3,
       });
-      marker.bindTooltip(
-        `<strong>${pin.name || "Pino"}</strong><br/>${pin.radius} km de raio`,
-        { direction: "top", offset: [0, -12] }
-      );
+      marker.bindTooltip(`<strong>${pin.name || "Pino"}</strong><br/>${pin.radius} km de raio`, {
+        direction: "top",
+        offset: [0, -12],
+      });
       marker.addTo(layersRef.current!);
 
       bounds.extend(circle.getBounds());

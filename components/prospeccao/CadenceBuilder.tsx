@@ -2,16 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  MessageCircle,
-  Mail,
-  Clock,
-  Plus,
-  Trash2,
-  ArrowUp,
-  ArrowDown,
-  Save,
-} from "lucide-react";
+import { MessageCircle, Mail, Clock, Plus, Trash2, ArrowUp, ArrowDown, Save } from "lucide-react";
 import { toast } from "sonner";
 import { createCadence, updateCadence, type CadenceStepData } from "@/app/actions/cadences";
 
@@ -36,13 +27,15 @@ const DEFAULT_STEPS: CadenceStepData[] = [
   {
     order: 0,
     type: "send_whatsapp",
-    message: "Oi {{nome}}! Vi o seu perfil{{empresa}} e tenho uma ideia rápida que pode te interessar. Posso mandar em 2 linhas?",
+    message:
+      "Oi {{nome}}! Vi o seu perfil{{empresa}} e tenho uma ideia rápida que pode te interessar. Posso mandar em 2 linhas?",
   },
   { order: 1, type: "delay", delayDays: 2, delayHours: 0 },
   {
     order: 2,
     type: "send_whatsapp",
-    message: "{{nome}}, só complementando — nosso sistema já ajudou negócios parecidos com o seu a triplicar o retorno das campanhas. Quer ver um caso rápido?",
+    message:
+      "{{nome}}, só complementando — nosso sistema já ajudou negócios parecidos com o seu a triplicar o retorno das campanhas. Quer ver um caso rápido?",
   },
   { order: 3, type: "delay", delayDays: 4, delayHours: 0 },
   {
@@ -181,10 +174,10 @@ export function CadenceBuilder({ initial }: Props) {
             <div key={idx} className="bg-white border border-slate-100 rounded-2xl p-4">
               <div className="flex items-start gap-3">
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-bold text-slate-400">
-                    {idx + 1}
-                  </span>
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${meta.color}`}>
+                  <span className="text-[10px] font-bold text-slate-400">{idx + 1}</span>
+                  <div
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center ${meta.color}`}
+                  >
                     <Icon className="h-4 w-4" />
                   </div>
                 </div>

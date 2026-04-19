@@ -7,19 +7,14 @@ import { MetaPageClient } from "@/components/meta/MetaPageClient";
 import { MetaDiagnosis } from "@/components/meta/MetaDiagnosis";
 
 export default async function MetaPage() {
-  const [
-    { campaigns, config },
-    selectedData,
-    { events, pixelId },
-    stages,
-    user,
-  ] = await Promise.all([
-    getMetaCampaigns(),
-    getSelectedCampaignData(),
-    getPixelEvents(),
-    getStages(),
-    getCurrentUser(),
-  ]);
+  const [{ campaigns, config }, selectedData, { events, pixelId }, stages, user] =
+    await Promise.all([
+      getMetaCampaigns(),
+      getSelectedCampaignData(),
+      getPixelEvents(),
+      getStages(),
+      getCurrentUser(),
+    ]);
 
   let accountPhase: string | null = null;
   let bidStrategy: string | null = null;
@@ -44,24 +39,24 @@ export default async function MetaPage() {
 
   return (
     <div className="space-y-6">
-    <MetaDiagnosis />
-    <MetaPageClient
-      campaigns={campaigns}
-      hasConfig={!!config}
-      pixelId={pixelId}
-      events={events}
-      stages={stages}
-      selectedCampaign={selectedData.campaign}
-      selectedAdSets={selectedData.adSets}
-      selectedInsights={selectedData.insights}
-      selectedCampaignId={selectedData.selectedCampaignId}
-      apiError={selectedData.error}
-      accountPhase={accountPhase}
-      bidStrategy={bidStrategy}
-      conversionDestination={conversionDestination}
-      userId={user?.id}
-      campaignConfigs={campaignConfigs}
-    />
+      <MetaDiagnosis />
+      <MetaPageClient
+        campaigns={campaigns}
+        hasConfig={!!config}
+        pixelId={pixelId}
+        events={events}
+        stages={stages}
+        selectedCampaign={selectedData.campaign}
+        selectedAdSets={selectedData.adSets}
+        selectedInsights={selectedData.insights}
+        selectedCampaignId={selectedData.selectedCampaignId}
+        apiError={selectedData.error}
+        accountPhase={accountPhase}
+        bidStrategy={bidStrategy}
+        conversionDestination={conversionDestination}
+        userId={user?.id}
+        campaignConfigs={campaignConfigs}
+      />
     </div>
   );
 }

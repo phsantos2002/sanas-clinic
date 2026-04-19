@@ -33,8 +33,15 @@ type Props = {
 };
 
 export function CampaignPanel({
-  campaign, config: initialConfig, insights, initialAdSets,
-  pixelId, events, stages, userId, onConfigChange,
+  campaign,
+  config: initialConfig,
+  insights,
+  initialAdSets,
+  pixelId,
+  events,
+  stages,
+  userId,
+  onConfigChange,
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState(campaign.status);
@@ -80,15 +87,29 @@ export function CampaignPanel({
 
     // Recommend Cost Cap if on Lowest Cost and CPC is bad
     if (currentStrategy === "LOWEST_COST" && cpcQ === "bad" && cpmQ !== "good") {
-      return { strategy: "Cost Cap", reason: "CPC alto sem limite — o Cost Cap controla o custo médio por resultado." };
+      return {
+        strategy: "Cost Cap",
+        reason: "CPC alto sem limite — o Cost Cap controla o custo médio por resultado.",
+      };
     }
     // Recommend Bid Cap if CPC is bad even on Cost Cap
     if (currentStrategy === "COST_CAP" && cpcQ === "bad") {
-      return { strategy: "Bid Cap", reason: "CPC acima do cap — o Bid Cap limita o lance máximo por clique." };
+      return {
+        strategy: "Bid Cap",
+        reason: "CPC acima do cap — o Bid Cap limita o lance máximo por clique.",
+      };
     }
     // Recommend back to Lowest Cost if everything is good on a restricted strategy
-    if ((currentStrategy === "BID_CAP" || currentStrategy === "COST_CAP") && cpcQ === "good" && ctrQ === "good" && cpmQ === "good") {
-      return { strategy: "Menor Custo", reason: "Performance excelente — voltar para Menor Custo pode aumentar a entrega." };
+    if (
+      (currentStrategy === "BID_CAP" || currentStrategy === "COST_CAP") &&
+      cpcQ === "good" &&
+      ctrQ === "good" &&
+      cpmQ === "good"
+    ) {
+      return {
+        strategy: "Menor Custo",
+        reason: "Performance excelente — voltar para Menor Custo pode aumentar a entrega.",
+      };
     }
     return null;
   }, [config, campaign, benchmark]);
@@ -102,9 +123,11 @@ export function CampaignPanel({
           <p className="text-[10px] text-slate-400">ID: {campaign.id}</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${
-            isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
-          }`}>
+          <span
+            className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${
+              isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+            }`}
+          >
             {isActive ? <Zap className="h-2.5 w-2.5" /> : <ZapOff className="h-2.5 w-2.5" />}
             {isActive ? "Ativa" : "Pausada"}
           </span>
@@ -126,18 +149,17 @@ export function CampaignPanel({
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 border border-blue-200">
           <Zap className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
           <span className="text-xs text-blue-800 flex-1">
-            <span className="font-semibold">Considere usar {shouldRecommendBidChange.strategy}</span> — {shouldRecommendBidChange.reason}
+            <span className="font-semibold">
+              Considere usar {shouldRecommendBidChange.strategy}
+            </span>{" "}
+            — {shouldRecommendBidChange.reason}
           </span>
         </div>
       )}
 
       {/* Alerts */}
       {config && userId && (
-        <CampaignAlerts
-          campaign={campaign}
-          config={config}
-          benchmark={benchmark}
-        />
+        <CampaignAlerts campaign={campaign} config={config} benchmark={benchmark} />
       )}
 
       {/* [5] Thermometers — up high */}
@@ -187,14 +209,20 @@ export function CampaignPanel({
           <CardContent>
             <p className="text-[10px] text-slate-400 mb-3">
               Eventos enviados quando leads mudam de estágio.
-              {pixelId && <span className="ml-1">Pixel: <span className="font-mono text-slate-600">{pixelId}</span></span>}
+              {pixelId && (
+                <span className="ml-1">
+                  Pixel: <span className="font-mono text-slate-600">{pixelId}</span>
+                </span>
+              )}
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {events.map((event) => {
                 const stage = stages.find((s) => s.eventName === event.name);
                 return (
                   <div key={event.name} className="bg-slate-50 rounded-xl p-2 space-y-0.5">
-                    <p className="text-[9px] text-slate-400 uppercase tracking-wider">{stage?.name ?? event.name}</p>
+                    <p className="text-[9px] text-slate-400 uppercase tracking-wider">
+                      {stage?.name ?? event.name}
+                    </p>
                     <p className="text-[10px] font-mono text-blue-600">{event.name}</p>
                     <p className="text-xs font-bold text-slate-900">{event.count}</p>
                   </div>
@@ -204,7 +232,6 @@ export function CampaignPanel({
           </CardContent>
         </Card>
       )}
-
     </div>
   );
 }

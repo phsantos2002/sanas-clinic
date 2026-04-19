@@ -32,9 +32,7 @@ export default async function CadenciasPage() {
       {cadences.length === 0 ? (
         <div className="bg-white border border-slate-100 rounded-2xl p-10 text-center">
           <Repeat className="h-10 w-10 text-slate-200 mx-auto mb-2" />
-          <p className="text-sm text-slate-400 mb-3">
-            Nenhuma cadência criada ainda.
-          </p>
+          <p className="text-sm text-slate-400 mb-3">Nenhuma cadência criada ainda.</p>
           <Link
             href="/dashboard/prospeccao/cadencias/nova"
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700"
@@ -52,7 +50,10 @@ export default async function CadenciasPage() {
             };
             const totalDays = c.steps
               .filter((s) => s.type === "delay")
-              .reduce((acc, s) => acc + (s.delayDays ?? 0) + Math.floor((s.delayHours ?? 0) / 24), 0);
+              .reduce(
+                (acc, s) => acc + (s.delayDays ?? 0) + Math.floor((s.delayHours ?? 0) / 24),
+                0
+              );
             return (
               <Link
                 key={c.id}
@@ -63,18 +64,14 @@ export default async function CadenciasPage() {
                   <h3 className="font-semibold text-slate-900 text-sm flex-1">{c.name}</h3>
                   <span
                     className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      c.isActive
-                        ? "bg-green-100 text-green-700"
-                        : "bg-slate-100 text-slate-500"
+                      c.isActive ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
                     }`}
                   >
                     {c.isActive ? "Ativa" : "Pausada"}
                   </span>
                 </div>
                 {c.description && (
-                  <p className="text-xs text-slate-400 mb-3 line-clamp-2">
-                    {c.description}
-                  </p>
+                  <p className="text-xs text-slate-400 mb-3 line-clamp-2">{c.description}</p>
                 )}
                 <div className="flex items-center gap-3 text-xs text-slate-500">
                   {counts.whatsapp > 0 && (

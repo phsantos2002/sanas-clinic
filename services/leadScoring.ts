@@ -108,7 +108,9 @@ export async function recalculateScores(userId: string): Promise<number> {
 /**
  * Recalculate score for a single lead
  */
-export async function recalculateLeadScore(leadId: string): Promise<{ score: number; label: string }> {
+export async function recalculateLeadScore(
+  leadId: string
+): Promise<{ score: number; label: string }> {
   const lead = await prisma.lead.findUnique({
     where: { id: leadId },
     select: {

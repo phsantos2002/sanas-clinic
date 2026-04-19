@@ -34,7 +34,9 @@ export function CalendarConfig({ config }: { config: CalendarConfigData }) {
   const [workDays, setWorkDays] = useState<number[]>(config?.workDays || [1, 2, 3, 4, 5, 6]);
 
   const toggleDay = (day: number) => {
-    setWorkDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort());
+    setWorkDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()
+    );
   };
 
   const handleSave = async () => {
@@ -72,8 +74,10 @@ export function CalendarConfig({ config }: { config: CalendarConfigData }) {
           </div>
         </div>
 
-        <a href="/api/auth/google-calendar"
-          className="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors">
+        <a
+          href="/api/auth/google-calendar"
+          className="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors"
+        >
           <Calendar className="h-4 w-4" /> Conectar Google Calendar
         </a>
 
@@ -97,7 +101,10 @@ export function CalendarConfig({ config }: { config: CalendarConfigData }) {
           <p className="text-sm font-medium text-green-800">Conectado</p>
           {config.email && <p className="text-xs text-green-600">{config.email}</p>}
         </div>
-        <button onClick={handleDisconnect} className="text-xs text-slate-400 hover:text-red-500 transition-colors">
+        <button
+          onClick={handleDisconnect}
+          className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+        >
           Desconectar
         </button>
       </div>
@@ -108,11 +115,19 @@ export function CalendarConfig({ config }: { config: CalendarConfigData }) {
           <Clock className="h-4 w-4" /> Horario de funcionamento
         </label>
         <div className="flex items-center gap-2">
-          <input type="time" value={hoursStart} onChange={e => setHoursStart(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input
+            type="time"
+            value={hoursStart}
+            onChange={(e) => setHoursStart(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
           <span className="text-sm text-slate-400">ate</span>
-          <input type="time" value={hoursEnd} onChange={e => setHoursEnd(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input
+            type="time"
+            value={hoursEnd}
+            onChange={(e) => setHoursEnd(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
         </div>
       </div>
 
@@ -120,19 +135,27 @@ export function CalendarConfig({ config }: { config: CalendarConfigData }) {
       <div>
         <label className="text-sm font-medium text-slate-700 mb-2 block">Dias de trabalho</label>
         <div className="flex gap-1.5">
-          {DAYS.map(day => (
-            <button key={day.id} onClick={() => toggleDay(day.id)}
+          {DAYS.map((day) => (
+            <button
+              key={day.id}
+              onClick={() => toggleDay(day.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                workDays.includes(day.id) ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-              }`}>
+                workDays.includes(day.id)
+                  ? "bg-indigo-600 text-white"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              }`}
+            >
               {day.label}
             </button>
           ))}
         </div>
       </div>
 
-      <button onClick={handleSave} disabled={saving}
-        className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50">
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+      >
         {saving ? "Salvando..." : "Salvar Horarios"}
       </button>
     </div>

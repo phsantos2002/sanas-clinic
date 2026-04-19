@@ -4,7 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Phone, MoreHorizontal, MessageCircle, Eye, Trash2, ArrowRight, Bot, Clock } from "lucide-react";
+import {
+  GripVertical,
+  Phone,
+  MoreHorizontal,
+  MessageCircle,
+  Eye,
+  Trash2,
+  ArrowRight,
+  Bot,
+  Clock,
+} from "lucide-react";
 import { LeadScoreBadge } from "@/components/ui/LeadScoreBadge";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,14 +57,9 @@ export function LeadCard({
   const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: lead.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: lead.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -118,7 +123,13 @@ export function LeadCard({
           >
             {selected && (
               <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 12 12" fill="none">
-                <path d="M2 6l3 3 5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path
+                  d="M2 6l3 3 5-6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             )}
           </div>
@@ -127,14 +138,20 @@ export function LeadCard({
       {/* Quick Actions on Hover (2.7) */}
       <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1 bg-white rounded-lg border border-slate-200 shadow-md opacity-0 group-hover:opacity-100 transition-all z-10 pointer-events-none group-hover:pointer-events-auto">
         <button
-          onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/chat?leadId=${lead.id}`); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/dashboard/chat?leadId=${lead.id}`);
+          }}
           className="p-1 text-slate-400 hover:text-green-600 rounded transition-colors"
           title="Abrir chat"
         >
           <MessageCircle className="h-3.5 w-3.5" />
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); onClickLead?.(lead.id); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClickLead?.(lead.id);
+          }}
           className="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors"
           title="Editar"
         >
@@ -142,7 +159,10 @@ export function LeadCard({
         </button>
         {onMoveNext && (
           <button
-            onClick={(e) => { e.stopPropagation(); onMoveNext(lead.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoveNext(lead.id);
+            }}
             className="p-1 text-slate-400 hover:text-blue-600 rounded transition-colors"
             title="Proxima etapa"
           >
@@ -163,17 +183,24 @@ export function LeadCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {/* Avatar initial */}
-            <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${
-              lead.scoreLabel === "vip" ? "bg-violet-500" :
-              lead.scoreLabel === "quente" ? "bg-rose-500" :
-              lead.scoreLabel === "morno" ? "bg-amber-500" :
-              "bg-slate-400"
-            }`}>
+            <div
+              className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${
+                lead.scoreLabel === "vip"
+                  ? "bg-violet-500"
+                  : lead.scoreLabel === "quente"
+                    ? "bg-rose-500"
+                    : lead.scoreLabel === "morno"
+                      ? "bg-amber-500"
+                      : "bg-slate-400"
+              }`}
+            >
               {lead.name.charAt(0).toUpperCase()}
             </div>
             <p className="text-sm font-semibold text-slate-900 truncate">{lead.name}</p>
             {lead.aiEnabled && (
-              <span title="IA ativa"><Bot className="h-3 w-3 text-indigo-400 shrink-0" /></span>
+              <span title="IA ativa">
+                <Bot className="h-3 w-3 text-indigo-400 shrink-0" />
+              </span>
             )}
           </div>
 
@@ -184,13 +211,18 @@ export function LeadCard({
 
           {/* Time in stage indicator (2.6) */}
           {daysInStage !== null && daysInStage > 0 && (
-            <div className={`flex items-center gap-1 mt-1 text-[10px] ${
-              isStagnant ? "text-amber-600" : "text-slate-400"
-            }`}>
+            <div
+              className={`flex items-center gap-1 mt-1 text-[10px] ${
+                isStagnant ? "text-amber-600" : "text-slate-400"
+              }`}
+            >
               <Clock className="h-2.5 w-2.5" />
               ha {daysInStage}d nesta etapa
               {isStagnant && (
-                <span className="text-[9px] bg-amber-100 text-amber-700 px-1 rounded" title={`Threshold: ${stagnationThreshold} dias`}>
+                <span
+                  className="text-[9px] bg-amber-100 text-amber-700 px-1 rounded"
+                  title={`Threshold: ${stagnationThreshold} dias`}
+                >
                   parado
                 </span>
               )}
@@ -208,14 +240,21 @@ export function LeadCard({
               <LeadScoreBadge score={lead.score} label={lead.scoreLabel} variant="compact" />
             )}
             {lead.tags?.slice(0, 2).map((tag) => (
-              <span key={tag} className="text-[10px] bg-violet-50 text-violet-600 px-1.5 py-0.5 rounded">
+              <span
+                key={tag}
+                className="text-[10px] bg-violet-50 text-violet-600 px-1.5 py-0.5 rounded"
+              >
                 {tag}
               </span>
             ))}
           </div>
         </div>
 
-        <DropdownMenu onOpenChange={(open) => { if (!open) setConfirmDelete(false); }}>
+        <DropdownMenu
+          onOpenChange={(open) => {
+            if (!open) setConfirmDelete(false);
+          }}
+        >
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
@@ -227,15 +266,32 @@ export function LeadCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44 rounded-xl">
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onClickLead?.(lead.id); }}>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onClickLead?.(lead.id);
+              }}
+            >
               <Eye className="h-3.5 w-3.5 mr-2" /> Ver Detalhes
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/chat?leadId=${lead.id}`); }}>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/dashboard/chat?leadId=${lead.id}`);
+              }}
+            >
               <MessageCircle className="h-3.5 w-3.5 mr-2" /> Abrir Chat
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onSelect={(e) => { if (!confirmDelete) { e.preventDefault(); setConfirmDelete(true); return; } handleDelete(); }}
+              onSelect={(e) => {
+                if (!confirmDelete) {
+                  e.preventDefault();
+                  setConfirmDelete(true);
+                  return;
+                }
+                handleDelete();
+              }}
               onClick={(e) => e.stopPropagation()}
               className="text-red-600 focus:text-red-600 focus:bg-red-50"
               disabled={deleting}

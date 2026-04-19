@@ -6,8 +6,8 @@
  */
 
 export type WahaConfig = {
-  serverUrl: string;   // ex: http://localhost:3008
-  apiKey: string;      // WHATSAPP_API_KEY do WAHA
+  serverUrl: string; // ex: http://localhost:3008
+  apiKey: string; // WHATSAPP_API_KEY do WAHA
   sessionName: string;
 };
 
@@ -24,7 +24,7 @@ export async function createWahaSession(
   serverUrl: string,
   apiKey: string,
   sessionName: string,
-  webhookUrl?: string,
+  webhookUrl?: string
 ): Promise<{ success: boolean; qrcode?: string; error?: string }> {
   try {
     const config = { serverUrl, apiKey, sessionName };
@@ -34,9 +34,7 @@ export async function createWahaSession(
       name: sessionName,
       start: true,
       config: {
-        webhooks: webhookUrl
-          ? [{ url: webhookUrl, events: ["message"] }]
-          : [],
+        webhooks: webhookUrl ? [{ url: webhookUrl, events: ["message"] }] : [],
       },
     };
 
@@ -78,34 +76,24 @@ export async function createWahaSession(
   }
 }
 
-export async function stopWahaSession(
-  config: WahaConfig,
-): Promise<{ success: boolean }> {
+export async function stopWahaSession(config: WahaConfig): Promise<{ success: boolean }> {
   try {
-    const res = await fetch(
-      `${config.serverUrl}/api/sessions/${config.sessionName}/stop`,
-      {
-        method: "POST",
-        headers: headers(config.apiKey),
-      },
-    );
+    const res = await fetch(`${config.serverUrl}/api/sessions/${config.sessionName}/stop`, {
+      method: "POST",
+      headers: headers(config.apiKey),
+    });
     return { success: res.ok };
   } catch {
     return { success: false };
   }
 }
 
-export async function startWahaSession(
-  config: WahaConfig,
-): Promise<{ success: boolean }> {
+export async function startWahaSession(config: WahaConfig): Promise<{ success: boolean }> {
   try {
-    const res = await fetch(
-      `${config.serverUrl}/api/sessions/${config.sessionName}/start`,
-      {
-        method: "POST",
-        headers: headers(config.apiKey),
-      },
-    );
+    const res = await fetch(`${config.serverUrl}/api/sessions/${config.sessionName}/start`, {
+      method: "POST",
+      headers: headers(config.apiKey),
+    });
     return { success: res.ok };
   } catch {
     return { success: false };
@@ -113,16 +101,13 @@ export async function startWahaSession(
 }
 
 export async function getWahaQRCode(
-  config: WahaConfig,
+  config: WahaConfig
 ): Promise<{ success: boolean; qrcode?: string; error?: string }> {
   try {
-    const res = await fetch(
-      `${config.serverUrl}/api/${config.sessionName}/auth/qr?format=image`,
-      {
-        method: "GET",
-        headers: { "X-Api-Key": config.apiKey },
-      },
-    );
+    const res = await fetch(`${config.serverUrl}/api/${config.sessionName}/auth/qr?format=image`, {
+      method: "GET",
+      headers: { "X-Api-Key": config.apiKey },
+    });
 
     if (!res.ok) {
       const err = await res.text();
@@ -143,16 +128,13 @@ export async function getWahaQRCode(
 }
 
 export async function getWahaConnectionStatus(
-  config: WahaConfig,
+  config: WahaConfig
 ): Promise<{ connected: boolean; state?: string; error?: string }> {
   try {
-    const res = await fetch(
-      `${config.serverUrl}/api/sessions/${config.sessionName}`,
-      {
-        method: "GET",
-        headers: headers(config.apiKey),
-      },
-    );
+    const res = await fetch(`${config.serverUrl}/api/sessions/${config.sessionName}`, {
+      method: "GET",
+      headers: headers(config.apiKey),
+    });
 
     if (!res.ok) {
       return { connected: false, error: `HTTP ${res.status}` };
@@ -168,16 +150,13 @@ export async function getWahaConnectionStatus(
 }
 
 export async function deleteWahaSession(
-  config: WahaConfig,
+  config: WahaConfig
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const res = await fetch(
-      `${config.serverUrl}/api/sessions/${config.sessionName}`,
-      {
-        method: "DELETE",
-        headers: headers(config.apiKey),
-      },
-    );
+    const res = await fetch(`${config.serverUrl}/api/sessions/${config.sessionName}`, {
+      method: "DELETE",
+      headers: headers(config.apiKey),
+    });
 
     return { success: res.ok };
   } catch {
@@ -189,26 +168,23 @@ export async function deleteWahaSession(
 
 export async function setWahaWebhook(
   config: WahaConfig,
-  webhookUrl: string,
+  webhookUrl: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const res = await fetch(
-      `${config.serverUrl}/api/sessions/${config.sessionName}`,
-      {
-        method: "PUT",
-        headers: headers(config.apiKey),
-        body: JSON.stringify({
-          config: {
-            webhooks: [
-              {
-                url: webhookUrl,
-                events: ["message"],
-              },
-            ],
-          },
-        }),
-      },
-    );
+    const res = await fetch(`${config.serverUrl}/api/sessions/${config.sessionName}`, {
+      method: "PUT",
+      headers: headers(config.apiKey),
+      body: JSON.stringify({
+        config: {
+          webhooks: [
+            {
+              url: webhookUrl,
+              events: ["message"],
+            },
+          ],
+        },
+      }),
+    });
 
     if (!res.ok) {
       const err = await res.text();
@@ -226,23 +202,20 @@ export async function setWahaWebhook(
 export async function sendWahaMessage(
   config: WahaConfig,
   to: string,
-  text: string,
+  text: string
 ): Promise<{ success: boolean; error?: string }> {
   const phone = to.replace(/\D/g, "");
 
   try {
-    const res = await fetch(
-      `${config.serverUrl}/api/sendText`,
-      {
-        method: "POST",
-        headers: headers(config.apiKey),
-        body: JSON.stringify({
-          session: config.sessionName,
-          chatId: `${phone}@c.us`,
-          text,
-        }),
-      },
-    );
+    const res = await fetch(`${config.serverUrl}/api/sendText`, {
+      method: "POST",
+      headers: headers(config.apiKey),
+      body: JSON.stringify({
+        session: config.sessionName,
+        chatId: `${phone}@c.us`,
+        text,
+      }),
+    });
 
     if (!res.ok) {
       const err = await res.text();
@@ -275,13 +248,12 @@ export type WahaChatMessage = {
 };
 
 export async function getWahaChats(
-  config: WahaConfig,
+  config: WahaConfig
 ): Promise<{ success: boolean; chats?: WahaChat[]; error?: string }> {
   try {
-    const res = await fetch(
-      `${config.serverUrl}/api/${config.sessionName}/chats`,
-      { headers: headers(config.apiKey) },
-    );
+    const res = await fetch(`${config.serverUrl}/api/${config.sessionName}/chats`, {
+      headers: headers(config.apiKey),
+    });
 
     if (!res.ok) {
       return { success: false, error: `HTTP ${res.status}` };
@@ -297,12 +269,12 @@ export async function getWahaChats(
 export async function getWahaChatMessages(
   config: WahaConfig,
   chatId: string,
-  limit: number = 50,
+  limit: number = 50
 ): Promise<{ success: boolean; messages?: WahaChatMessage[]; error?: string }> {
   try {
     const res = await fetch(
       `${config.serverUrl}/api/${config.sessionName}/chats/${chatId}/messages?limit=${limit}`,
-      { headers: headers(config.apiKey) },
+      { headers: headers(config.apiKey) }
     );
 
     if (!res.ok) {

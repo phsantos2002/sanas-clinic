@@ -1,14 +1,38 @@
 "use client";
 
 const SCORE_CONFIG = {
-  vip: { bg: "bg-violet-100", text: "text-violet-700", border: "border-violet-200", bar: "bg-violet-500", label: "VIP" },
-  quente: { bg: "bg-rose-100", text: "text-rose-700", border: "border-rose-200", bar: "bg-rose-500", label: "Quente" },
-  morno: { bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-200", bar: "bg-amber-500", label: "Morno" },
-  frio: { bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200", bar: "bg-slate-400", label: "Frio" },
+  vip: {
+    bg: "bg-violet-100",
+    text: "text-violet-700",
+    border: "border-violet-200",
+    bar: "bg-violet-500",
+    label: "VIP",
+  },
+  quente: {
+    bg: "bg-rose-100",
+    text: "text-rose-700",
+    border: "border-rose-200",
+    bar: "bg-rose-500",
+    label: "Quente",
+  },
+  morno: {
+    bg: "bg-amber-100",
+    text: "text-amber-700",
+    border: "border-amber-200",
+    bar: "bg-amber-500",
+    label: "Morno",
+  },
+  frio: {
+    bg: "bg-slate-100",
+    text: "text-slate-500",
+    border: "border-slate-200",
+    bar: "bg-slate-400",
+    label: "Frio",
+  },
 } as const;
 
 function getConfig(label: string | null | undefined) {
-  return SCORE_CONFIG[(label as keyof typeof SCORE_CONFIG)] || SCORE_CONFIG.frio;
+  return SCORE_CONFIG[label as keyof typeof SCORE_CONFIG] || SCORE_CONFIG.frio;
 }
 
 const SCORE_TIPS = [
@@ -43,14 +67,19 @@ export function LeadScoreBadge({ score, label, variant = "compact" }: Props) {
 
   return (
     <div className="group relative">
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${cfg.border} ${cfg.bg}`}>
+      <div
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${cfg.border} ${cfg.bg}`}
+      >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className={`text-sm font-bold ${cfg.text}`}>{score}</span>
             <span className={`text-xs font-medium ${cfg.text}`}>{cfg.label}</span>
           </div>
           <div className="mt-1 h-1.5 w-full rounded-full bg-white/60">
-            <div className={`h-full rounded-full ${cfg.bar} transition-all`} style={{ width: `${score}%` }} />
+            <div
+              className={`h-full rounded-full ${cfg.bar} transition-all`}
+              style={{ width: `${score}%` }}
+            />
           </div>
         </div>
       </div>
@@ -60,7 +89,9 @@ export function LeadScoreBadge({ score, label, variant = "compact" }: Props) {
         <p className="font-semibold mb-1.5">O que influencia o score:</p>
         <ul className="space-y-0.5">
           {SCORE_TIPS.map((tip) => (
-            <li key={tip} className="text-slate-300">• {tip}</li>
+            <li key={tip} className="text-slate-300">
+              • {tip}
+            </li>
           ))}
         </ul>
         <div className="absolute bottom-0 left-4 translate-y-1/2 rotate-45 h-2 w-2 bg-slate-800" />

@@ -9,6 +9,7 @@ Procedimentos operacionais para incidentes e manutenção em produção.
 **Sintomas:** Mensagens chegam no WhatsApp mas não aparecem no sistema; leads não são criados.
 
 **Diagnóstico:**
+
 ```bash
 # 1. Verificar logs do webhook (requer CRON_SECRET)
 curl -H "Authorization: Bearer $CRON_SECRET" \
@@ -20,14 +21,15 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 
 **Causas comuns:**
 
-| Causa | Solução |
-|-------|---------|
-| `META_APP_SECRET` não configurado | Adicionar no painel Vercel → Environment Variables |
-| Token de verificação errado no Meta | Verificar `WhatsAppConfig.verifyToken` no banco |
-| Timeout da Vercel (>10s) | Mensagem foi processada mas Meta reenvio — idempotência cobre isso |
-| Instância Uazapi desconectada | Reconectar em Config > WhatsApp |
+| Causa                               | Solução                                                            |
+| ----------------------------------- | ------------------------------------------------------------------ |
+| `META_APP_SECRET` não configurado   | Adicionar no painel Vercel → Environment Variables                 |
+| Token de verificação errado no Meta | Verificar `WhatsAppConfig.verifyToken` no banco                    |
+| Timeout da Vercel (>10s)            | Mensagem foi processada mas Meta reenvio — idempotência cobre isso |
+| Instância Uazapi desconectada       | Reconectar em Config > WhatsApp                                    |
 
 **Resolução:**
+
 1. Conferir variável `META_APP_SECRET` no Vercel
 2. Reconectar instância Uazapi se necessário
 3. Limpar log de debug: `DELETE /api/debug/webhook-log` com CRON_SECRET
@@ -39,6 +41,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 **Sintomas:** Mensagens chegam e são salvas, mas nenhuma resposta automática é enviada.
 
 **Diagnóstico:**
+
 1. Verificar se `lead.aiEnabled = true` no Prisma Studio
 2. Verificar se `lead.humanPausedUntil` está no futuro
 3. Verificar se `AIConfig.apiKey` está preenchida (Config > IA)
@@ -46,12 +49,12 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 
 **Causas comuns:**
 
-| Log | Causa |
-|-----|-------|
-| `webhook_ai_no_api_key` | Chave de API não configurada |
-| `webhook_ai_human_paused` | Intervenção humana ativa |
-| `webhook_ai_disabled` | `aiEnabled=false` no lead |
-| `webhook_blacklist_skip` | Telefone na blacklist |
+| Log                       | Causa                        |
+| ------------------------- | ---------------------------- |
+| `webhook_ai_no_api_key`   | Chave de API não configurada |
+| `webhook_ai_human_paused` | Intervenção humana ativa     |
+| `webhook_ai_disabled`     | `aiEnabled=false` no lead    |
+| `webhook_blacklist_skip`  | Telefone na blacklist        |
 
 ---
 
@@ -60,6 +63,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 **Sintomas:** Lead scoring desatualizado; posts não publicados; reativações não disparadas.
 
 **Diagnóstico:**
+
 ```bash
 # Verificar configuração no vercel.json
 cat vercel.json | grep -A 3 '"crons"'
@@ -70,6 +74,7 @@ curl -X GET https://app.sanaspulse.com/api/cron/score-leads \
 ```
 
 **Checklist:**
+
 - [ ] `CRON_SECRET` configurado no Vercel
 - [ ] Projeto no plano Vercel Pro ou superior (Hobby não suporta crons personalizados)
 - [ ] `vercel.json` deployado (confirmar em último deploy)
@@ -81,6 +86,7 @@ curl -X GET https://app.sanaspulse.com/api/cron/score-leads \
 **Sintomas:** Usuários reportam erros ao usar o sistema; logs mostram 500.
 
 **Diagnóstico:**
+
 ```bash
 # Vercel logs (produção)
 vercel logs --prod --filter=500
@@ -89,6 +95,7 @@ vercel logs --prod --filter=500
 ```
 
 **Processo de análise:**
+
 1. Identificar `requestId` nos logs de erro
 2. Buscar o requestId no log completo para contexto
 3. Se `code: "DB_ERROR"` → verificar conexão Supabase
@@ -101,6 +108,7 @@ vercel logs --prod --filter=500
 **Sintomas:** Requisições demorando >5s; timeouts esporádicos.
 
 **Diagnóstico:**
+
 ```bash
 # Verificar health check
 curl https://app.sanaspulse.com/api/health
@@ -110,11 +118,13 @@ curl https://app.sanaspulse.com/api/health
 ```
 
 **Ações imediatas:**
+
 1. Verificar Supabase Dashboard → Database → Performance
 2. Verificar se há queries longas rodando (`pg_stat_activity`)
 3. Verificar se pool do PgBouncer está esgotado (limite do plano)
 
 **Query de diagnóstico no Supabase SQL Editor:**
+
 ```sql
 -- Ver queries ativas
 SELECT pid, now() - pg_stat_activity.query_start AS duration, query, state
@@ -134,6 +144,7 @@ ORDER BY idx_scan DESC LIMIT 20;
 **Situação:** Usuário editou workflow e quer reverter para versão anterior.
 
 **Via API (futuro endpoint):**
+
 ```typescript
 import { restoreWorkflowVersion } from "@/services/workflowEngine";
 
@@ -149,6 +160,7 @@ await restoreWorkflowVersion(versions[2].id, userId);
 ```
 
 **Via Prisma Studio:**
+
 1. Abrir `WorkflowVersion` e localizar a versão desejada
 2. Copiar `canvas` e `steps` JSON
 3. Colar em `Workflow.canvas` e recriar `WorkflowStep` manualmente
@@ -176,9 +188,9 @@ curl -X GET https://app.sanaspulse.com/api/cron/score-leads \
 
 ## Contatos de Suporte Externo
 
-| Serviço | Suporte |
-|---------|---------|
-| Supabase | https://supabase.com/support |
-| Vercel | https://vercel.com/help |
+| Serviço             | Suporte                                 |
+| ------------------- | --------------------------------------- |
+| Supabase            | https://supabase.com/support            |
+| Vercel              | https://vercel.com/help                 |
 | Meta for Developers | https://developers.facebook.com/support |
-| Uazapi | Suporte via WhatsApp do fornecedor |
+| Uazapi              | Suporte via WhatsApp do fornecedor      |

@@ -2,9 +2,27 @@
 
 import { useState, useTransition, useRef, useEffect, lazy, Suspense } from "react";
 import {
-  X, ChevronLeft, ChevronRight, Users, MessageCircle, Eye, Rocket,
-  ClipboardList, ShoppingCart, Globe, Upload, Info, Loader2,
-  Zap, DollarSign, Target, TrendingUp, MapPin, Trash2, Navigation, LocateFixed,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  MessageCircle,
+  Eye,
+  Rocket,
+  ClipboardList,
+  ShoppingCart,
+  Globe,
+  Upload,
+  Info,
+  Loader2,
+  Zap,
+  DollarSign,
+  Target,
+  TrendingUp,
+  MapPin,
+  Trash2,
+  Navigation,
+  LocateFixed,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,10 +138,34 @@ type StrategyCard = {
 };
 
 const STRATEGIES: StrategyCard[] = [
-  { id: "LOWEST_COST", label: "Menor Custo", description: "Automático — a Meta decide", icon: Zap, tip: "Recomendado para quem está começando" },
-  { id: "COST_CAP", label: "Cost Cap", description: "Custo médio controlado", icon: DollarSign, tip: "Bom para controlar quanto paga por resultado" },
-  { id: "BID_CAP", label: "Bid Cap", description: "Lance máximo por clique", icon: Target, tip: "Controle total do valor máximo do lance" },
-  { id: "ROAS_MIN", label: "ROAS Mínimo", description: "Retorno garantido", icon: TrendingUp, tip: "Ideal para e-commerce com vendas diretas" },
+  {
+    id: "LOWEST_COST",
+    label: "Menor Custo",
+    description: "Automático — a Meta decide",
+    icon: Zap,
+    tip: "Recomendado para quem está começando",
+  },
+  {
+    id: "COST_CAP",
+    label: "Cost Cap",
+    description: "Custo médio controlado",
+    icon: DollarSign,
+    tip: "Bom para controlar quanto paga por resultado",
+  },
+  {
+    id: "BID_CAP",
+    label: "Bid Cap",
+    description: "Lance máximo por clique",
+    icon: Target,
+    tip: "Controle total do valor máximo do lance",
+  },
+  {
+    id: "ROAS_MIN",
+    label: "ROAS Mínimo",
+    description: "Retorno garantido",
+    icon: TrendingUp,
+    tip: "Ideal para e-commerce com vendas diretas",
+  },
 ];
 
 // ─── Message destinations ───
@@ -203,7 +245,10 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
   function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { toast.error("Imagem deve ter no máximo 10MB"); return; }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Imagem deve ter no máximo 10MB");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
@@ -215,13 +260,16 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
 
   function canProceed(): boolean {
     switch (step) {
-      case 1: return !!selectedGoal;
-      case 2: return !!campaignName.trim() && dailyBudget >= 5;
+      case 1:
+        return !!selectedGoal;
+      case 2:
+        return !!campaignName.trim() && dailyBudget >= 5;
       case 3:
         if (isBoost) return !!selectedPost;
         // For non-boost, content is optional (can add later)
         return true;
-      default: return true;
+      default:
+        return true;
     }
   }
 
@@ -245,14 +293,17 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
         ageMin,
         ageMax,
         gender: gender === "all" ? undefined : gender === "male" ? 1 : 2,
-        geoLocations: locationPins.length > 0 ? locationPins.map((p) => ({
-          key: "",
-          name: p.name,
-          type: "custom_location",
-          latitude: p.lat,
-          longitude: p.lng,
-          radius: p.radius,
-        })) : undefined,
+        geoLocations:
+          locationPins.length > 0
+            ? locationPins.map((p) => ({
+                key: "",
+                name: p.name,
+                type: "custom_location",
+                latitude: p.lat,
+                longitude: p.lng,
+                radius: p.radius,
+              }))
+            : undefined,
       };
 
       const result = await createCampaign(input);
@@ -265,7 +316,11 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
               campaignId: result.campaignId,
               campaignName: campaignName.trim(),
               campaignObjective: goalObj.objective,
-              conversionDestination: isMessages ? msgDestination : selectedGoal === "trafego" ? "WEBSITE" : "WHATSAPP",
+              conversionDestination: isMessages
+                ? msgDestination
+                : selectedGoal === "trafego"
+                  ? "WEBSITE"
+                  : "WHATSAPP",
               businessSegment: null,
               conversionValue: null,
               monthlyBudget: dailyBudget * 30,
@@ -290,8 +345,14 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
   const filteredPosts = posts.filter((p) => p.type === postTab);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 flex-shrink-0">
           <div>
@@ -321,20 +382,29 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
           {step === 1 && <Step1Goals selected={selectedGoal} onSelect={setSelectedGoal} />}
           {step === 2 && (
             <Step2Config
-              name={campaignName} onNameChange={setCampaignName}
-              budget={dailyBudget} onBudgetChange={setDailyBudget}
-              strategy={bidStrategy} onStrategyChange={setBidStrategy}
+              name={campaignName}
+              onNameChange={setCampaignName}
+              budget={dailyBudget}
+              onBudgetChange={setDailyBudget}
+              strategy={bidStrategy}
+              onStrategyChange={setBidStrategy}
               isMessages={isMessages}
-              msgDestination={msgDestination} onMsgDestChange={setMsgDestination}
-              ageMin={ageMin} onAgeMinChange={setAgeMin}
-              ageMax={ageMax} onAgeMaxChange={setAgeMax}
-              gender={gender} onGenderChange={setGender}
-              locationPins={locationPins} onLocationPinsChange={setLocationPins}
-              bidValue={bidValue} onBidValueChange={setBidValue}
+              msgDestination={msgDestination}
+              onMsgDestChange={setMsgDestination}
+              ageMin={ageMin}
+              onAgeMinChange={setAgeMin}
+              ageMax={ageMax}
+              onAgeMaxChange={setAgeMax}
+              gender={gender}
+              onGenderChange={setGender}
+              locationPins={locationPins}
+              onLocationPinsChange={setLocationPins}
+              bidValue={bidValue}
+              onBidValueChange={setBidValue}
             />
           )}
-          {step === 3 && (
-            isBoost ? (
+          {step === 3 &&
+            (isBoost ? (
               <Step3Boost
                 loading={loadingPosts}
                 posts={filteredPosts}
@@ -347,16 +417,22 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
               <Step3Creative
                 imagePreview={imagePreview}
                 onImageChange={handleImage}
-                onClearImage={() => { setImagePreview(null); setImageBase64(null); }}
+                onClearImage={() => {
+                  setImagePreview(null);
+                  setImageBase64(null);
+                }}
                 fileRef={fileRef}
-                primaryText={primaryText} onPrimaryTextChange={setPrimaryText}
-                headline={headline} onHeadlineChange={setHeadline}
-                linkUrl={linkUrl} onLinkUrlChange={setLinkUrl}
-                cta={cta} onCtaChange={setCta}
+                primaryText={primaryText}
+                onPrimaryTextChange={setPrimaryText}
+                headline={headline}
+                onHeadlineChange={setHeadline}
+                linkUrl={linkUrl}
+                onLinkUrlChange={setLinkUrl}
+                cta={cta}
+                onCtaChange={setCta}
                 goalId={selectedGoal}
               />
-            )
-          )}
+            ))}
           {step === 4 && (
             <Step4Review
               goal={goalObj}
@@ -366,7 +442,11 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
               isBoost={isBoost}
               selectedPost={selectedPost}
               hasCreative={!!imageBase64}
-              destination={isMessages ? MSG_DESTINATIONS.find((d) => d.id === msgDestination)?.label : undefined}
+              destination={
+                isMessages
+                  ? MSG_DESTINATIONS.find((d) => d.id === msgDestination)?.label
+                  : undefined
+              }
               ageMin={ageMin}
               ageMax={ageMax}
               gender={gender}
@@ -380,7 +460,12 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
         <div className="flex items-center justify-between p-5 border-t border-slate-100 flex-shrink-0">
           <div>
             {step > 1 && (
-              <Button variant="ghost" size="sm" onClick={() => setStep(step - 1)} className="rounded-xl text-xs gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setStep(step - 1)}
+                className="rounded-xl text-xs gap-1"
+              >
                 <ChevronLeft className="h-3.5 w-3.5" /> Voltar
               </Button>
             )}
@@ -406,9 +491,13 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
                 className="rounded-xl text-xs gap-1.5"
               >
                 {isPending ? (
-                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Criando...</>
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Criando...
+                  </>
                 ) : (
-                  <><Rocket className="h-3.5 w-3.5" /> Criar Campanha</>
+                  <>
+                    <Rocket className="h-3.5 w-3.5" /> Criar Campanha
+                  </>
                 )}
               </Button>
             )}
@@ -421,12 +510,20 @@ export function CreateCampaignWizard({ onClose, onCreated, userId }: Props) {
 
 // ─── Step 1: Goal Selection ───
 
-function Step1Goals({ selected, onSelect }: { selected: string | null; onSelect: (id: string) => void }) {
+function Step1Goals({
+  selected,
+  onSelect,
+}: {
+  selected: string | null;
+  onSelect: (id: string) => void;
+}) {
   return (
     <div className="space-y-4">
       <div>
         <h4 className="text-sm font-bold text-slate-900">Qual é o seu objetivo?</h4>
-        <p className="text-xs text-slate-400 mt-0.5">Escolha o que você quer alcançar com esta campanha</p>
+        <p className="text-xs text-slate-400 mt-0.5">
+          Escolha o que você quer alcançar com esta campanha
+        </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {GOALS.map((goal) => {
@@ -442,11 +539,17 @@ function Step1Goals({ selected, onSelect }: { selected: string | null; onSelect:
                   : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
               }`}
             >
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isSelected ? goal.bg.split(" ")[0] : "bg-slate-100"}`}>
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isSelected ? goal.bg.split(" ")[0] : "bg-slate-100"}`}
+              >
                 <Icon className={`h-4.5 w-4.5 ${isSelected ? goal.color : "text-slate-400"}`} />
               </div>
               <div>
-                <p className={`text-xs font-semibold ${isSelected ? "text-slate-900" : "text-slate-700"}`}>{goal.label}</p>
+                <p
+                  className={`text-xs font-semibold ${isSelected ? "text-slate-900" : "text-slate-700"}`}
+                >
+                  {goal.label}
+                </p>
                 <p className="text-[10px] text-slate-400 mt-0.5">{goal.description}</p>
               </div>
             </button>
@@ -460,36 +563,63 @@ function Step1Goals({ selected, onSelect }: { selected: string | null; onSelect:
 // ─── Step 2: Campaign Config ───
 
 function Step2Config({
-  name, onNameChange, budget, onBudgetChange,
-  strategy, onStrategyChange,
-  isMessages, msgDestination, onMsgDestChange,
-  ageMin, onAgeMinChange, ageMax, onAgeMaxChange,
-  gender, onGenderChange,
-  locationPins, onLocationPinsChange,
-  bidValue, onBidValueChange,
+  name,
+  onNameChange,
+  budget,
+  onBudgetChange,
+  strategy,
+  onStrategyChange,
+  isMessages,
+  msgDestination,
+  onMsgDestChange,
+  ageMin,
+  onAgeMinChange,
+  ageMax,
+  onAgeMaxChange,
+  gender,
+  onGenderChange,
+  locationPins,
+  onLocationPinsChange,
+  bidValue,
+  onBidValueChange,
 }: {
-  name: string; onNameChange: (v: string) => void;
-  budget: number; onBudgetChange: (v: number) => void;
-  strategy: string; onStrategyChange: (v: string) => void;
+  name: string;
+  onNameChange: (v: string) => void;
+  budget: number;
+  onBudgetChange: (v: number) => void;
+  strategy: string;
+  onStrategyChange: (v: string) => void;
   isMessages: boolean;
-  msgDestination: string; onMsgDestChange: (v: string) => void;
-  ageMin: number; onAgeMinChange: (v: number) => void;
-  ageMax: number; onAgeMaxChange: (v: number) => void;
-  gender: string; onGenderChange: (v: string) => void;
-  locationPins: LocationPin[]; onLocationPinsChange: (v: LocationPin[]) => void;
-  bidValue: string; onBidValueChange: (v: string) => void;
+  msgDestination: string;
+  onMsgDestChange: (v: string) => void;
+  ageMin: number;
+  onAgeMinChange: (v: number) => void;
+  ageMax: number;
+  onAgeMaxChange: (v: number) => void;
+  gender: string;
+  onGenderChange: (v: string) => void;
+  locationPins: LocationPin[];
+  onLocationPinsChange: (v: LocationPin[]) => void;
+  bidValue: string;
+  onBidValueChange: (v: string) => void;
 }) {
   const [geoLoading, setGeoLoading] = useState(false);
   const [addPinMode, setAddPinMode] = useState(false);
 
   async function reverseGeocode(lat: number, lng: number): Promise<string> {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=pt-BR`);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=pt-BR`
+      );
       const data = await res.json();
       const addr = data.address;
       if (addr) {
-        const parts = [addr.road, addr.suburb, addr.city || addr.town || addr.village].filter(Boolean);
-        return parts.length > 0 ? parts.join(", ") : data.display_name?.split(",").slice(0, 3).join(",") || "Local selecionado";
+        const parts = [addr.road, addr.suburb, addr.city || addr.town || addr.village].filter(
+          Boolean
+        );
+        return parts.length > 0
+          ? parts.join(", ")
+          : data.display_name?.split(",").slice(0, 3).join(",") || "Local selecionado";
       }
       return data.display_name?.split(",").slice(0, 3).join(",") || "Local selecionado";
     } catch {
@@ -499,7 +629,10 @@ function Step2Config({
 
   async function handleAddPin(lat: number, lng: number) {
     const name = await reverseGeocode(lat, lng);
-    onLocationPinsChange([...locationPins, { id: crypto.randomUUID(), lat, lng, radius: 10, name }]);
+    onLocationPinsChange([
+      ...locationPins,
+      { id: crypto.randomUUID(), lat, lng, radius: 10, name },
+    ]);
   }
 
   function handleUseMyLocation() {
@@ -527,14 +660,22 @@ function Step2Config({
     else if (val === "") onBudgetChange(1);
   }
 
-  const needsBidValue = strategy === "COST_CAP" || strategy === "BID_CAP" || strategy === "ROAS_MIN";
-  const bidLabel = strategy === "BID_CAP" ? "Lance máximo (R$)" : strategy === "ROAS_MIN" ? "ROAS mínimo" : "Custo máx. por resultado (R$)";
+  const needsBidValue =
+    strategy === "COST_CAP" || strategy === "BID_CAP" || strategy === "ROAS_MIN";
+  const bidLabel =
+    strategy === "BID_CAP"
+      ? "Lance máximo (R$)"
+      : strategy === "ROAS_MIN"
+        ? "ROAS mínimo"
+        : "Custo máx. por resultado (R$)";
 
   return (
     <div className="space-y-5">
       <div>
         <h4 className="text-sm font-bold text-slate-900">Configure sua campanha</h4>
-        <p className="text-xs text-slate-400 mt-0.5">Defina nome, orçamento, público e estratégia</p>
+        <p className="text-xs text-slate-400 mt-0.5">
+          Defina nome, orçamento, público e estratégia
+        </p>
       </div>
 
       {/* Name */}
@@ -551,10 +692,16 @@ function Step2Config({
       {/* Message destination */}
       {isMessages && (
         <div>
-          <Label className="text-xs font-medium text-slate-700">Para onde enviar as mensagens?</Label>
+          <Label className="text-xs font-medium text-slate-700">
+            Para onde enviar as mensagens?
+          </Label>
           <div className="grid grid-cols-3 gap-2 mt-2">
             {MSG_DESTINATIONS.map((d) => {
-              const IconMap = { whatsapp: WhatsAppIcon, messenger: MessengerIcon, instagram: InstagramIcon };
+              const IconMap = {
+                whatsapp: WhatsAppIcon,
+                messenger: MessengerIcon,
+                instagram: InstagramIcon,
+              };
               const MsgIcon = IconMap[d.iconType];
               return (
                 <button
@@ -600,7 +747,9 @@ function Step2Config({
         </div>
         <div className="flex justify-between text-[10px] text-slate-400 mt-1">
           <span>R$ 5/dia</span>
-          <span className="text-slate-600 font-medium">≈ R$ {(budget * 30).toLocaleString("pt-BR")}/mês</span>
+          <span className="text-slate-600 font-medium">
+            ≈ R$ {(budget * 30).toLocaleString("pt-BR")}/mês
+          </span>
           <span>R$ 500+/dia</span>
         </div>
       </div>
@@ -610,10 +759,13 @@ function Step2Config({
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4 text-slate-400" />
           <Label className="text-xs font-bold text-slate-800">Público-alvo</Label>
-          <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">Advantage+</span>
+          <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
+            Advantage+
+          </span>
         </div>
         <p className="text-[10px] text-slate-400 -mt-2">
-          Defina o público sugerido. O Advantage+ da Meta expande automaticamente para alcançar as melhores pessoas.
+          Defina o público sugerido. O Advantage+ da Meta expande automaticamente para alcançar as
+          melhores pessoas.
         </p>
 
         {/* Age */}
@@ -626,7 +778,9 @@ function Step2Config({
               className="text-xs rounded-xl border border-slate-200 px-2 py-1.5 bg-white"
             >
               {Array.from({ length: 48 }, (_, i) => i + 18).map((age) => (
-                <option key={age} value={age}>{age} anos</option>
+                <option key={age} value={age}>
+                  {age} anos
+                </option>
               ))}
             </select>
             <span className="text-xs text-slate-400">até</span>
@@ -635,9 +789,13 @@ function Step2Config({
               onChange={(e) => onAgeMaxChange(Number(e.target.value))}
               className="text-xs rounded-xl border border-slate-200 px-2 py-1.5 bg-white"
             >
-              {Array.from({ length: 48 }, (_, i) => i + 18).filter((a) => a >= ageMin).map((age) => (
-                <option key={age} value={age}>{age} anos</option>
-              ))}
+              {Array.from({ length: 48 }, (_, i) => i + 18)
+                .filter((a) => a >= ageMin)
+                .map((age) => (
+                  <option key={age} value={age}>
+                    {age} anos
+                  </option>
+                ))}
             </select>
           </div>
         </div>
@@ -665,10 +823,14 @@ function Step2Config({
         {/* Location — Interactive Map */}
         <div>
           <Label className="text-xs font-medium text-slate-700">
-            Localização {locationPins.length > 0 ? `(${locationPins.length} pino${locationPins.length > 1 ? "s" : ""})` : "(Brasil inteiro)"}
+            Localização{" "}
+            {locationPins.length > 0
+              ? `(${locationPins.length} pino${locationPins.length > 1 ? "s" : ""})`
+              : "(Brasil inteiro)"}
           </Label>
           <p className="text-[10px] text-slate-400 mt-0.5 mb-2">
-            Clique no mapa ou use sua localização para adicionar pinos com raio. Sem pinos = Brasil inteiro.
+            Clique no mapa ou use sua localização para adicionar pinos com raio. Sem pinos = Brasil
+            inteiro.
           </p>
 
           {/* Actions */}
@@ -681,7 +843,11 @@ function Step2Config({
               disabled={geoLoading}
               className="rounded-xl text-xs gap-1.5"
             >
-              {geoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <LocateFixed className="h-3 w-3" />}
+              {geoLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <LocateFixed className="h-3 w-3" />
+              )}
               Usar minha localização
             </Button>
             <Button
@@ -697,7 +863,13 @@ function Step2Config({
           </div>
 
           {/* Map — always visible */}
-          <Suspense fallback={<div className="w-full h-[220px] rounded-xl bg-slate-100 flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-slate-400" /></div>}>
+          <Suspense
+            fallback={
+              <div className="w-full h-[220px] rounded-xl bg-slate-100 flex items-center justify-center">
+                <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+              </div>
+            }
+          >
             <LocationMap
               pins={locationPins}
               onAddPin={handleAddPin}
@@ -711,11 +883,16 @@ function Step2Config({
           {locationPins.length > 0 && (
             <div className="space-y-2 mt-3">
               {locationPins.map((pin, idx) => (
-                <div key={pin.id} className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl p-2">
+                <div
+                  key={pin.id}
+                  className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl p-2"
+                >
                   <Navigation className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-indigo-700 truncate">{pin.name}</p>
-                    <p className="text-[9px] text-indigo-500">{pin.lat.toFixed(4)}, {pin.lng.toFixed(4)}</p>
+                    <p className="text-[9px] text-indigo-500">
+                      {pin.lat.toFixed(4)}, {pin.lng.toFixed(4)}
+                    </p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <Input
@@ -723,7 +900,10 @@ function Step2Config({
                       value={pin.radius}
                       onChange={(e) => {
                         const updated = [...locationPins];
-                        updated[idx] = { ...pin, radius: Math.max(1, Math.min(80, Number(e.target.value) || 1)) };
+                        updated[idx] = {
+                          ...pin,
+                          radius: Math.max(1, Math.min(80, Number(e.target.value) || 1)),
+                        };
                         onLocationPinsChange(updated);
                       }}
                       min={1}
@@ -763,7 +943,9 @@ function Step2Config({
                     : "border-slate-200 hover:bg-slate-50"
                 }`}
               >
-                <SIcon className={`h-4 w-4 mb-1 ${isSelected ? "text-indigo-600" : "text-slate-400"}`} />
+                <SIcon
+                  className={`h-4 w-4 mb-1 ${isSelected ? "text-indigo-600" : "text-slate-400"}`}
+                />
                 <p className="text-xs font-semibold text-slate-800">{s.label}</p>
                 <p className="text-[10px] text-slate-400">{s.description}</p>
                 {isSelected && (
@@ -784,17 +966,23 @@ function Step2Config({
                 type="number"
                 value={bidValue}
                 onChange={(e) => onBidValueChange(e.target.value)}
-                placeholder={strategy === "ROAS_MIN" ? "Ex: 3.0" : strategy === "BID_CAP" ? "Ex: 10" : "Ex: 25"}
+                placeholder={
+                  strategy === "ROAS_MIN" ? "Ex: 3.0" : strategy === "BID_CAP" ? "Ex: 10" : "Ex: 25"
+                }
                 min={0}
                 step={strategy === "ROAS_MIN" ? "0.1" : "1"}
                 className="w-32 text-sm rounded-xl"
               />
-              {strategy === "ROAS_MIN" && <span className="text-[10px] text-slate-400">x retorno</span>}
+              {strategy === "ROAS_MIN" && (
+                <span className="text-[10px] text-slate-400">x retorno</span>
+              )}
             </div>
             <p className="text-[10px] text-slate-400 mt-1">
-              {strategy === "COST_CAP" && "A Meta vai tentar manter o custo médio por resultado abaixo desse valor."}
+              {strategy === "COST_CAP" &&
+                "A Meta vai tentar manter o custo médio por resultado abaixo desse valor."}
               {strategy === "BID_CAP" && "O lance máximo que a Meta pode dar por clique no leilão."}
-              {strategy === "ROAS_MIN" && "A Meta só vai gastar se o retorno estimado for acima desse múltiplo."}
+              {strategy === "ROAS_MIN" &&
+                "A Meta só vai gastar se o retorno estimado for acima desse múltiplo."}
             </p>
           </div>
         )}
@@ -806,7 +994,12 @@ function Step2Config({
 // ─── Step 3: Boost Post ───
 
 function Step3Boost({
-  loading, posts, selected, onSelect, tab, onTabChange,
+  loading,
+  posts,
+  selected,
+  onSelect,
+  tab,
+  onTabChange,
 }: {
   loading: boolean;
   posts: SocialPost[];
@@ -819,7 +1012,9 @@ function Step3Boost({
     <div className="space-y-4">
       <div>
         <h4 className="text-sm font-bold text-slate-900">Escolha a publicação</h4>
-        <p className="text-xs text-slate-400 mt-0.5">Selecione um post do Feed, Story ou Reels para impulsionar</p>
+        <p className="text-xs text-slate-400 mt-0.5">
+          Selecione um post do Feed, Story ou Reels para impulsionar
+        </p>
       </div>
 
       {/* Tab toggle */}
@@ -849,7 +1044,9 @@ function Step3Boost({
         </div>
       ) : posts.length === 0 ? (
         <div className="py-12 text-center">
-          <p className="text-xs text-slate-400">Nenhuma publicação encontrada no {tab === "facebook" ? "Facebook" : "Instagram"}</p>
+          <p className="text-xs text-slate-400">
+            Nenhuma publicação encontrada no {tab === "facebook" ? "Facebook" : "Instagram"}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[400px] overflow-y-auto">
@@ -873,9 +1070,13 @@ function Step3Boost({
                   </div>
                 )}
                 <div className="p-2">
-                  <p className="text-[10px] text-slate-600 line-clamp-2">{post.message || "Sem legenda"}</p>
+                  <p className="text-[10px] text-slate-600 line-clamp-2">
+                    {post.message || "Sem legenda"}
+                  </p>
                   {post.mediaType && (
-                    <span className="text-[9px] text-slate-400 uppercase mt-0.5 block">{post.mediaType}</span>
+                    <span className="text-[9px] text-slate-400 uppercase mt-0.5 block">
+                      {post.mediaType}
+                    </span>
                   )}
                 </div>
               </button>
@@ -890,21 +1091,32 @@ function Step3Boost({
 // ─── Step 3: New Creative ───
 
 function Step3Creative({
-  imagePreview, onImageChange, onClearImage, fileRef,
-  primaryText, onPrimaryTextChange,
-  headline, onHeadlineChange,
-  linkUrl, onLinkUrlChange,
-  cta, onCtaChange,
+  imagePreview,
+  onImageChange,
+  onClearImage,
+  fileRef,
+  primaryText,
+  onPrimaryTextChange,
+  headline,
+  onHeadlineChange,
+  linkUrl,
+  onLinkUrlChange,
+  cta,
+  onCtaChange,
   goalId,
 }: {
   imagePreview: string | null;
   onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClearImage: () => void;
   fileRef: React.RefObject<HTMLInputElement | null>;
-  primaryText: string; onPrimaryTextChange: (v: string) => void;
-  headline: string; onHeadlineChange: (v: string) => void;
-  linkUrl: string; onLinkUrlChange: (v: string) => void;
-  cta: string; onCtaChange: (v: string) => void;
+  primaryText: string;
+  onPrimaryTextChange: (v: string) => void;
+  headline: string;
+  onHeadlineChange: (v: string) => void;
+  linkUrl: string;
+  onLinkUrlChange: (v: string) => void;
+  cta: string;
+  onCtaChange: (v: string) => void;
   goalId: string | null;
 }) {
   const needsLink = goalId === "trafego" || goalId === "vendas";
@@ -924,7 +1136,11 @@ function Step3Creative({
         <div className="mt-1.5">
           {imagePreview ? (
             <div className="relative">
-              <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-xl border border-slate-200" />
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="w-full h-40 object-cover rounded-xl border border-slate-200"
+              />
               <button
                 onClick={onClearImage}
                 className="absolute top-2 right-2 bg-white/90 rounded-full p-1 shadow-sm hover:bg-white"
@@ -938,10 +1154,18 @@ function Step3Creative({
               className="w-full h-28 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-1.5 hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors"
             >
               <Upload className="h-5 w-5 text-slate-300" />
-              <span className="text-[10px] text-slate-400">Clique para selecionar imagem (JPG/PNG, máx 10MB)</span>
+              <span className="text-[10px] text-slate-400">
+                Clique para selecionar imagem (JPG/PNG, máx 10MB)
+              </span>
             </button>
           )}
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={onImageChange} className="hidden" />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={onImageChange}
+            className="hidden"
+          />
         </div>
       </div>
 
@@ -960,14 +1184,24 @@ function Step3Creative({
       {/* Headline */}
       <div>
         <Label className="text-xs font-medium text-slate-700">Título</Label>
-        <Input value={headline} onChange={(e) => onHeadlineChange(e.target.value)} placeholder="Título chamativo" className="mt-1 text-sm rounded-xl" />
+        <Input
+          value={headline}
+          onChange={(e) => onHeadlineChange(e.target.value)}
+          placeholder="Título chamativo"
+          className="mt-1 text-sm rounded-xl"
+        />
       </div>
 
       {/* Link (for traffic/sales) */}
       {needsLink && (
         <div>
           <Label className="text-xs font-medium text-slate-700">URL de destino</Label>
-          <Input value={linkUrl} onChange={(e) => onLinkUrlChange(e.target.value)} placeholder="https://..." className="mt-1 text-sm rounded-xl" />
+          <Input
+            value={linkUrl}
+            onChange={(e) => onLinkUrlChange(e.target.value)}
+            placeholder="https://..."
+            className="mt-1 text-sm rounded-xl"
+          />
         </div>
       )}
 
@@ -980,7 +1214,9 @@ function Step3Creative({
           className="mt-1 w-full text-sm rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
         >
           {CTA_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </select>
       </div>
@@ -991,8 +1227,19 @@ function Step3Creative({
 // ─── Step 4: Review ───
 
 function Step4Review({
-  goal, name, budget, strategy, isBoost, selectedPost, hasCreative, destination,
-  ageMin, ageMax, gender, locationPins, bidValue,
+  goal,
+  name,
+  budget,
+  strategy,
+  isBoost,
+  selectedPost,
+  hasCreative,
+  destination,
+  ageMin,
+  ageMax,
+  gender,
+  locationPins,
+  bidValue,
 }: {
   goal: GoalOption | undefined;
   name: string;
@@ -1010,19 +1257,24 @@ function Step4Review({
 }) {
   const RIcon = goal?.icon ?? Rocket;
   const genderLabel = gender === "male" ? "Masculino" : gender === "female" ? "Feminino" : "Todos";
-  const regionLabel = locationPins.length > 0 ? locationPins.map((p) => p.name).join(", ") : "Brasil inteiro";
+  const regionLabel =
+    locationPins.length > 0 ? locationPins.map((p) => p.name).join(", ") : "Brasil inteiro";
 
   return (
     <div className="space-y-4">
       <div>
         <h4 className="text-sm font-bold text-slate-900">Revisar e criar</h4>
-        <p className="text-xs text-slate-400 mt-0.5">Confira os detalhes antes de criar a campanha</p>
+        <p className="text-xs text-slate-400 mt-0.5">
+          Confira os detalhes antes de criar a campanha
+        </p>
       </div>
 
       <div className="bg-slate-50 rounded-2xl p-4 space-y-3">
         {/* Goal */}
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${goal?.bg?.split(" ")[0] ?? "bg-slate-100"}`}>
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center ${goal?.bg?.split(" ")[0] ?? "bg-slate-100"}`}
+          >
             <RIcon className={`h-5 w-5 ${goal?.color ?? "text-slate-400"}`} />
           </div>
           <div>
@@ -1034,9 +1286,17 @@ function Step4Review({
         <div className="border-t border-slate-200 pt-3 space-y-2">
           <ReviewRow label="Nome" value={name} />
           <ReviewRow label="Gasto diário" value={`R$ ${budget.toLocaleString("pt-BR")},00`} />
-          <ReviewRow label="Estimativa mensal" value={`R$ ${(budget * 30).toLocaleString("pt-BR")},00`} />
+          <ReviewRow
+            label="Estimativa mensal"
+            value={`R$ ${(budget * 30).toLocaleString("pt-BR")},00`}
+          />
           <ReviewRow label="Estratégia" value={strategy} />
-          {bidValue && <ReviewRow label="Valor do lance" value={strategy.includes("ROAS") ? `${bidValue}x` : `R$ ${bidValue}`} />}
+          {bidValue && (
+            <ReviewRow
+              label="Valor do lance"
+              value={strategy.includes("ROAS") ? `${bidValue}x` : `R$ ${bidValue}`}
+            />
+          )}
           {destination && <ReviewRow label="Destino" value={destination} />}
           <ReviewRow label="Idade" value={`${ageMin} - ${ageMax} anos`} />
           <ReviewRow label="Gênero" value={genderLabel} />
@@ -1045,10 +1305,16 @@ function Step4Review({
             <ReviewRow key={i} label={`📍 ${pin.name}`} value={`${pin.radius} km`} />
           ))}
           {isBoost && selectedPost && (
-            <ReviewRow label="Publicação" value={selectedPost.message?.substring(0, 60) || "Post selecionado"} />
+            <ReviewRow
+              label="Publicação"
+              value={selectedPost.message?.substring(0, 60) || "Post selecionado"}
+            />
           )}
           {!isBoost && (
-            <ReviewRow label="Criativo" value={hasCreative ? "Imagem adicionada" : "Será adicionado depois"} />
+            <ReviewRow
+              label="Criativo"
+              value={hasCreative ? "Imagem adicionada" : "Será adicionado depois"}
+            />
           )}
         </div>
       </div>
@@ -1056,15 +1322,17 @@ function Step4Review({
       <div className="bg-emerald-50 rounded-xl p-3 flex items-start gap-2">
         <Info className="h-3.5 w-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
         <p className="text-[10px] text-emerald-700 leading-relaxed">
-          <span className="font-semibold">Advantage+ ativado</span> — A Meta vai expandir automaticamente o público para alcançar as melhores pessoas, usando seu público-alvo como sugestão inicial.
+          <span className="font-semibold">Advantage+ ativado</span> — A Meta vai expandir
+          automaticamente o público para alcançar as melhores pessoas, usando seu público-alvo como
+          sugestão inicial.
         </p>
       </div>
 
       <div className="bg-blue-50 rounded-xl p-3 flex items-start gap-2">
         <Info className="h-3.5 w-3.5 text-blue-500 mt-0.5 flex-shrink-0" />
         <p className="text-[10px] text-blue-700 leading-relaxed">
-          A campanha será criada com status <span className="font-semibold">Pausada</span>.
-          Após criar, você pode ativá-la pelo botão na aba Meta.
+          A campanha será criada com status <span className="font-semibold">Pausada</span>. Após
+          criar, você pode ativá-la pelo botão na aba Meta.
         </p>
       </div>
     </div>

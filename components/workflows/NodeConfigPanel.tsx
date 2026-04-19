@@ -30,11 +30,15 @@ export function NodeConfigPanel({ node, stages, onUpdate, onClose, onDelete }: P
       <div className="flex-1 p-4 space-y-4">
         {/* Type badge */}
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-            node.type === "trigger" ? "bg-violet-100 text-violet-700" :
-            node.type === "condition" ? "bg-amber-100 text-amber-700" :
-            "bg-teal-100 text-teal-700"
-          }`}>
+          <span
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+              node.type === "trigger"
+                ? "bg-violet-100 text-violet-700"
+                : node.type === "condition"
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-teal-100 text-teal-700"
+            }`}
+          >
             {node.type === "trigger" ? "Gatilho" : node.type === "condition" ? "Condicao" : "Acao"}
           </span>
           <span className="text-xs text-slate-400">{node.subtype}</span>
@@ -51,7 +55,9 @@ export function NodeConfigPanel({ node, stages, onUpdate, onClose, onDelete }: P
             >
               <option value="">Selecionar etapa</option>
               {stages.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
               ))}
             </select>
           </div>
@@ -116,7 +122,9 @@ export function NodeConfigPanel({ node, stages, onUpdate, onClose, onDelete }: P
 
         {node.subtype === "stage_check" && (
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1">Etapa a verificar</label>
+            <label className="text-xs font-medium text-slate-600 block mb-1">
+              Etapa a verificar
+            </label>
             <select
               value={(config.stageId as string) || ""}
               onChange={(e) => updateField("stageId", e.target.value)}
@@ -124,7 +132,9 @@ export function NodeConfigPanel({ node, stages, onUpdate, onClose, onDelete }: P
             >
               <option value="">Selecionar</option>
               {stages.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
               ))}
             </select>
           </div>
@@ -140,7 +150,9 @@ export function NodeConfigPanel({ node, stages, onUpdate, onClose, onDelete }: P
               placeholder="Ola {{nome}}! ..."
               className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-300 resize-none h-24"
             />
-            <p className="text-[10px] text-slate-400 mt-1">Variaveis: {"{{nome}}"}, {"{{clinica}}"}</p>
+            <p className="text-[10px] text-slate-400 mt-1">
+              Variaveis: {"{{nome}}"}, {"{{clinica}}"}
+            </p>
           </div>
         )}
 
@@ -154,7 +166,9 @@ export function NodeConfigPanel({ node, stages, onUpdate, onClose, onDelete }: P
             >
               <option value="">Selecionar etapa</option>
               {stages.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
               ))}
             </select>
           </div>
@@ -182,13 +196,17 @@ export function NodeConfigPanel({ node, stages, onUpdate, onClose, onDelete }: P
               onChange={(e) => updateField("delta", parseInt(e.target.value))}
               className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-300"
             />
-            <p className="text-[10px] text-slate-400 mt-1">Positivo para somar, negativo para subtrair</p>
+            <p className="text-[10px] text-slate-400 mt-1">
+              Positivo para somar, negativo para subtrair
+            </p>
           </div>
         )}
 
         {node.subtype === "delay" && (
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1">Aguardar (minutos)</label>
+            <label className="text-xs font-medium text-slate-600 block mb-1">
+              Aguardar (minutos)
+            </label>
             <input
               type="number"
               value={(config.minutes as number) || 60}
@@ -197,7 +215,8 @@ export function NodeConfigPanel({ node, stages, onUpdate, onClose, onDelete }: P
               className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-300"
             />
             <p className="text-[10px] text-slate-400 mt-1">
-              = {Math.floor(((config.minutes as number) || 60) / 60)}h {((config.minutes as number) || 60) % 60}min
+              = {Math.floor(((config.minutes as number) || 60) / 60)}h{" "}
+              {((config.minutes as number) || 60) % 60}min
             </p>
           </div>
         )}

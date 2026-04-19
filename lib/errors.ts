@@ -84,9 +84,7 @@ export class NotFoundError extends AppError {
   readonly code = "NOT_FOUND";
 
   constructor(resource: string, id?: string, meta: Record<string, unknown> = {}) {
-    const message = id
-      ? `${resource} não encontrado: ${id}`
-      : `${resource} não encontrado`;
+    const message = id ? `${resource} não encontrado: ${id}` : `${resource} não encontrado`;
     super(message, { resource, id, ...meta });
   }
 }

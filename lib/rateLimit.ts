@@ -48,8 +48,8 @@ export function rateLimit(
  * Rate limit presets for different route types.
  */
 export const RATE_LIMITS = {
-  api: { maxRequests: 60, windowMs: 60_000 },       // 60 req/min for general API
-  webhook: { maxRequests: 300, windowMs: 60_000 },   // 300 req/min for webhooks
-  ai: { maxRequests: 20, windowMs: 60_000 },          // 20 req/min for AI generation
-  upload: { maxRequests: 30, windowMs: 60_000 },       // 30 req/min for uploads
+  api: { maxRequests: 60, windowMs: 60_000 }, // 60 req/min for general API
+  webhook: { maxRequests: 300, windowMs: 60_000 }, // 300 req/min for webhooks
+  ai: { maxRequests: 20, windowMs: 60_000 }, // 20 req/min for AI generation
+  upload: { maxRequests: 30, windowMs: 60_000 }, // 30 req/min for uploads
 } as const;

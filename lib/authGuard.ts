@@ -7,7 +7,14 @@ import { getCurrentUser } from "@/app/actions/user";
  * Retorna null se não pertence ou não existe.
  */
 export async function ensureOwnership(
-  model: "lead" | "stage" | "workflow" | "socialPost" | "messageTemplate" | "broadcastCampaign" | "notification",
+  model:
+    | "lead"
+    | "stage"
+    | "workflow"
+    | "socialPost"
+    | "messageTemplate"
+    | "broadcastCampaign"
+    | "notification",
   resourceId: string
 ) {
   const user = await getCurrentUser();

@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Bell, Check, CheckCheck, ExternalLink, X } from "lucide-react";
-import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from "@/app/actions/notifications";
+import {
+  getNotifications,
+  getUnreadCount,
+  markAsRead,
+  markAllAsRead,
+} from "@/app/actions/notifications";
 import Link from "next/link";
 
 type Notification = {
@@ -108,7 +113,10 @@ export function NotificationCenter() {
                   Marcar todas
                 </button>
               )}
-              <button onClick={() => setOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded">
+              <button
+                onClick={() => setOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -117,9 +125,7 @@ export function NotificationCenter() {
           {/* List */}
           <div className="overflow-y-auto flex-1">
             {notifications.length === 0 ? (
-              <div className="py-12 text-center text-sm text-slate-400">
-                Nenhuma notificacao
-              </div>
+              <div className="py-12 text-center text-sm text-slate-400">Nenhuma notificacao</div>
             ) : (
               notifications.map((n) => (
                 <div
@@ -128,9 +134,13 @@ export function NotificationCenter() {
                     n.read ? "bg-white" : "bg-indigo-50/40"
                   } hover:bg-slate-50`}
                 >
-                  <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${TYPE_COLORS[n.type] || "bg-slate-400"}`} />
+                  <div
+                    className={`mt-1 h-2 w-2 rounded-full shrink-0 ${TYPE_COLORS[n.type] || "bg-slate-400"}`}
+                  />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm leading-tight ${n.read ? "text-slate-600" : "text-slate-800 font-medium"}`}>
+                    <p
+                      className={`text-sm leading-tight ${n.read ? "text-slate-600" : "text-slate-800 font-medium"}`}
+                    >
                       {n.title}
                     </p>
                     <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{n.message}</p>
@@ -139,7 +149,10 @@ export function NotificationCenter() {
                       {n.actionUrl && (
                         <Link
                           href={n.actionUrl}
-                          onClick={() => { handleMarkRead(n.id); setOpen(false); }}
+                          onClick={() => {
+                            handleMarkRead(n.id);
+                            setOpen(false);
+                          }}
                           className="text-[10px] text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5"
                         >
                           Ver <ExternalLink className="h-2.5 w-2.5" />

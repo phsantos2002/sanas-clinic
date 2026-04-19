@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
 import { revalidatePath } from "next/cache";
 
-const DEFAULT_SERVICES_BY_NICHE: Record<string, { name: string; duration: number; category?: string }[]> = {
+const DEFAULT_SERVICES_BY_NICHE: Record<
+  string,
+  { name: string; duration: number; category?: string }[]
+> = {
   clinica_estetica: [
     { name: "Botox", duration: 45, category: "Estetica" },
     { name: "Preenchimento", duration: 60, category: "Estetica" },
@@ -168,14 +171,62 @@ export async function getSetupProgress() {
   const profile = aiConfig?.businessProfile as Record<string, string> | null;
 
   return [
-    { id: "whatsapp", label: "WhatsApp conectado", completed: !!(waConfig?.uazapiInstanceToken || waConfig?.accessToken), weight: 20, href: "/dashboard/settings/integrations" },
-    { id: "pixel", label: "Meta Pixel configurado", completed: !!pixel?.pixelId, weight: 15, href: "/dashboard/settings/integrations" },
-    { id: "meta_ads", label: "Meta Ads conta vinculada", completed: !!pixel?.metaAdsToken, weight: 15, href: "/dashboard/settings/integrations" },
-    { id: "brand", label: "Tom de voz configurado", completed: !!(brand?.default_tone), weight: 15, href: "/dashboard/settings" },
-    { id: "profile", label: "Perfil de negocio preenchido", completed: !!(profile?.name && profile?.niche), weight: 10, href: "/dashboard/settings" },
-    { id: "templates", label: "Pelo menos 1 template criado", completed: templates > 0, weight: 10, href: "/dashboard/chat/templates" },
-    { id: "automations", label: "Pelo menos 1 automacao ativa", completed: workflows > 0, weight: 10, href: "/dashboard/workflows" },
-    { id: "prompt", label: "Prompt do assistente personalizado", completed: !!(aiConfig?.systemPrompt), weight: 5, href: "/dashboard/settings/integrations" },
+    {
+      id: "whatsapp",
+      label: "WhatsApp conectado",
+      completed: !!(waConfig?.uazapiInstanceToken || waConfig?.accessToken),
+      weight: 20,
+      href: "/dashboard/settings/integrations",
+    },
+    {
+      id: "pixel",
+      label: "Meta Pixel configurado",
+      completed: !!pixel?.pixelId,
+      weight: 15,
+      href: "/dashboard/settings/integrations",
+    },
+    {
+      id: "meta_ads",
+      label: "Meta Ads conta vinculada",
+      completed: !!pixel?.metaAdsToken,
+      weight: 15,
+      href: "/dashboard/settings/integrations",
+    },
+    {
+      id: "brand",
+      label: "Tom de voz configurado",
+      completed: !!brand?.default_tone,
+      weight: 15,
+      href: "/dashboard/settings",
+    },
+    {
+      id: "profile",
+      label: "Perfil de negocio preenchido",
+      completed: !!(profile?.name && profile?.niche),
+      weight: 10,
+      href: "/dashboard/settings",
+    },
+    {
+      id: "templates",
+      label: "Pelo menos 1 template criado",
+      completed: templates > 0,
+      weight: 10,
+      href: "/dashboard/chat/templates",
+    },
+    {
+      id: "automations",
+      label: "Pelo menos 1 automacao ativa",
+      completed: workflows > 0,
+      weight: 10,
+      href: "/dashboard/workflows",
+    },
+    {
+      id: "prompt",
+      label: "Prompt do assistente personalizado",
+      completed: !!aiConfig?.systemPrompt,
+      weight: 5,
+      href: "/dashboard/settings/integrations",
+    },
   ];
 }
 
@@ -193,9 +244,33 @@ export async function getChecklistProgress() {
   ]);
 
   return [
-    { id: "connect_wa", label: "Conecte seu WhatsApp", description: "Vincule seu numero para receber leads", completed: !!(waConfig?.uazapiInstanceToken), href: "/dashboard/settings/integrations" },
-    { id: "first_lead", label: "Crie seu primeiro lead", description: "Adicione um contato manualmente", completed: leadCount > 0, href: "/dashboard/pipeline" },
-    { id: "first_workflow", label: "Configure um workflow", description: "Crie uma automacao de boas-vindas", completed: workflowCount > 0, href: "/dashboard/workflows" },
-    { id: "first_post", label: "Publique seu primeiro post", description: "Crie e agende um post para redes sociais", completed: postCount > 0, href: "/dashboard/posts" },
+    {
+      id: "connect_wa",
+      label: "Conecte seu WhatsApp",
+      description: "Vincule seu numero para receber leads",
+      completed: !!waConfig?.uazapiInstanceToken,
+      href: "/dashboard/settings/integrations",
+    },
+    {
+      id: "first_lead",
+      label: "Crie seu primeiro lead",
+      description: "Adicione um contato manualmente",
+      completed: leadCount > 0,
+      href: "/dashboard/pipeline",
+    },
+    {
+      id: "first_workflow",
+      label: "Configure um workflow",
+      description: "Crie uma automacao de boas-vindas",
+      completed: workflowCount > 0,
+      href: "/dashboard/workflows",
+    },
+    {
+      id: "first_post",
+      label: "Publique seu primeiro post",
+      description: "Crie e agende um post para redes sociais",
+      completed: postCount > 0,
+      href: "/dashboard/posts",
+    },
   ];
 }

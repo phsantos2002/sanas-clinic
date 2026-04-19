@@ -20,8 +20,8 @@ type CampaignAlert = {
 
 export function CampaignAlerts({ campaign, config, benchmark }: Props) {
   const alerts: CampaignAlert[] = [];
-  const frequency = campaign.impressions > 0 && campaign.reach > 0
-    ? campaign.impressions / campaign.reach : 0;
+  const frequency =
+    campaign.impressions > 0 && campaign.reach > 0 ? campaign.impressions / campaign.reach : 0;
 
   // Learning phase detection
   if (campaign.impressions < 500 && campaign.status === "ACTIVE") {
@@ -37,7 +37,8 @@ export function CampaignAlerts({ campaign, config, benchmark }: Props) {
     alerts.push({
       type: "critical",
       title: `CTR muito baixo (${fmt(campaign.ctr)}%)`,
-      description: "O público não está engajando. Revise criativos, teste novos formatos e refine a segmentação.",
+      description:
+        "O público não está engajando. Revise criativos, teste novos formatos e refine a segmentação.",
     });
   }
 
@@ -46,7 +47,8 @@ export function CampaignAlerts({ campaign, config, benchmark }: Props) {
     alerts.push({
       type: "warning",
       title: `CPM elevado (${fmtBrl(campaign.cpm)})`,
-      description: "Custo de alcance alto. Pode indicar público saturado ou concorrência elevada. Expanda a segmentação.",
+      description:
+        "Custo de alcance alto. Pode indicar público saturado ou concorrência elevada. Expanda a segmentação.",
     });
   }
 
@@ -81,7 +83,7 @@ export function CampaignAlerts({ campaign, config, benchmark }: Props) {
       alerts.push({
         type: "critical",
         title: "CPC acima do Cost Cap",
-        description: `CPC real (${fmtBrl(campaign.cpc)}) está ${Math.round(((campaign.cpc / config.maxCostPerResult) - 1) * 100)}% acima do cap (${fmtBrl(config.maxCostPerResult)}). A Meta vai reduzir entrega. Aumente o cap em 10-20% ou otimize criativos.`,
+        description: `CPC real (${fmtBrl(campaign.cpc)}) está ${Math.round((campaign.cpc / config.maxCostPerResult - 1) * 100)}% acima do cap (${fmtBrl(config.maxCostPerResult)}). A Meta vai reduzir entrega. Aumente o cap em 10-20% ou otimize criativos.`,
       });
     } else if (campaign.cpc > config.maxCostPerResult * 0.8 && campaign.impressions > 1000) {
       alerts.push({
@@ -115,14 +117,16 @@ export function CampaignAlerts({ campaign, config, benchmark }: Props) {
     const convValue = config.conversionValue ?? 0;
     if (convValue > 0 && campaign.spend > 0) {
       // Estimate ROAS
-      const estConversions = campaign.clicks > 0 ? Math.max(1, Math.round(campaign.clicks * 0.05)) : 0;
+      const estConversions =
+        campaign.clicks > 0 ? Math.max(1, Math.round(campaign.clicks * 0.05)) : 0;
       const estRevenue = estConversions * convValue;
       const estRoas = estRevenue / campaign.spend;
       if (estRoas < targetRoas) {
         alerts.push({
           type: "critical",
           title: `ROAS estimado abaixo da meta (${fmt(estRoas, 1)}x vs ${fmt(targetRoas, 1)}x)`,
-          description: "O retorno está abaixo do mínimo configurado. Otimize criativos para aumentar conversões ou aumente o valor médio do produto/serviço.",
+          description:
+            "O retorno está abaixo do mínimo configurado. Otimize criativos para aumentar conversões ou aumente o valor médio do produto/serviço.",
         });
       }
     }
@@ -130,11 +134,15 @@ export function CampaignAlerts({ campaign, config, benchmark }: Props) {
 
   if (strat === "LOWEST_COST" && campaign.impressions > 2000) {
     // Lowest cost without any limit — warn if costs are rising
-    if (getMetricStatus("cpc", campaign.cpc, benchmark) === "bad" && getMetricStatus("cpm", campaign.cpm, benchmark) === "bad") {
+    if (
+      getMetricStatus("cpc", campaign.cpc, benchmark) === "bad" &&
+      getMetricStatus("cpm", campaign.cpm, benchmark) === "bad"
+    ) {
       alerts.push({
         type: "warning",
         title: "Custos subindo sem limite",
-        description: "CPC e CPM estão altos com estratégia Menor Custo (sem cap). Considere migrar para Cost Cap ou Bid Cap para controlar gastos.",
+        description:
+          "CPC e CPM estão altos com estratégia Menor Custo (sem cap). Considere migrar para Cost Cap ou Bid Cap para controlar gastos.",
       });
     }
   }
@@ -142,9 +150,24 @@ export function CampaignAlerts({ campaign, config, benchmark }: Props) {
   if (alerts.length === 0) return null;
 
   const typeConfig = {
-    critical: { bg: "bg-red-50", border: "border-l-red-400", icon: TrendingDown, iconColor: "text-red-500" },
-    warning: { bg: "bg-amber-50", border: "border-l-amber-400", icon: AlertTriangle, iconColor: "text-amber-500" },
-    info: { bg: "bg-blue-50", border: "border-l-blue-400", icon: BookOpen, iconColor: "text-blue-500" },
+    critical: {
+      bg: "bg-red-50",
+      border: "border-l-red-400",
+      icon: TrendingDown,
+      iconColor: "text-red-500",
+    },
+    warning: {
+      bg: "bg-amber-50",
+      border: "border-l-amber-400",
+      icon: AlertTriangle,
+      iconColor: "text-amber-500",
+    },
+    info: {
+      bg: "bg-blue-50",
+      border: "border-l-blue-400",
+      icon: BookOpen,
+      iconColor: "text-blue-500",
+    },
   };
 
   return (

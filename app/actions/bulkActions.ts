@@ -31,10 +31,12 @@ export async function bulkMoveStage(
   });
 
   // Record stage history for audit
-  await prisma.leadStageHistory.createMany({
-    data: leadIds.map((leadId) => ({ leadId, stageId })),
-    skipDuplicates: true,
-  }).catch(() => {});
+  await prisma.leadStageHistory
+    .createMany({
+      data: leadIds.map((leadId) => ({ leadId, stageId })),
+      skipDuplicates: true,
+    })
+    .catch(() => {});
 
   await logBulkActivity(
     leadIds.map((leadId) => ({
@@ -68,7 +70,11 @@ export async function bulkAssign(
 
   if (attendantId === "auto") {
     const attendants = await prisma.attendant.findMany({
-      where: { userId: user.id, isActive: true, role: { in: ["sdr", "sdr_manager", "attendant", "closer"] } },
+      where: {
+        userId: user.id,
+        isActive: true,
+        role: { in: ["sdr", "sdr_manager", "attendant", "closer"] },
+      },
       select: { id: true },
     });
     if (!attendants.length) return { success: false, error: "Nenhum atendente ativo" };
@@ -101,7 +107,12 @@ export async function bulkAssign(
   });
 
   const attendantName = finalAttendantId
-    ? (await prisma.attendant.findFirst({ where: { id: finalAttendantId, userId: user.id }, select: { name: true } }))?.name
+    ? (
+        await prisma.attendant.findFirst({
+          where: { id: finalAttendantId, userId: user.id },
+          select: { name: true },
+        })
+      )?.name
     : null;
 
   await logBulkActivity(

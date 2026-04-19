@@ -14,7 +14,13 @@ export function Header() {
       {/* Desktop header */}
       <div className="hidden md:flex max-w-screen-2xl mx-auto px-6 h-14 items-center justify-between">
         <div className="flex items-center gap-4">
-          <Image src="/logo.png" alt="Sanas Pulse" width={32} height={32} className="rounded-lg object-contain" />
+          <Image
+            src="/logo.png"
+            alt="Sanas Pulse"
+            width={32}
+            height={32}
+            className="rounded-lg object-contain"
+          />
           <div className="h-6 w-px bg-slate-200" />
           <SystemStatus />
         </div>
@@ -23,12 +29,21 @@ export function Header() {
           <SearchButton />
           <NotificationCenter />
           <Link href="/dashboard/settings/account">
-            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600 gap-1.5 rounded-lg">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-slate-400 hover:text-slate-600 gap-1.5 rounded-lg"
+            >
               <Settings className="h-4 w-4" />
             </Button>
           </Link>
           <form action={signOut}>
-            <Button variant="ghost" size="sm" type="submit" className="text-slate-400 hover:text-red-500 gap-1.5 rounded-lg">
+            <Button
+              variant="ghost"
+              size="sm"
+              type="submit"
+              className="text-slate-400 hover:text-red-500 gap-1.5 rounded-lg"
+            >
               <LogOut className="h-4 w-4" />
             </Button>
           </form>
@@ -39,18 +54,33 @@ export function Header() {
       <div className="md:hidden">
         <div className="flex items-center justify-between px-4 h-12">
           <div className="flex items-center gap-2.5">
-            <Image src="/logo.png" alt="Sanas Pulse" width={28} height={28} className="rounded-lg object-contain" />
+            <Image
+              src="/logo.png"
+              alt="Sanas Pulse"
+              width={28}
+              height={28}
+              className="rounded-lg object-contain"
+            />
             <SystemStatus />
           </div>
           <div className="flex items-center gap-0.5">
             <NotificationCenter />
             <Link href="/dashboard/settings/account">
-              <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600 h-8 w-8 p-0 rounded-lg">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-slate-400 hover:text-slate-600 h-8 w-8 p-0 rounded-lg"
+              >
                 <Settings className="h-4 w-4" />
               </Button>
             </Link>
             <form action={signOut}>
-              <Button variant="ghost" size="sm" type="submit" className="text-slate-400 hover:text-red-500 h-8 w-8 p-0 rounded-lg">
+              <Button
+                variant="ghost"
+                size="sm"
+                type="submit"
+                className="text-slate-400 hover:text-red-500 h-8 w-8 p-0 rounded-lg"
+              >
                 <LogOut className="h-4 w-4" />
               </Button>
             </form>

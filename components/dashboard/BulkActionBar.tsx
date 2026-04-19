@@ -2,22 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  X,
-  ArrowRight,
-  Users,
-  Tag as TagIcon,
-  Repeat,
-  Trash2,
-  ChevronDown,
-} from "lucide-react";
+import { X, ArrowRight, Users, Tag as TagIcon, Repeat, Trash2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import {
-  bulkMoveStage,
-  bulkAssign,
-  bulkAddTag,
-  bulkDeleteLeads,
-} from "@/app/actions/bulkActions";
+import { bulkMoveStage, bulkAssign, bulkAddTag, bulkDeleteLeads } from "@/app/actions/bulkActions";
 import { enrollLeadsInCadence } from "@/app/actions/cadences";
 import type { Stage } from "@/types";
 
@@ -46,18 +33,28 @@ export function BulkActionBar({ selectedIds, stages, attendants, cadences, onCle
     setBusy(true);
     const r = await bulkMoveStage(selectedIds, stageId);
     setBusy(false);
-    if (!r.success) { toast.error(r.error); return; }
+    if (!r.success) {
+      toast.error(r.error);
+      return;
+    }
     toast.success(`${r.data!.moved} leads movidos`);
-    closeMenu(); onClear(); router.refresh();
+    closeMenu();
+    onClear();
+    router.refresh();
   };
 
   const handleAssign = async (attendantId: string | null) => {
     setBusy(true);
     const r = await bulkAssign(selectedIds, attendantId);
     setBusy(false);
-    if (!r.success) { toast.error(r.error); return; }
+    if (!r.success) {
+      toast.error(r.error);
+      return;
+    }
     toast.success(`${r.data!.assigned} leads atribuídos`);
-    closeMenu(); onClear(); router.refresh();
+    closeMenu();
+    onClear();
+    router.refresh();
   };
 
   const handleAddTag = async () => {
@@ -65,19 +62,29 @@ export function BulkActionBar({ selectedIds, stages, attendants, cadences, onCle
     setBusy(true);
     const r = await bulkAddTag(selectedIds, tagInput.trim());
     setBusy(false);
-    if (!r.success) { toast.error(r.error); return; }
+    if (!r.success) {
+      toast.error(r.error);
+      return;
+    }
     toast.success(`${r.data!.tagged} leads com tag "${tagInput.trim()}"`);
     setTagInput("");
-    closeMenu(); onClear(); router.refresh();
+    closeMenu();
+    onClear();
+    router.refresh();
   };
 
   const handleEnroll = async (cadenceId: string) => {
     setBusy(true);
     const r = await enrollLeadsInCadence(cadenceId, selectedIds);
     setBusy(false);
-    if (!r.success) { toast.error(r.error); return; }
+    if (!r.success) {
+      toast.error(r.error);
+      return;
+    }
     toast.success(`${r.data!.enrolled} inscritos, ${r.data!.skipped} ignorados`);
-    closeMenu(); onClear(); router.refresh();
+    closeMenu();
+    onClear();
+    router.refresh();
   };
 
   const handleDelete = async () => {
@@ -85,9 +92,14 @@ export function BulkActionBar({ selectedIds, stages, attendants, cadences, onCle
     setBusy(true);
     const r = await bulkDeleteLeads(selectedIds);
     setBusy(false);
-    if (!r.success) { toast.error(r.error); return; }
+    if (!r.success) {
+      toast.error(r.error);
+      return;
+    }
     toast.success(`${r.data!.deleted} leads excluídos`);
-    closeMenu(); onClear(); router.refresh();
+    closeMenu();
+    onClear();
+    router.refresh();
   };
 
   return (
@@ -148,9 +160,7 @@ export function BulkActionBar({ selectedIds, stages, attendants, cadences, onCle
                 </button>
               ))}
               {attendants.length === 0 && (
-                <p className="px-4 py-2 text-xs text-slate-400">
-                  Nenhum atendente cadastrado.
-                </p>
+                <p className="px-4 py-2 text-xs text-slate-400">Nenhum atendente cadastrado.</p>
               )}
             </div>
           )}

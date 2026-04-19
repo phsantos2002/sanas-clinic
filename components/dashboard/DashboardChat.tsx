@@ -90,10 +90,7 @@ export function DashboardChat() {
         )}
 
         {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
+          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[88%] ${msg.role === "user" ? "" : "flex gap-2"}`}>
               {msg.role === "assistant" && (
                 <div className="h-6 w-6 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-md flex items-center justify-center shrink-0 mt-1">

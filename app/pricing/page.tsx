@@ -1,12 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowRight,
-  CheckCircle2,
-  Sparkles,
-  Crown,
-  Building2,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, Sparkles, Crown, Building2 } from "lucide-react";
 
 export default function PricingPage() {
   const plans = [
@@ -75,11 +69,19 @@ export default function PricingPage() {
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Sanas Pulse" width={32} height={32} className="rounded-lg" />
+            <Image
+              src="/logo.png"
+              alt="Sanas Pulse"
+              width={32}
+              height={32}
+              className="rounded-lg"
+            />
             <span className="font-semibold tracking-tight">Sanas Pulse</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Link href="/login" className="text-sm text-slate-600 hover:text-slate-900 px-3 py-1.5">Entrar</Link>
+            <Link href="/login" className="text-sm text-slate-600 hover:text-slate-900 px-3 py-1.5">
+              Entrar
+            </Link>
             <Link
               href="/login"
               className="text-sm font-medium bg-indigo-600 text-white rounded-xl px-4 py-2 hover:bg-indigo-700 inline-flex items-center gap-1.5"
@@ -122,7 +124,9 @@ export default function PricingPage() {
                     </span>
                   </div>
                 )}
-                <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${plan.accent} text-white flex items-center justify-center shadow`}>
+                <div
+                  className={`h-11 w-11 rounded-xl bg-gradient-to-br ${plan.accent} text-white flex items-center justify-center shadow`}
+                >
                   <Icon className="h-5 w-5" />
                 </div>
                 <p className="mt-5 text-lg font-semibold">{plan.name}</p>
@@ -157,7 +161,8 @@ export default function PricingPage() {
         <div className="mt-12 rounded-2xl border border-slate-100 bg-slate-50/50 p-6 md:p-8 text-center">
           <p className="text-sm font-semibold text-slate-700">Dúvidas sobre qual plano escolher?</p>
           <p className="mt-1 text-sm text-slate-500">
-            Se você gasta mais de R$3k/mês em Meta, o Pro compensa. Se tem uma agência de tráfego, o Agency foi desenhado para você.
+            Se você gasta mais de R$3k/mês em Meta, o Pro compensa. Se tem uma agência de tráfego, o
+            Agency foi desenhado para você.
           </p>
         </div>
       </section>
@@ -165,12 +170,22 @@ export default function PricingPage() {
       <footer className="border-t border-slate-100 bg-slate-50/60">
         <div className="max-w-6xl mx-auto px-5 py-10 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-500">
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Sanas Pulse" width={24} height={24} className="rounded-md" />
+            <Image
+              src="/logo.png"
+              alt="Sanas Pulse"
+              width={24}
+              height={24}
+              className="rounded-md"
+            />
             <span>© {new Date().getFullYear()} Sanas Pulse</span>
           </div>
           <div className="flex items-center gap-5">
-            <Link href="/" className="hover:text-slate-900">Home</Link>
-            <Link href="/login" className="hover:text-slate-900">Entrar</Link>
+            <Link href="/" className="hover:text-slate-900">
+              Home
+            </Link>
+            <Link href="/login" className="hover:text-slate-900">
+              Entrar
+            </Link>
           </div>
         </div>
       </footer>

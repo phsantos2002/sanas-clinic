@@ -8,23 +8,57 @@ type IconProps = {
 };
 
 export function MetaIcon({ className, size = 20 }: IconProps) {
-  return <Image src="/icons/meta.svg" alt="Meta" width={size} height={size} className={className} />;
+  return (
+    <Image src="/icons/meta.svg" alt="Meta" width={size} height={size} className={className} />
+  );
 }
 
 export function GoogleAdsIcon({ className, size = 20 }: IconProps) {
-  return <Image src="/icons/google-ads.svg" alt="Google Ads" width={size} height={size} className={className} />;
+  return (
+    <Image
+      src="/icons/google-ads.svg"
+      alt="Google Ads"
+      width={size}
+      height={size}
+      className={className}
+    />
+  );
 }
 
 export function WhatsAppIcon({ className, size = 20 }: IconProps) {
-  return <Image src="/icons/whatsapp.svg" alt="WhatsApp" width={size} height={size} className={className} />;
+  return (
+    <Image
+      src="/icons/whatsapp.svg"
+      alt="WhatsApp"
+      width={size}
+      height={size}
+      className={className}
+    />
+  );
 }
 
 export function MessengerIcon({ className, size = 20 }: IconProps) {
-  return <Image src="/icons/messenger.svg" alt="Messenger" width={size} height={size} className={className} />;
+  return (
+    <Image
+      src="/icons/messenger.svg"
+      alt="Messenger"
+      width={size}
+      height={size}
+      className={className}
+    />
+  );
 }
 
 export function InstagramIcon({ className, size = 20 }: IconProps) {
-  return <Image src="/icons/instagram.svg" alt="Instagram" width={size} height={size} className={className} />;
+  return (
+    <Image
+      src="/icons/instagram.svg"
+      alt="Instagram"
+      width={size}
+      height={size}
+      className={className}
+    />
+  );
 }
 
 export function GlobeIcon({ className, size = 20 }: IconProps) {
@@ -104,7 +138,15 @@ export function ChatBubbleIcon({ className, size = 20 }: IconProps) {
   );
 }
 
-export function SourceIcon({ source, size = 20, className }: { source: string | null; size?: number; className?: string }) {
+export function SourceIcon({
+  source,
+  size = 20,
+  className,
+}: {
+  source: string | null;
+  size?: number;
+  className?: string;
+}) {
   switch (source) {
     case "meta":
       return <MetaIcon size={size} className={className} />;
@@ -121,7 +163,10 @@ export function SourceIcon({ source, size = 20, className }: { source: string | 
   }
 }
 
-export const sourceConfig: Record<string, { label: string; subtitle: string; bg: string; border: string; text: string }> = {
+export const sourceConfig: Record<
+  string,
+  { label: string; subtitle: string; bg: string; border: string; text: string }
+> = {
   meta: {
     label: "Meta Ads",
     subtitle: "Facebook & Instagram",
@@ -161,10 +206,10 @@ export const sourceConfig: Record<string, { label: string; subtitle: string; bg:
 
 export const stageColors: Record<string, { bg: string; text: string }> = {
   "Novo Lead": { bg: "bg-blue-100", text: "text-blue-700" },
-  "Atendido": { bg: "bg-cyan-100", text: "text-cyan-700" },
-  "Qualificado": { bg: "bg-violet-100", text: "text-violet-700" },
-  "Agendado": { bg: "bg-amber-100", text: "text-amber-700" },
-  "Cliente": { bg: "bg-emerald-100", text: "text-emerald-700" },
+  Atendido: { bg: "bg-cyan-100", text: "text-cyan-700" },
+  Qualificado: { bg: "bg-violet-100", text: "text-violet-700" },
+  Agendado: { bg: "bg-amber-100", text: "text-amber-700" },
+  Cliente: { bg: "bg-emerald-100", text: "text-emerald-700" },
 };
 
 export function getStageColor(name: string) {

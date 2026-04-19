@@ -16,10 +16,34 @@ type Props = {
 };
 
 const STATUS_CONFIG = {
-  connected: { icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50", border: "border-emerald-200", label: "Conectado" },
-  error: { icon: XCircle, color: "text-red-500", bg: "bg-red-50", border: "border-red-200", label: "Erro" },
-  warning: { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-200", label: "Atencao" },
-  unconfigured: { icon: Wifi, color: "text-slate-400", bg: "bg-slate-50", border: "border-slate-200", label: "Nao configurado" },
+  connected: {
+    icon: CheckCircle2,
+    color: "text-emerald-500",
+    bg: "bg-emerald-50",
+    border: "border-emerald-200",
+    label: "Conectado",
+  },
+  error: {
+    icon: XCircle,
+    color: "text-red-500",
+    bg: "bg-red-50",
+    border: "border-red-200",
+    label: "Erro",
+  },
+  warning: {
+    icon: AlertTriangle,
+    color: "text-amber-500",
+    bg: "bg-amber-50",
+    border: "border-amber-200",
+    label: "Atencao",
+  },
+  unconfigured: {
+    icon: Wifi,
+    color: "text-slate-400",
+    bg: "bg-slate-50",
+    border: "border-slate-200",
+    label: "Nao configurado",
+  },
 };
 
 export function IntegrationHealth({ integrations: initial, onTest }: Props) {
@@ -50,10 +74,14 @@ export function IntegrationHealth({ integrations: initial, onTest }: Props) {
               <p className="text-sm font-medium text-slate-800">{integration.name}</p>
               <p className="text-xs text-slate-500">{integration.message}</p>
               {integration.lastChecked && (
-                <p className="text-[10px] text-slate-400 mt-0.5">Verificado: {integration.lastChecked}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Verificado: {integration.lastChecked}
+                </p>
               )}
             </div>
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>
+            <span
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}
+            >
               {cfg.label}
             </span>
             <button

@@ -69,24 +69,24 @@ const BASE_BENCHMARKS: Record<string, BenchmarkMetrics> = {
 // ─── Multiplicadores por segmento de negócio ───
 
 const SEGMENT_MULTIPLIERS: Record<string, { cpm: number; cpc: number; cpl: number }> = {
-  HEALTH:      { cpm: 1.3, cpc: 1.4, cpl: 1.5 },
-  EDUCATION:   { cpm: 1.1, cpc: 1.0, cpl: 0.9 },
-  ECOMMERCE:   { cpm: 1.0, cpc: 0.9, cpl: 1.0 },
-  SERVICES:    { cpm: 1.1, cpc: 1.1, cpl: 1.2 },
+  HEALTH: { cpm: 1.3, cpc: 1.4, cpl: 1.5 },
+  EDUCATION: { cpm: 1.1, cpc: 1.0, cpl: 0.9 },
+  ECOMMERCE: { cpm: 1.0, cpc: 0.9, cpl: 1.0 },
+  SERVICES: { cpm: 1.1, cpc: 1.1, cpl: 1.2 },
   REAL_ESTATE: { cpm: 1.4, cpc: 1.5, cpl: 1.8 },
-  FOOD:        { cpm: 0.8, cpc: 0.7, cpl: 0.7 },
-  FITNESS:     { cpm: 1.0, cpc: 1.0, cpl: 1.0 },
-  BEAUTY:      { cpm: 0.9, cpc: 0.9, cpl: 0.8 },
-  LEGAL:       { cpm: 1.5, cpc: 1.6, cpl: 2.0 },
-  OTHER:       { cpm: 1.0, cpc: 1.0, cpl: 1.0 },
+  FOOD: { cpm: 0.8, cpc: 0.7, cpl: 0.7 },
+  FITNESS: { cpm: 1.0, cpc: 1.0, cpl: 1.0 },
+  BEAUTY: { cpm: 0.9, cpc: 0.9, cpl: 0.8 },
+  LEGAL: { cpm: 1.5, cpc: 1.6, cpl: 2.0 },
+  OTHER: { cpm: 1.0, cpc: 1.0, cpl: 1.0 },
 };
 
 // ─── Multiplicador por cobertura geográfica ───
 
 const COVERAGE_MULTIPLIERS: Record<string, { cpm: number }> = {
-  LOCAL:         { cpm: 0.85 },
-  REGIONAL:      { cpm: 1.0 },
-  NATIONAL:      { cpm: 1.15 },
+  LOCAL: { cpm: 0.85 },
+  REGIONAL: { cpm: 1.0 },
+  NATIONAL: { cpm: 1.15 },
   INTERNATIONAL: { cpm: 1.3 },
 };
 

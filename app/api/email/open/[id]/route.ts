@@ -2,15 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // 1x1 transparent GIF
-const PIXEL = Buffer.from(
-  "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-  "base64"
-);
+const PIXEL = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   // Best-effort: bump open counter without blocking the response.

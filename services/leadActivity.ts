@@ -50,9 +50,7 @@ export async function logLeadActivity(args: LogActivityArgs): Promise<void> {
 /**
  * Bulk log — for import batches / bulk assignments.
  */
-export async function logBulkActivity(
-  entries: LogActivityArgs[]
-): Promise<void> {
+export async function logBulkActivity(entries: LogActivityArgs[]): Promise<void> {
   if (!entries.length) return;
   try {
     await prisma.leadActivity.createMany({

@@ -66,13 +66,19 @@ export async function deleteAttendant(id: string): Promise<ActionResult> {
 
   await prisma.attendant.deleteMany({ where: { id, userId: user.id } });
   // Unassign leads
-  await prisma.lead.updateMany({ where: { userId: user.id, assignedTo: id }, data: { assignedTo: null } });
+  await prisma.lead.updateMany({
+    where: { userId: user.id, assignedTo: id },
+    data: { assignedTo: null },
+  });
 
   revalidatePath("/dashboard");
   return { success: true };
 }
 
-export async function assignLeadToAttendant(leadId: string, attendantId: string | null): Promise<ActionResult> {
+export async function assignLeadToAttendant(
+  leadId: string,
+  attendantId: string | null
+): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 
@@ -171,12 +177,15 @@ export async function createMessageTemplate(data: {
   }
 }
 
-export async function updateMessageTemplate(id: string, data: {
-  name?: string;
-  category?: string;
-  content?: string;
-  shortcut?: string;
-}): Promise<ActionResult> {
+export async function updateMessageTemplate(
+  id: string,
+  data: {
+    name?: string;
+    category?: string;
+    content?: string;
+    shortcut?: string;
+  }
+): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 
@@ -187,7 +196,9 @@ export async function updateMessageTemplate(id: string, data: {
         ...(data.name && { name: data.name.trim() }),
         ...(data.category && { category: data.category }),
         ...(data.content && { content: data.content.trim() }),
-        ...(data.shortcut !== undefined && { shortcut: data.shortcut?.trim()?.toLowerCase() || null }),
+        ...(data.shortcut !== undefined && {
+          shortcut: data.shortcut?.trim()?.toLowerCase() || null,
+        }),
       },
     });
 
@@ -210,7 +221,11 @@ export async function deleteMessageTemplate(id: string): Promise<ActionResult> {
 /**
  * Resolve a template with lead placeholders
  */
-export async function resolveTemplate(template: string, leadName: string, clinicName: string): Promise<string> {
+export async function resolveTemplate(
+  template: string,
+  leadName: string,
+  clinicName: string
+): Promise<string> {
   return template
     .replace(/\{\{nome\}\}/gi, leadName.split(" ")[0])
     .replace(/\{\{nome_completo\}\}/gi, leadName)
@@ -221,10 +236,12 @@ export async function resolveTemplate(template: string, leadName: string, clinic
  * Track template usage
  */
 export async function trackTemplateUsage(templateId: string): Promise<void> {
-  await prisma.messageTemplate.update({
-    where: { id: templateId },
-    data: { usageCount: { increment: 1 } },
-  }).catch(() => {}); // Non-critical
+  await prisma.messageTemplate
+    .update({
+      where: { id: templateId },
+      data: { usageCount: { increment: 1 } },
+    })
+    .catch(() => {}); // Non-critical
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -306,7 +323,9 @@ export async function createBroadcast(data: {
   }
 }
 
-export async function executeBroadcast(campaignId: string): Promise<ActionResult<{ sent: number; failed: number }>> {
+export async function executeBroadcast(
+  campaignId: string
+): Promise<ActionResult<{ sent: number; failed: number }>> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 
@@ -331,9 +350,11 @@ export async function executeBroadcast(campaignId: string): Promise<ActionResult
   // Build lead filter
   const filters = (campaign.filters as Record<string, unknown>) || {};
   const where: Record<string, unknown> = { userId: user.id };
-  if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) where.tags = { hasSome: filters.tags };
+  if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0)
+    where.tags = { hasSome: filters.tags };
   if (filters.scoreMin) where.score = { gte: filters.scoreMin };
-  if (filters.stageIds && Array.isArray(filters.stageIds) && filters.stageIds.length > 0) where.stageId = { in: filters.stageIds };
+  if (filters.stageIds && Array.isArray(filters.stageIds) && filters.stageIds.length > 0)
+    where.stageId = { in: filters.stageIds };
   if (filters.source) where.source = filters.source;
 
   const leads = await prisma.lead.findMany({

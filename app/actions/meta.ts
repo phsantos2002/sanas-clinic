@@ -76,7 +76,9 @@ export type MetaCampaignInsights = {
 
 // ─── Helpers ───
 
-async function getMetaConfig(): Promise<(MetaConfig & { selectedCampaignId: string | null }) | null> {
+async function getMetaConfig(): Promise<
+  (MetaConfig & { selectedCampaignId: string | null }) | null
+> {
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -84,7 +86,9 @@ async function getMetaConfig(): Promise<(MetaConfig & { selectedCampaignId: stri
   if (!pixel?.adAccountId || !pixel?.metaAdsToken) return null;
 
   return {
-    adAccountId: pixel.adAccountId.startsWith("act_") ? pixel.adAccountId : `act_${pixel.adAccountId}`,
+    adAccountId: pixel.adAccountId.startsWith("act_")
+      ? pixel.adAccountId
+      : `act_${pixel.adAccountId}`,
     metaAdsToken: pixel.metaAdsToken,
     pixelId: pixel.pixelId,
     selectedCampaignId: pixel.selectedCampaignId ?? null,
@@ -92,7 +96,11 @@ async function getMetaConfig(): Promise<(MetaConfig & { selectedCampaignId: stri
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function graphGet(path: string, token: string, params: Record<string, string> = {}): Promise<any> {
+async function graphGet(
+  path: string,
+  token: string,
+  params: Record<string, string> = {}
+): Promise<any> {
   const qs = new URLSearchParams({ access_token: token, ...params });
   const res = await fetch(`${GRAPH_URL}/${path}?${qs}`, { cache: "no-store" });
   return res.json();
@@ -110,8 +118,13 @@ export async function getMetaCampaigns(): Promise<{
   try {
     const json = await graphGet(`${config.adAccountId}/campaigns`, config.metaAdsToken, {
       fields: [
-        "id", "name", "status", "objective",
-        "daily_budget", "lifetime_budget", "bid_strategy",
+        "id",
+        "name",
+        "status",
+        "objective",
+        "daily_budget",
+        "lifetime_budget",
+        "bid_strategy",
         "insights.date_preset(last_30d){spend,impressions,reach,clicks,ctr,cpm,cpc}",
       ].join(","),
       effective_status: '["ACTIVE","PAUSED"]',
@@ -191,7 +204,10 @@ export async function getMetaAds(adSetId: string): Promise<MetaAd[]> {
   try {
     const json = await graphGet(`${adSetId}/ads`, config.metaAdsToken, {
       fields: [
-        "id", "name", "status", "adset_id",
+        "id",
+        "name",
+        "status",
+        "adset_id",
         "creative{id,thumbnail_url,effective_object_story_id}",
         "insights.date_preset(last_30d){spend,impressions,clicks,reach,ctr,cpm,cpc,frequency}",
       ].join(","),
@@ -387,7 +403,7 @@ export async function createAd(data: {
 
     // Get image hash from response
     const images = imgJson.images;
-    const imageHash = images ? Object.values(images)[0] as { hash: string } : null;
+    const imageHash = images ? (Object.values(images)[0] as { hash: string }) : null;
     if (!imageHash?.hash) return { success: false, error: "Falha ao obter hash da imagem" };
 
     // Step 2: Get page ID from ad account
@@ -396,46 +412,58 @@ export async function createAd(data: {
       limit: "1",
     });
     const pageId = pageJson?.data?.[0]?.id;
-    if (!pageId) return { success: false, error: "Nenhuma página do Facebook vinculada à conta de anúncios. Vincule uma página primeiro." };
+    if (!pageId)
+      return {
+        success: false,
+        error:
+          "Nenhuma página do Facebook vinculada à conta de anúncios. Vincule uma página primeiro.",
+      };
 
     // Step 3: Create ad creative
-    const creativeRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/adcreatives?access_token=${config.metaAdsToken}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: data.name,
-        object_story_spec: {
-          page_id: pageId,
-          link_data: {
-            image_hash: imageHash.hash,
-            link: data.linkUrl,
-            message: data.primaryText,
-            name: data.headline,
-            call_to_action: {
-              type: data.callToAction,
-              value: { link: data.linkUrl },
+    const creativeRes = await fetch(
+      `${GRAPH_URL}/${config.adAccountId}/adcreatives?access_token=${config.metaAdsToken}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.name,
+          object_story_spec: {
+            page_id: pageId,
+            link_data: {
+              image_hash: imageHash.hash,
+              link: data.linkUrl,
+              message: data.primaryText,
+              name: data.headline,
+              call_to_action: {
+                type: data.callToAction,
+                value: { link: data.linkUrl },
+              },
             },
           },
-        },
-      }),
-    });
+        }),
+      }
+    );
     const creativeJson = await creativeRes.json();
-    if (creativeJson.error) return { success: false, error: `Creative: ${creativeJson.error.message}` };
+    if (creativeJson.error)
+      return { success: false, error: `Creative: ${creativeJson.error.message}` };
 
     const creativeId = creativeJson.id;
     if (!creativeId) return { success: false, error: "Falha ao criar creative" };
 
     // Step 4: Create ad
-    const adRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/ads?access_token=${config.metaAdsToken}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: data.name,
-        adset_id: data.adSetId,
-        creative: { creative_id: creativeId },
-        status: "PAUSED",
-      }),
-    });
+    const adRes = await fetch(
+      `${GRAPH_URL}/${config.adAccountId}/ads?access_token=${config.metaAdsToken}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.name,
+          adset_id: data.adSetId,
+          creative: { creative_id: creativeId },
+          status: "PAUSED",
+        }),
+      }
+    );
     const adJson = await adRes.json();
     if (adJson.error) return { success: false, error: `Ad: ${adJson.error.message}` };
 
@@ -502,18 +530,25 @@ export async function getSelectedCampaignData(): Promise<{
   error?: string;
 }> {
   const config = await getMetaConfig();
-  if (!config) return { selectedCampaignId: null, campaign: null, adSets: [], insights: null, config: null };
+  if (!config)
+    return { selectedCampaignId: null, campaign: null, adSets: [], insights: null, config: null };
 
   const selectedId = config.selectedCampaignId;
-  if (!selectedId) return { selectedCampaignId: null, campaign: null, adSets: [], insights: null, config };
+  if (!selectedId)
+    return { selectedCampaignId: null, campaign: null, adSets: [], insights: null, config };
 
   try {
     // Fetch campaign details + insights in parallel
     const [campaignJson, insightsJson, adSetsData] = await Promise.all([
       graphGet(selectedId, config.metaAdsToken, {
         fields: [
-          "id", "name", "status", "objective",
-          "daily_budget", "lifetime_budget", "bid_strategy",
+          "id",
+          "name",
+          "status",
+          "objective",
+          "daily_budget",
+          "lifetime_budget",
+          "bid_strategy",
           "insights.date_preset(last_30d){spend,impressions,reach,clicks,ctr,cpm,cpc}",
         ].join(","),
       }),
@@ -527,7 +562,14 @@ export async function getSelectedCampaignData(): Promise<{
     if (campaignJson.error) {
       const errMsg = campaignJson.error.message || JSON.stringify(campaignJson.error);
       console.error("[Meta] selected campaign error:", errMsg);
-      return { selectedCampaignId: selectedId, campaign: null, adSets: [], insights: null, config, error: errMsg };
+      return {
+        selectedCampaignId: selectedId,
+        campaign: null,
+        adSets: [],
+        insights: null,
+        config,
+        error: errMsg,
+      };
     }
 
     const c = campaignJson;
@@ -557,7 +599,8 @@ export async function getSelectedCampaignData(): Promise<{
       const actions: Record<string, number> = {};
       const costPerAction: Record<string, number> = {};
       for (const a of insData.actions ?? []) actions[a.action_type] = parseFloat(a.value) || 0;
-      for (const a of insData.cost_per_action_type ?? []) costPerAction[a.action_type] = parseFloat(a.value) || 0;
+      for (const a of insData.cost_per_action_type ?? [])
+        costPerAction[a.action_type] = parseFloat(a.value) || 0;
 
       insights = {
         spend: parseFloat(insData.spend) || 0,
@@ -575,13 +618,22 @@ export async function getSelectedCampaignData(): Promise<{
     return { selectedCampaignId: selectedId, campaign, adSets: adSetsData, insights, config };
   } catch (e) {
     console.error("[Meta] selected campaign fetch error:", e);
-    return { selectedCampaignId: selectedId, campaign: null, adSets: [], insights: null, config, error: String(e) };
+    return {
+      selectedCampaignId: selectedId,
+      campaign: null,
+      adSets: [],
+      insights: null,
+      config,
+      error: String(e),
+    };
   }
 }
 
 // ─── List campaigns for selector ───
 
-export async function listCampaignsForSelector(): Promise<Array<{ id: string; name: string; status: string }>> {
+export async function listCampaignsForSelector(): Promise<
+  Array<{ id: string; name: string; status: string }>
+> {
   const config = await getMetaConfig();
   if (!config) return [];
 
@@ -697,7 +749,14 @@ export type CreateCampaignInput = {
   ageMin?: number;
   ageMax?: number;
   gender?: number;
-  geoLocations?: Array<{ key: string; name: string; type: string; latitude?: number; longitude?: number; radius?: number }>;
+  geoLocations?: Array<{
+    key: string;
+    name: string;
+    type: string;
+    latitude?: number;
+    longitude?: number;
+    radius?: number;
+  }>;
 };
 
 export async function createCampaign(input: CreateCampaignInput): Promise<{
@@ -714,19 +773,23 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
 
   try {
     // Step 1: Create campaign (Advantage+ enabled via smart_promotion_type)
-    const campaignRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/campaigns?access_token=${config.metaAdsToken}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: input.name,
-        objective,
-        status: "PAUSED",
-        special_ad_categories: [],
-        smart_promotion_type: "GUIDED_CREATION",
-      }),
-    });
+    const campaignRes = await fetch(
+      `${GRAPH_URL}/${config.adAccountId}/campaigns?access_token=${config.metaAdsToken}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: input.name,
+          objective,
+          status: "PAUSED",
+          special_ad_categories: [],
+          smart_promotion_type: "GUIDED_CREATION",
+        }),
+      }
+    );
     const campaignJson = await campaignRes.json();
-    if (campaignJson.error) return { success: false, error: `Campanha: ${campaignJson.error.message}` };
+    if (campaignJson.error)
+      return { success: false, error: `Campanha: ${campaignJson.error.message}` };
 
     const campaignId = campaignJson.id;
     if (!campaignId) return { success: false, error: "Falha ao criar campanha" };
@@ -740,7 +803,10 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
     const promotedObject: any = {};
     if (input.goal === "mensagens") {
       // Get page ID
-      const pageJson = await graphGet(`${config.adAccountId}/promote_pages`, config.metaAdsToken, { fields: "id", limit: "1" });
+      const pageJson = await graphGet(`${config.adAccountId}/promote_pages`, config.metaAdsToken, {
+        fields: "id",
+        limit: "1",
+      });
       const pageId = pageJson?.data?.[0]?.id;
       if (pageId) promotedObject.page_id = pageId;
     } else if (input.goal === "leads" || input.goal === "vendas") {
@@ -757,7 +823,9 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
     // Geo: use searched locations (from Meta geo API) or whole Brazil
     if (input.geoLocations && input.geoLocations.length > 0) {
       // Group by type for proper Meta API format
-      const cities = input.geoLocations.filter((g) => g.type === "city" || g.type === "subcity" || g.type === "neighborhood");
+      const cities = input.geoLocations.filter(
+        (g) => g.type === "city" || g.type === "subcity" || g.type === "neighborhood"
+      );
       const customLocs = input.geoLocations.filter((g) => g.latitude && g.longitude && g.radius);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -798,15 +866,25 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
       billing_event: billingEvent,
       bid_strategy: (() => {
         switch (input.bidStrategy) {
-          case "COST_CAP": return "COST_CAP";
-          case "BID_CAP": return "LOWEST_COST_WITH_BID_CAP";
-          case "ROAS_MIN": return "LOWEST_COST_WITH_MIN_ROAS";
-          default: return "LOWEST_COST_WITHOUT_CAP";
+          case "COST_CAP":
+            return "COST_CAP";
+          case "BID_CAP":
+            return "LOWEST_COST_WITH_BID_CAP";
+          case "ROAS_MIN":
+            return "LOWEST_COST_WITH_MIN_ROAS";
+          default:
+            return "LOWEST_COST_WITHOUT_CAP";
         }
       })(),
-      ...(input.bidStrategy === "COST_CAP" && input.bidValue ? { bid_amount: Math.round(input.bidValue * 100) } : {}),
-      ...(input.bidStrategy === "BID_CAP" && input.bidValue ? { bid_amount: Math.round(input.bidValue * 100) } : {}),
-      ...(input.bidStrategy === "ROAS_MIN" && input.bidValue ? { roas_average_floor: Math.round(input.bidValue * 10000) } : {}),
+      ...(input.bidStrategy === "COST_CAP" && input.bidValue
+        ? { bid_amount: Math.round(input.bidValue * 100) }
+        : {}),
+      ...(input.bidStrategy === "BID_CAP" && input.bidValue
+        ? { bid_amount: Math.round(input.bidValue * 100) }
+        : {}),
+      ...(input.bidStrategy === "ROAS_MIN" && input.bidValue
+        ? { roas_average_floor: Math.round(input.bidValue * 10000) }
+        : {}),
       status: "PAUSED",
       targeting,
       // Advantage+ audience — Meta expands beyond the targeting suggestions
@@ -822,11 +900,14 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
       adSetBody.destination_type = input.destination;
     }
 
-    const adSetRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/adsets?access_token=${config.metaAdsToken}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(adSetBody),
-    });
+    const adSetRes = await fetch(
+      `${GRAPH_URL}/${config.adAccountId}/adsets?access_token=${config.metaAdsToken}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(adSetBody),
+      }
+    );
     const adSetJson = await adSetRes.json();
     if (adSetJson.error) {
       // Campaign was created but ad set failed — report both
@@ -838,31 +919,40 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
     // Step 3: Create ad (if creative data provided)
     if (input.postId) {
       // Boosting existing post
-      const pageJson = await graphGet(`${config.adAccountId}/promote_pages`, config.metaAdsToken, { fields: "id", limit: "1" });
+      const pageJson = await graphGet(`${config.adAccountId}/promote_pages`, config.metaAdsToken, {
+        fields: "id",
+        limit: "1",
+      });
       const pageId = pageJson?.data?.[0]?.id;
 
       if (pageId) {
-        const creativeRes = await fetch(`${GRAPH_URL}/${config.adAccountId}/adcreatives?access_token=${config.metaAdsToken}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: `${input.name} - Criativo`,
-            object_story_id: input.postId,
-          }),
-        });
-        const creativeJson = await creativeRes.json();
-
-        if (creativeJson.id) {
-          await fetch(`${GRAPH_URL}/${config.adAccountId}/ads?access_token=${config.metaAdsToken}`, {
+        const creativeRes = await fetch(
+          `${GRAPH_URL}/${config.adAccountId}/adcreatives?access_token=${config.metaAdsToken}`,
+          {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              name: `${input.name} - Anúncio`,
-              adset_id: adSetId,
-              creative: { creative_id: creativeJson.id },
-              status: "PAUSED",
+              name: `${input.name} - Criativo`,
+              object_story_id: input.postId,
             }),
-          });
+          }
+        );
+        const creativeJson = await creativeRes.json();
+
+        if (creativeJson.id) {
+          await fetch(
+            `${GRAPH_URL}/${config.adAccountId}/ads?access_token=${config.metaAdsToken}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: `${input.name} - Anúncio`,
+                adset_id: adSetId,
+                creative: { creative_id: creativeJson.id },
+                status: "PAUSED",
+              }),
+            }
+          );
         }
       }
     } else if (input.imageBase64) {
@@ -960,7 +1050,7 @@ export async function getInstagramMedia(): Promise<SocialPost[]> {
     return (json.data ?? []).map((m: any) => ({
       id: m.id,
       message: m.caption ?? "",
-      imageUrl: m.media_type === "VIDEO" ? m.thumbnail_url : m.media_url ?? null,
+      imageUrl: m.media_type === "VIDEO" ? m.thumbnail_url : (m.media_url ?? null),
       permalink: m.permalink ?? "",
       createdTime: "",
       type: "instagram" as const,
@@ -996,7 +1086,8 @@ export async function getMetaDiagnosis(_force = false) {
 
     if (campaigns.length === 0) {
       return {
-        insight: "Nenhuma campanha ativa encontrada. Crie uma nova campanha para comecar a receber diagnosticos.",
+        insight:
+          "Nenhuma campanha ativa encontrada. Crie uma nova campanha para comecar a receber diagnosticos.",
         severity: "info" as const,
         actions: [{ label: "Criar campanha", href: "/dashboard/meta" }],
         generatedAt: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
@@ -1015,12 +1106,16 @@ export async function getMetaDiagnosis(_force = false) {
       const cpm = parseFloat(i.cpm || "0");
 
       if (freq > 4) {
-        insights.push(`${c.name}: frequencia ${freq.toFixed(1)} — fadiga criativa. Troque o criativo.`);
+        insights.push(
+          `${c.name}: frequencia ${freq.toFixed(1)} — fadiga criativa. Troque o criativo.`
+        );
         severity = "warning";
         actions.push({ label: `Ver ${c.name.slice(0, 20)}`, href: "/dashboard/meta" });
       }
       if (ctr < 0.8) {
-        insights.push(`${c.name}: CTR ${ctr.toFixed(2)}% — abaixo do benchmark. Revise copy e segmentacao.`);
+        insights.push(
+          `${c.name}: CTR ${ctr.toFixed(2)}% — abaixo do benchmark. Revise copy e segmentacao.`
+        );
         if (severity !== "critical") severity = "warning";
       }
       if (cpm > 50) {

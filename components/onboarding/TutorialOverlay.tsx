@@ -3,8 +3,18 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  X, ArrowRight, ArrowLeft, MessageCircle, BarChart3, Zap,
-  Briefcase, Brain, Kanban, CalendarDays, Megaphone, Sparkles,
+  X,
+  ArrowRight,
+  ArrowLeft,
+  MessageCircle,
+  BarChart3,
+  Zap,
+  Briefcase,
+  Brain,
+  Kanban,
+  CalendarDays,
+  Megaphone,
+  Sparkles,
 } from "lucide-react";
 
 import { markTutorialSeen } from "@/app/actions/tutorial";
@@ -120,18 +130,28 @@ export function TutorialOverlay({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className={`bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transition-all duration-500 ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
+      <div
+        className={`bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transition-all duration-500 ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+      >
         {/* Header with close */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">{step + 1} de {STEPS.length}</span>
+            <span className="text-xs text-slate-400">
+              {step + 1} de {STEPS.length}
+            </span>
             <div className="flex gap-1">
               {STEPS.map((_, i) => (
-                <div key={i} className={`h-1 w-4 rounded-full transition-colors ${i <= step ? "bg-indigo-600" : "bg-slate-200"}`} />
+                <div
+                  key={i}
+                  className={`h-1 w-4 rounded-full transition-colors ${i <= step ? "bg-indigo-600" : "bg-slate-200"}`}
+                />
               ))}
             </div>
           </div>
-          <button onClick={handleSkip} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+          <button
+            onClick={handleSkip}
+            className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
+          >
             Pular <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -139,7 +159,9 @@ export function TutorialOverlay({ onClose }: { onClose: () => void }) {
         {/* Content */}
         <div className="p-8">
           <div className="flex flex-col items-center text-center">
-            <div className={`h-20 w-20 rounded-3xl bg-gradient-to-br ${current.color} flex items-center justify-center mb-6 shadow-lg`}>
+            <div
+              className={`h-20 w-20 rounded-3xl bg-gradient-to-br ${current.color} flex items-center justify-center mb-6 shadow-lg`}
+            >
               <Icon className="h-10 w-10 text-white" />
             </div>
             <h2 className="text-2xl font-bold text-slate-900 mb-1">{current.title}</h2>

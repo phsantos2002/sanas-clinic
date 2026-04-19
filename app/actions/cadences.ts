@@ -236,8 +236,7 @@ export async function enrollLeadsInCadence(
   if (!user) return { success: false, error: "Nao autenticado" };
 
   if (!leadIds.length) return { success: false, error: "Nenhum lead selecionado" };
-  if (leadIds.length > 500)
-    return { success: false, error: "Maximo 500 leads por vez" };
+  if (leadIds.length > 500) return { success: false, error: "Maximo 500 leads por vez" };
 
   const cadence = await prisma.workflow.findFirst({
     where: { id: cadenceId, userId: user.id, isSequence: true, isActive: true },
@@ -322,10 +321,7 @@ export async function stopCadencesForLead(leadId: string): Promise<void> {
   });
 }
 
-export async function unenrollLead(
-  leadId: string,
-  cadenceId: string
-): Promise<ActionResult> {
+export async function unenrollLead(leadId: string, cadenceId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 

@@ -22,7 +22,9 @@ export function DailyBrief() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchBrief(); }, []);
+  useEffect(() => {
+    fetchBrief();
+  }, []);
 
   if (loading) {
     return (

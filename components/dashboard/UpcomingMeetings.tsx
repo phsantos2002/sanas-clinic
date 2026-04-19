@@ -52,9 +52,7 @@ export function UpcomingMeetings({ meetings }: { meetings: UpcomingMeeting[] }) 
                 <Clock className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-slate-800 truncate">
-                  {m.summary}
-                </p>
+                <p className="text-sm font-medium text-slate-800 truncate">{m.summary}</p>
                 <p className="text-[11px] text-slate-400">
                   {m.whenLabel}
                   {m.durationMin > 0 && ` · ${m.durationMin}min`}

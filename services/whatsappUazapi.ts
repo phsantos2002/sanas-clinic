@@ -17,7 +17,7 @@ async function uazapiRequest(
   token: string,
   method: string,
   path: string,
-  body?: unknown,
+  body?: unknown
 ) {
   // Clean serverUrl — remove trailing whitespace/newlines
   const cleanUrl = serverUrl.trim().replace(/\/+$/, "");
@@ -45,7 +45,7 @@ async function uazapiRequest(
 export async function createUazapiInstance(
   serverUrl: string,
   adminToken: string,
-  instanceName: string,
+  instanceName: string
 ): Promise<{ success: boolean; token?: string; error?: string }> {
   try {
     const res = await fetch(`${serverUrl}/instance/init`, {
@@ -66,7 +66,7 @@ export async function createUazapiInstance(
 
 export async function connectUazapiInstance(
   serverUrl: string,
-  token: string,
+  token: string
 ): Promise<{ success: boolean; qrcode?: string; status?: string; error?: string }> {
   const r = await uazapiRequest(serverUrl, token, "POST", "/instance/connect", {});
   if (!r.ok) return { success: false, error: r.error };
@@ -79,7 +79,7 @@ export async function connectUazapiInstance(
 
 export async function getUazapiStatus(
   serverUrl: string,
-  token: string,
+  token: string
 ): Promise<{ connected: boolean; status?: string; phone?: string; name?: string; error?: string }> {
   const r = await uazapiRequest(serverUrl, token, "GET", "/instance/status");
   if (!r.ok) return { connected: false, error: r.error };
@@ -109,7 +109,7 @@ export async function restartUazapiInstance(serverUrl: string, token: string) {
 export async function setUazapiWebhook(
   serverUrl: string,
   token: string,
-  webhookUrl: string,
+  webhookUrl: string
 ): Promise<{ success: boolean; error?: string }> {
   const r = await uazapiRequest(serverUrl, token, "POST", "/webhook", {
     enabled: true,
@@ -127,13 +127,25 @@ export async function getUazapiWebhook(serverUrl: string, token: string) {
 
 // ─── Send messages (all types) ───
 
-export async function sendUazapiText(serverUrl: string, token: string, to: string, text: string, quotedMsgId?: string) {
+export async function sendUazapiText(
+  serverUrl: string,
+  token: string,
+  to: string,
+  text: string,
+  quotedMsgId?: string
+) {
   const body: Record<string, unknown> = { number: to.replace(/\D/g, ""), text };
   if (quotedMsgId) body.quotedMsgId = quotedMsgId;
   return uazapiRequest(serverUrl, token, "POST", "/send/text", body);
 }
 
-export async function sendUazapiImage(serverUrl: string, token: string, to: string, imageUrl: string, caption?: string) {
+export async function sendUazapiImage(
+  serverUrl: string,
+  token: string,
+  to: string,
+  imageUrl: string,
+  caption?: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/send/media", {
     number: to.replace(/\D/g, ""),
     type: "image",
@@ -142,7 +154,13 @@ export async function sendUazapiImage(serverUrl: string, token: string, to: stri
   });
 }
 
-export async function sendUazapiVideo(serverUrl: string, token: string, to: string, videoUrl: string, caption?: string) {
+export async function sendUazapiVideo(
+  serverUrl: string,
+  token: string,
+  to: string,
+  videoUrl: string,
+  caption?: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/send/media", {
     number: to.replace(/\D/g, ""),
     type: "video",
@@ -151,7 +169,13 @@ export async function sendUazapiVideo(serverUrl: string, token: string, to: stri
   });
 }
 
-export async function sendUazapiDocument(serverUrl: string, token: string, to: string, fileUrl: string, fileName: string) {
+export async function sendUazapiDocument(
+  serverUrl: string,
+  token: string,
+  to: string,
+  fileUrl: string,
+  fileName: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/send/media", {
     number: to.replace(/\D/g, ""),
     type: "document",
@@ -160,7 +184,12 @@ export async function sendUazapiDocument(serverUrl: string, token: string, to: s
   });
 }
 
-export async function sendUazapiAudio(serverUrl: string, token: string, to: string, audioUrl: string) {
+export async function sendUazapiAudio(
+  serverUrl: string,
+  token: string,
+  to: string,
+  audioUrl: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/send/media", {
     number: to.replace(/\D/g, ""),
     type: "ptt",
@@ -168,7 +197,12 @@ export async function sendUazapiAudio(serverUrl: string, token: string, to: stri
   });
 }
 
-export async function sendUazapiSticker(serverUrl: string, token: string, to: string, stickerUrl: string) {
+export async function sendUazapiSticker(
+  serverUrl: string,
+  token: string,
+  to: string,
+  stickerUrl: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/send/media", {
     number: to.replace(/\D/g, ""),
     type: "sticker",
@@ -176,7 +210,15 @@ export async function sendUazapiSticker(serverUrl: string, token: string, to: st
   });
 }
 
-export async function sendUazapiLocation(serverUrl: string, token: string, to: string, lat: number, lng: number, name?: string, address?: string) {
+export async function sendUazapiLocation(
+  serverUrl: string,
+  token: string,
+  to: string,
+  lat: number,
+  lng: number,
+  name?: string,
+  address?: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/send/location", {
     number: to.replace(/\D/g, ""),
     lat,
@@ -186,7 +228,13 @@ export async function sendUazapiLocation(serverUrl: string, token: string, to: s
   });
 }
 
-export async function sendUazapiContact(serverUrl: string, token: string, to: string, contactName: string, contactPhone: string) {
+export async function sendUazapiContact(
+  serverUrl: string,
+  token: string,
+  to: string,
+  contactName: string,
+  contactPhone: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/send/contact", {
     number: to.replace(/\D/g, ""),
     contactName,
@@ -194,7 +242,13 @@ export async function sendUazapiContact(serverUrl: string, token: string, to: st
   });
 }
 
-export async function sendUazapiReaction(serverUrl: string, token: string, chatId: string, messageId: string, emoji: string) {
+export async function sendUazapiReaction(
+  serverUrl: string,
+  token: string,
+  chatId: string,
+  messageId: string,
+  emoji: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/send/reaction", {
     chatid: chatId,
     messageid: messageId,
@@ -202,7 +256,13 @@ export async function sendUazapiReaction(serverUrl: string, token: string, chatI
   });
 }
 
-export async function sendUazapiPoll(serverUrl: string, token: string, to: string, question: string, options: string[]) {
+export async function sendUazapiPoll(
+  serverUrl: string,
+  token: string,
+  to: string,
+  question: string,
+  options: string[]
+) {
   return uazapiRequest(serverUrl, token, "POST", "/send/poll", {
     number: to.replace(/\D/g, ""),
     question,
@@ -210,9 +270,15 @@ export async function sendUazapiPoll(serverUrl: string, token: string, to: strin
   });
 }
 
-export async function sendUazapiBulkText(serverUrl: string, token: string, numbers: string[], text: string, delay?: number) {
+export async function sendUazapiBulkText(
+  serverUrl: string,
+  token: string,
+  numbers: string[],
+  text: string,
+  delay?: number
+) {
   return uazapiRequest(serverUrl, token, "POST", "/send/bulk/text", {
-    numbers: numbers.map(n => n.replace(/\D/g, "")),
+    numbers: numbers.map((n) => n.replace(/\D/g, "")),
     text,
     delay: delay ?? 3,
   });
@@ -220,7 +286,13 @@ export async function sendUazapiBulkText(serverUrl: string, token: string, numbe
 
 // ─── Forward message ───
 
-export async function forwardMessage(serverUrl: string, token: string, chatId: string, messageId: string, toNumber: string) {
+export async function forwardMessage(
+  serverUrl: string,
+  token: string,
+  chatId: string,
+  messageId: string,
+  toNumber: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/message/forward", {
     chatid: chatId,
     messageid: messageId,
@@ -230,7 +302,13 @@ export async function forwardMessage(serverUrl: string, token: string, chatId: s
 
 // ─── Edit message ───
 
-export async function editMessage(serverUrl: string, token: string, chatId: string, messageId: string, newText: string) {
+export async function editMessage(
+  serverUrl: string,
+  token: string,
+  chatId: string,
+  messageId: string,
+  newText: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/message/edit", {
     chatid: chatId,
     messageid: messageId,
@@ -255,14 +333,25 @@ export async function setTyping(serverUrl: string, token: string, chatId: string
   });
 }
 
-export async function setRecording(serverUrl: string, token: string, chatId: string, recording: boolean) {
+export async function setRecording(
+  serverUrl: string,
+  token: string,
+  chatId: string,
+  recording: boolean
+) {
   return uazapiRequest(serverUrl, token, "POST", "/chat/presence", {
     chatid: chatId,
     presence: recording ? "recording" : "paused",
   });
 }
 
-export async function deleteMessage(serverUrl: string, token: string, chatId: string, messageId: string, forEveryone: boolean = false) {
+export async function deleteMessage(
+  serverUrl: string,
+  token: string,
+  chatId: string,
+  messageId: string,
+  forEveryone: boolean = false
+) {
   return uazapiRequest(serverUrl, token, "POST", "/message/delete", {
     chatid: chatId,
     messageid: messageId,
@@ -270,7 +359,13 @@ export async function deleteMessage(serverUrl: string, token: string, chatId: st
   });
 }
 
-export async function starMessage(serverUrl: string, token: string, chatId: string, messageId: string, star: boolean) {
+export async function starMessage(
+  serverUrl: string,
+  token: string,
+  chatId: string,
+  messageId: string,
+  star: boolean
+) {
   return uazapiRequest(serverUrl, token, "POST", "/message/star", {
     chatid: chatId,
     messageid: messageId,
@@ -287,14 +382,25 @@ export async function pinChat(serverUrl: string, token: string, chatId: string, 
   });
 }
 
-export async function archiveChat(serverUrl: string, token: string, chatId: string, archive: boolean) {
+export async function archiveChat(
+  serverUrl: string,
+  token: string,
+  chatId: string,
+  archive: boolean
+) {
   return uazapiRequest(serverUrl, token, "POST", "/chat/archive", {
     chatid: chatId,
     archive,
   });
 }
 
-export async function muteChat(serverUrl: string, token: string, chatId: string, mute: boolean, duration?: number) {
+export async function muteChat(
+  serverUrl: string,
+  token: string,
+  chatId: string,
+  mute: boolean,
+  duration?: number
+) {
   return uazapiRequest(serverUrl, token, "POST", "/chat/mute", {
     chatid: chatId,
     mute,
@@ -312,7 +418,11 @@ export async function deleteChat(serverUrl: string, token: string, chatId: strin
 
 // ─── Contact management ───
 
-export async function checkNumberExists(serverUrl: string, token: string, number: string): Promise<{ exists: boolean; jid?: string; error?: string }> {
+export async function checkNumberExists(
+  serverUrl: string,
+  token: string,
+  number: string
+): Promise<{ exists: boolean; jid?: string; error?: string }> {
   const r = await uazapiRequest(serverUrl, token, "POST", "/contact/check", {
     number: number.replace(/\D/g, ""),
   });
@@ -427,7 +537,7 @@ export async function getUazapiChats(
     archived?: boolean;
     pinned?: boolean;
     unreadOnly?: boolean;
-  } = {},
+  } = {}
 ): Promise<{ success: boolean; chats?: UazapiChat[]; total?: number; error?: string }> {
   const body: Record<string, unknown> = {
     sort: "-wa_lastMsgTimestamp",
@@ -458,7 +568,7 @@ export async function getUazapiMessages(
     fromMe?: boolean;
     messageType?: string;
     afterTimestamp?: number;
-  } = {},
+  } = {}
 ): Promise<{ success: boolean; messages?: UazapiMessage[]; total?: number; error?: string }> {
   const body: Record<string, unknown> = {
     chatid: chatId,
@@ -481,7 +591,7 @@ export async function getStarredMessages(
   serverUrl: string,
   token: string,
   chatId?: string,
-  limit = 100,
+  limit = 100
 ): Promise<{ success: boolean; messages?: UazapiMessage[]; error?: string }> {
   const body: Record<string, unknown> = { isStarred: true, limit };
   if (chatId) body.chatid = chatId;
@@ -495,7 +605,7 @@ export async function getMediaMessages(
   token: string,
   chatId: string,
   type?: "image" | "video" | "audio" | "document" | "sticker",
-  limit = 50,
+  limit = 50
 ): Promise<{ success: boolean; messages?: UazapiMessage[]; error?: string }> {
   const body: Record<string, unknown> = { chatid: chatId, limit };
   if (type) {
@@ -512,8 +622,15 @@ export async function getMediaMessages(
 export async function getUazapiChatDetails(
   serverUrl: string,
   token: string,
-  number: string,
-): Promise<{ success: boolean; image?: string; name?: string; about?: string; phone?: string; error?: string }> {
+  number: string
+): Promise<{
+  success: boolean;
+  image?: string;
+  name?: string;
+  about?: string;
+  phone?: string;
+  error?: string;
+}> {
   const r = await uazapiRequest(serverUrl, token, "POST", "/chat/details", {
     number: number.replace(/\D/g, ""),
     preview: true,
@@ -531,13 +648,19 @@ export async function getUazapiChatDetails(
 export async function getUazapiContacts(serverUrl: string, token: string, limit = 500, offset = 0) {
   const r = await uazapiRequest(serverUrl, token, "POST", "/contact/find", { limit, offset });
   if (!r.ok) return { success: false, error: r.error };
-  return { success: true, contacts: r.data?.contacts ?? r.data ?? [], total: r.data?.pagination?.total };
+  return {
+    success: true,
+    contacts: r.data?.contacts ?? r.data ?? [],
+    total: r.data?.pagination?.total,
+  };
 }
 
 // ─── Media download ───
 
 export async function downloadMedia(serverUrl: string, token: string, messageId: string) {
-  const r = await uazapiRequest(serverUrl, token, "POST", "/message/download", { messageid: messageId });
+  const r = await uazapiRequest(serverUrl, token, "POST", "/message/download", {
+    messageid: messageId,
+  });
   if (!r.ok) return { success: false, error: r.error };
   return {
     success: true,
@@ -557,47 +680,93 @@ export async function getGroupInfo(serverUrl: string, token: string, groupId: st
   return uazapiRequest(serverUrl, token, "POST", "/group/info", { groupid: groupId });
 }
 
-export async function createGroup(serverUrl: string, token: string, name: string, participants: string[]) {
+export async function createGroup(
+  serverUrl: string,
+  token: string,
+  name: string,
+  participants: string[]
+) {
   return uazapiRequest(serverUrl, token, "POST", "/group/create", {
     name,
-    participants: participants.map(p => p.replace(/\D/g, "")),
+    participants: participants.map((p) => p.replace(/\D/g, "")),
   });
 }
 
-export async function updateGroupSubject(serverUrl: string, token: string, groupId: string, subject: string) {
+export async function updateGroupSubject(
+  serverUrl: string,
+  token: string,
+  groupId: string,
+  subject: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/group/subject", { groupid: groupId, subject });
 }
 
-export async function updateGroupDescription(serverUrl: string, token: string, groupId: string, description: string) {
-  return uazapiRequest(serverUrl, token, "POST", "/group/description", { groupid: groupId, description });
+export async function updateGroupDescription(
+  serverUrl: string,
+  token: string,
+  groupId: string,
+  description: string
+) {
+  return uazapiRequest(serverUrl, token, "POST", "/group/description", {
+    groupid: groupId,
+    description,
+  });
 }
 
-export async function updateGroupPicture(serverUrl: string, token: string, groupId: string, imageUrl: string) {
-  return uazapiRequest(serverUrl, token, "POST", "/group/pic", { groupid: groupId, file: imageUrl });
+export async function updateGroupPicture(
+  serverUrl: string,
+  token: string,
+  groupId: string,
+  imageUrl: string
+) {
+  return uazapiRequest(serverUrl, token, "POST", "/group/pic", {
+    groupid: groupId,
+    file: imageUrl,
+  });
 }
 
-export async function addGroupParticipant(serverUrl: string, token: string, groupId: string, number: string) {
+export async function addGroupParticipant(
+  serverUrl: string,
+  token: string,
+  groupId: string,
+  number: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/group/add", {
     groupid: groupId,
     number: number.replace(/\D/g, ""),
   });
 }
 
-export async function removeGroupParticipant(serverUrl: string, token: string, groupId: string, number: string) {
+export async function removeGroupParticipant(
+  serverUrl: string,
+  token: string,
+  groupId: string,
+  number: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/group/remove", {
     groupid: groupId,
     number: number.replace(/\D/g, ""),
   });
 }
 
-export async function promoteGroupParticipant(serverUrl: string, token: string, groupId: string, number: string) {
+export async function promoteGroupParticipant(
+  serverUrl: string,
+  token: string,
+  groupId: string,
+  number: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/group/promote", {
     groupid: groupId,
     number: number.replace(/\D/g, ""),
   });
 }
 
-export async function demoteGroupParticipant(serverUrl: string, token: string, groupId: string, number: string) {
+export async function demoteGroupParticipant(
+  serverUrl: string,
+  token: string,
+  groupId: string,
+  number: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/group/demote", {
     groupid: groupId,
     number: number.replace(/\D/g, ""),
@@ -616,7 +785,12 @@ export async function revokeGroupInviteLink(serverUrl: string, token: string, gr
   return uazapiRequest(serverUrl, token, "POST", "/group/revoke-invite", { groupid: groupId });
 }
 
-export async function setGroupSettings(serverUrl: string, token: string, groupId: string, settings: { announce?: boolean; restrict?: boolean }) {
+export async function setGroupSettings(
+  serverUrl: string,
+  token: string,
+  groupId: string,
+  settings: { announce?: boolean; restrict?: boolean }
+) {
   return uazapiRequest(serverUrl, token, "POST", "/group/settings", {
     groupid: groupId,
     ...settings,
@@ -629,12 +803,28 @@ export async function getLabels(serverUrl: string, token: string) {
   return uazapiRequest(serverUrl, token, "GET", "/label/all");
 }
 
-export async function addLabelToChat(serverUrl: string, token: string, chatId: string, labelId: string) {
-  return uazapiRequest(serverUrl, token, "POST", "/label/add", { chatid: chatId, labelid: labelId });
+export async function addLabelToChat(
+  serverUrl: string,
+  token: string,
+  chatId: string,
+  labelId: string
+) {
+  return uazapiRequest(serverUrl, token, "POST", "/label/add", {
+    chatid: chatId,
+    labelid: labelId,
+  });
 }
 
-export async function removeLabelFromChat(serverUrl: string, token: string, chatId: string, labelId: string) {
-  return uazapiRequest(serverUrl, token, "POST", "/label/remove", { chatid: chatId, labelid: labelId });
+export async function removeLabelFromChat(
+  serverUrl: string,
+  token: string,
+  chatId: string,
+  labelId: string
+) {
+  return uazapiRequest(serverUrl, token, "POST", "/label/remove", {
+    chatid: chatId,
+    labelid: labelId,
+  });
 }
 
 // ─── Newsletter/Channel ───
@@ -645,14 +835,24 @@ export async function getNewsletters(serverUrl: string, token: string) {
 
 // ─── Status/Stories ───
 
-export async function postTextStatus(serverUrl: string, token: string, text: string, backgroundColor?: string) {
+export async function postTextStatus(
+  serverUrl: string,
+  token: string,
+  text: string,
+  backgroundColor?: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/status/text", {
     text,
     backgroundColor: backgroundColor ?? "#075E54",
   });
 }
 
-export async function postImageStatus(serverUrl: string, token: string, imageUrl: string, caption?: string) {
+export async function postImageStatus(
+  serverUrl: string,
+  token: string,
+  imageUrl: string,
+  caption?: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/status/media", {
     type: "image",
     file: imageUrl,
@@ -660,7 +860,12 @@ export async function postImageStatus(serverUrl: string, token: string, imageUrl
   });
 }
 
-export async function postVideoStatus(serverUrl: string, token: string, videoUrl: string, caption?: string) {
+export async function postVideoStatus(
+  serverUrl: string,
+  token: string,
+  videoUrl: string,
+  caption?: string
+) {
   return uazapiRequest(serverUrl, token, "POST", "/status/media", {
     type: "video",
     file: videoUrl,

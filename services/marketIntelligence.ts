@@ -74,17 +74,22 @@ export async function getTrendingTopics(keywords: string[]): Promise<TrendingTop
   return keywords.map((kw) => ({
     keyword: kw,
     interest: Math.floor(Math.random() * 60) + 40, // Placeholder
-    trend: ["rising", "stable", "declining"][Math.floor(Math.random() * 3)] as TrendingTopic["trend"],
+    trend: ["rising", "stable", "declining"][
+      Math.floor(Math.random() * 3)
+    ] as TrendingTopic["trend"],
   }));
 }
 
 // ── AI-Powered Market Analysis ───────────────────────────────
 
-export async function generateMarketAnalysis(userId: string, params: {
-  competitors?: string[];
-  niche?: string;
-  focus?: "ads" | "content" | "positioning" | "full";
-}): Promise<{
+export async function generateMarketAnalysis(
+  userId: string,
+  params: {
+    competitors?: string[];
+    niche?: string;
+    focus?: "ads" | "content" | "positioning" | "full";
+  }
+): Promise<{
   analysis: string;
   suggestions: string[];
   copyVariations: { angle: string; copies: string[] }[];
@@ -111,7 +116,10 @@ export async function generateMarketAnalysis(userId: string, params: {
 
   // Get competitor ads if Meta token available
   let competitorAds: CompetitorAd[] = [];
-  const pixel = await prisma.pixel.findUnique({ where: { userId }, select: { metaAdsToken: true } });
+  const pixel = await prisma.pixel.findUnique({
+    where: { userId },
+    select: { metaAdsToken: true },
+  });
   if (pixel?.metaAdsToken && params.niche) {
     competitorAds = await searchCompetitorAds({
       searchTerms: params.niche,
@@ -130,8 +138,12 @@ DADOS INTERNOS:
 - Fontes: ${JSON.stringify(leadSources)}
 - Top posts: ${JSON.stringify(topPosts.slice(0, 5).map((p) => ({ titulo: p.title, tipo: p.mediaType })))}
 
-${competitorAds.length > 0 ? `ANUNCIOS DE CONCORRENTES (Meta Ad Library):
-${JSON.stringify(competitorAds.slice(0, 10).map((a) => ({ pagina: a.pageName, texto: a.adText.slice(0, 200) })))}` : ""}
+${
+  competitorAds.length > 0
+    ? `ANUNCIOS DE CONCORRENTES (Meta Ad Library):
+${JSON.stringify(competitorAds.slice(0, 10).map((a) => ({ pagina: a.pageName, texto: a.adText.slice(0, 200) })))}`
+    : ""
+}
 
 ${params.competitors?.length ? `Concorrentes mencionados: ${params.competitors.join(", ")}` : ""}
 
@@ -162,10 +174,13 @@ RETORNE em JSON valido:
         {
           role: "user",
           content: `Faca uma analise de mercado ${
-            params.focus === "ads" ? "focada em anuncios" :
-            params.focus === "content" ? "focada em conteudo organico" :
-            params.focus === "positioning" ? "focada em posicionamento" :
-            "completa"
+            params.focus === "ads"
+              ? "focada em anuncios"
+              : params.focus === "content"
+                ? "focada em conteudo organico"
+                : params.focus === "positioning"
+                  ? "focada em posicionamento"
+                  : "completa"
           } para meu negocio.`,
         },
       ],

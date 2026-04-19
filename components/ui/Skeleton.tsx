@@ -28,7 +28,11 @@ export function Skeleton({ className, variant = "text" }: Props) {
         <div className={cn(baseClass, "h-4 w-32 mb-4")} />
         <div className="flex items-end gap-2 h-32">
           {[40, 65, 30, 80, 55, 70, 45].map((h, i) => (
-            <div key={i} className={cn(baseClass, "flex-1 rounded-t")} style={{ height: `${h}%` }} />
+            <div
+              key={i}
+              className={cn(baseClass, "flex-1 rounded-t")}
+              style={{ height: `${h}%` }}
+            />
           ))}
         </div>
       </div>

@@ -10,8 +10,18 @@ type Props = {
 };
 
 const MONTHS = [
-  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
 ];
 const DAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -93,10 +103,7 @@ export function DateRangePicker({ startDate, endDate, onChange }: Props) {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - days);
-    onChange(
-      start.toISOString().slice(0, 10),
-      end.toISOString().slice(0, 10)
-    );
+    onChange(start.toISOString().slice(0, 10), end.toISOString().slice(0, 10));
     setOpen(false);
   }
 
@@ -153,13 +160,21 @@ export function DateRangePicker({ startDate, endDate, onChange }: Props) {
 
           {/* Month navigation */}
           <div className="flex items-center justify-between mb-3">
-            <button type="button" onClick={prevMonth} className="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
+            <button
+              type="button"
+              onClick={prevMonth}
+              className="p-1 rounded-lg hover:bg-slate-100 text-slate-500"
+            >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="text-sm font-semibold text-slate-800">
               {MONTHS[viewMonth]} {viewYear}
             </span>
-            <button type="button" onClick={nextMonth} className="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
+            <button
+              type="button"
+              onClick={nextMonth}
+              className="p-1 rounded-lg hover:bg-slate-100 text-slate-500"
+            >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -192,13 +207,14 @@ export function DateRangePicker({ startDate, endDate, onChange }: Props) {
                   type="button"
                   onClick={() => handleDayClick(day)}
                   className={`relative h-8 w-full text-xs rounded-lg transition-all font-medium
-                    ${isStart || isEnd
-                      ? "bg-indigo-500 text-white shadow-sm"
-                      : inRange
-                        ? "bg-indigo-50 text-indigo-700"
-                        : today
-                          ? "bg-slate-100 text-slate-900 font-bold"
-                          : "text-slate-700 hover:bg-slate-50"
+                    ${
+                      isStart || isEnd
+                        ? "bg-indigo-500 text-white shadow-sm"
+                        : inRange
+                          ? "bg-indigo-50 text-indigo-700"
+                          : today
+                            ? "bg-slate-100 text-slate-900 font-bold"
+                            : "text-slate-700 hover:bg-slate-50"
                     }
                   `}
                 >

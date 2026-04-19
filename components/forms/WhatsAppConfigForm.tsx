@@ -80,7 +80,12 @@ export function WhatsAppConfigForm({ config }: Props) {
     e.preventDefault();
     if (!phoneNumberId.trim() || !accessToken.trim() || !verifyToken.trim()) return;
     setLoading(true);
-    const result = await saveWhatsAppConfig(phoneNumberId, accessToken, verifyToken, metaAppSecret || undefined);
+    const result = await saveWhatsAppConfig(
+      phoneNumberId,
+      accessToken,
+      verifyToken,
+      metaAppSecret || undefined
+    );
     setLoading(false);
     if (result.success) {
       toast.success("Configurações do WhatsApp salvas");
@@ -179,13 +184,22 @@ export function WhatsAppConfigForm({ config }: Props) {
           <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
             <p className="text-xs font-semibold text-amber-800">Aviso sobre API não oficial</p>
             <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside">
-              <li>Esta conexão usa uma API não oficial do WhatsApp e pode violar os Termos de Serviço.</li>
-              <li>O WhatsApp pode <strong>banir temporária ou permanentemente</strong> o número conectado.</li>
+              <li>
+                Esta conexão usa uma API não oficial do WhatsApp e pode violar os Termos de Serviço.
+              </li>
+              <li>
+                O WhatsApp pode <strong>banir temporária ou permanentemente</strong> o número
+                conectado.
+              </li>
               <li>Não recomendado para o número pessoal principal.</li>
             </ul>
-            <p className="text-xs font-medium text-amber-800 pt-1">Boas práticas para reduzir riscos:</p>
+            <p className="text-xs font-medium text-amber-800 pt-1">
+              Boas práticas para reduzir riscos:
+            </p>
             <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside">
-              <li>Use um número <strong>WhatsApp Business</strong> dedicado ao atendimento.</li>
+              <li>
+                Use um número <strong>WhatsApp Business</strong> dedicado ao atendimento.
+              </li>
               <li>Evite envio em massa — responda apenas conversas iniciadas pelo cliente.</li>
               <li>Mantenha intervalos naturais entre mensagens (não envie muitas de uma vez).</li>
               <li>Não use para spam, disparo de listas ou mensagens não solicitadas.</li>
@@ -199,21 +213,48 @@ export function WhatsAppConfigForm({ config }: Props) {
         <form onSubmit={handleOfficialSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="phoneNumberId">Phone Number ID</Label>
-            <Input id="phoneNumberId" placeholder="Ex: 123456789012345" value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} required />
-            <p className="text-xs text-zinc-400">Encontre em Meta Developers → WhatsApp → Configuração da API → Phone Number ID.</p>
+            <Input
+              id="phoneNumberId"
+              placeholder="Ex: 123456789012345"
+              value={phoneNumberId}
+              onChange={(e) => setPhoneNumberId(e.target.value)}
+              required
+            />
+            <p className="text-xs text-zinc-400">
+              Encontre em Meta Developers → WhatsApp → Configuração da API → Phone Number ID.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="whatsappToken">Access Token</Label>
-            <Input id="whatsappToken" type="password" placeholder="Token de acesso permanente" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} required />
-            <p className="text-xs text-zinc-400">Token com permissão <span className="font-mono">whatsapp_business_messaging</span>.</p>
+            <Input
+              id="whatsappToken"
+              type="password"
+              placeholder="Token de acesso permanente"
+              value={accessToken}
+              onChange={(e) => setAccessToken(e.target.value)}
+              required
+            />
+            <p className="text-xs text-zinc-400">
+              Token com permissão <span className="font-mono">whatsapp_business_messaging</span>.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="verifyToken">Verify Token</Label>
-            <Input id="verifyToken" placeholder="Crie uma senha secreta qualquer" value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} required />
-            <p className="text-xs text-zinc-400">Você define este valor e usa o mesmo ao configurar o webhook na Meta.</p>
+            <Input
+              id="verifyToken"
+              placeholder="Crie uma senha secreta qualquer"
+              value={verifyToken}
+              onChange={(e) => setVerifyToken(e.target.value)}
+              required
+            />
+            <p className="text-xs text-zinc-400">
+              Você define este valor e usa o mesmo ao configurar o webhook na Meta.
+            </p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="metaAppSecret">App Secret <span className="text-zinc-400 font-normal">(opcional)</span></Label>
+            <Label htmlFor="metaAppSecret">
+              App Secret <span className="text-zinc-400 font-normal">(opcional)</span>
+            </Label>
             <Input
               id="metaAppSecret"
               type="password"
@@ -223,19 +264,32 @@ export function WhatsAppConfigForm({ config }: Props) {
               autoComplete="new-password"
             />
             <p className="text-xs text-zinc-400">
-              Encontre em <span className="font-mono">Meta for Developers → Seu App → Configurações → Básico → Segredo do Aplicativo</span>.
-              Usado para validar a assinatura HMAC dos webhooks recebidos — aumenta a segurança da integração.
+              Encontre em{" "}
+              <span className="font-mono">
+                Meta for Developers → Seu App → Configurações → Básico → Segredo do Aplicativo
+              </span>
+              . Usado para validar a assinatura HMAC dos webhooks recebidos — aumenta a segurança da
+              integração.
             </p>
           </div>
           <div className="flex gap-2">
-            <Button type="submit" disabled={loading}>{loading ? "Salvando..." : "Salvar WhatsApp"}</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Salvando..." : "Salvar WhatsApp"}
+            </Button>
             {config && config.provider === "official" && (
-              <Button type="button" variant="outline" disabled={testing} onClick={async () => {
-                setTesting(true);
-                const result = await testWhatsAppConnection();
-                setTesting(false);
-                result.success ? toast.success("Conexão com WhatsApp OK!") : toast.error(result.error);
-              }}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={testing}
+                onClick={async () => {
+                  setTesting(true);
+                  const result = await testWhatsAppConnection();
+                  setTesting(false);
+                  result.success
+                    ? toast.success("Conexão com WhatsApp OK!")
+                    : toast.error(result.error);
+                }}
+              >
                 {testing ? "Testando..." : "Testar Conexão"}
               </Button>
             )}
@@ -248,14 +302,20 @@ export function WhatsAppConfigForm({ config }: Props) {
         <div className="space-y-4">
           {/* Connection Status */}
           {isUazapiConfigured && (
-            <div className={`flex items-center gap-3 p-4 rounded-xl border ${
-              connected ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
-            }`}>
-              <div className={`w-3 h-3 rounded-full shrink-0 ${
-                connected ? "bg-green-500" : "bg-amber-500 animate-pulse"
-              }`} />
+            <div
+              className={`flex items-center gap-3 p-4 rounded-xl border ${
+                connected ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
+              }`}
+            >
+              <div
+                className={`w-3 h-3 rounded-full shrink-0 ${
+                  connected ? "bg-green-500" : "bg-amber-500 animate-pulse"
+                }`}
+              />
               <div className="flex-1">
-                <p className={`text-sm font-medium ${connected ? "text-green-700" : "text-amber-700"}`}>
+                <p
+                  className={`text-sm font-medium ${connected ? "text-green-700" : "text-amber-700"}`}
+                >
                   {connected
                     ? "WhatsApp conectado"
                     : checkingStatus
@@ -264,11 +324,23 @@ export function WhatsAppConfigForm({ config }: Props) {
                 </p>
               </div>
               <div className="flex gap-1.5">
-                <Button type="button" variant="outline" size="sm" disabled={checkingStatus} onClick={checkStatus}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={checkingStatus}
+                  onClick={checkStatus}
+                >
                   {checkingStatus ? "..." : "Atualizar"}
                 </Button>
                 {!connected && (
-                  <Button type="button" variant="outline" size="sm" disabled={loadingQR} onClick={handleGetQR}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={loadingQR}
+                    onClick={handleGetQR}
+                  >
                     {loadingQR ? "..." : "QR Code"}
                   </Button>
                 )}
@@ -279,17 +351,23 @@ export function WhatsAppConfigForm({ config }: Props) {
           {/* QR Code Display */}
           {qrCode && !connected && (
             <div className="flex flex-col items-center gap-3 p-5 bg-white border border-slate-200 rounded-xl">
-              <p className="text-sm font-medium text-slate-700">Escaneie o QR Code com seu WhatsApp</p>
+              <p className="text-sm font-medium text-slate-700">
+                Escaneie o QR Code com seu WhatsApp
+              </p>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qrCode}
-                alt="QR Code WhatsApp"
-                className="w-64 h-64 rounded-lg"
-              />
+              <img src={qrCode} alt="QR Code WhatsApp" className="w-64 h-64 rounded-lg" />
               <p className="text-xs text-slate-400 text-center">
                 Abra o WhatsApp → Aparelhos conectados → Conectar um aparelho
               </p>
-              <Button type="button" variant="outline" size="sm" onClick={() => { checkStatus(); setQrCode(null); }}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  checkStatus();
+                  setQrCode(null);
+                }}
+              >
                 Já escaneei
               </Button>
             </div>
@@ -300,10 +378,16 @@ export function WhatsAppConfigForm({ config }: Props) {
             <div className="space-y-3">
               <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
                 <p className="text-sm text-slate-600">
-                  Clique no botão abaixo para gerar um QR Code. Depois, escaneie com seu WhatsApp para conectar.
+                  Clique no botão abaixo para gerar um QR Code. Depois, escaneie com seu WhatsApp
+                  para conectar.
                 </p>
               </div>
-              <Button type="button" disabled={loading} onClick={handleUazapiConnect} className="w-full bg-green-600 hover:bg-green-700">
+              <Button
+                type="button"
+                disabled={loading}
+                onClick={handleUazapiConnect}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
                 {loading ? "Criando conexão..." : "Conectar via QR Code"}
               </Button>
             </div>

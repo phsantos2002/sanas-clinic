@@ -122,7 +122,19 @@ export async function executeWorkflow(executionId: string) {
   if (!lead) {
     await prisma.workflowExecution.update({
       where: { id: executionId },
-      data: { status: "failed", completedAt: new Date(), logs: [...logs, { step: -1, type: "error", result: "Lead nao encontrado", timestamp: new Date().toISOString() }] },
+      data: {
+        status: "failed",
+        completedAt: new Date(),
+        logs: [
+          ...logs,
+          {
+            step: -1,
+            type: "error",
+            result: "Lead nao encontrado",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      },
     });
     return;
   }
@@ -141,15 +153,17 @@ export async function executeWorkflow(executionId: string) {
       data: {
         status: "failed",
         completedAt: new Date(),
-        logs: JSON.parse(JSON.stringify([
-          ...logs,
-          {
-            step: execution.currentStep,
-            type: "error",
-            result: `Limite de segurança atingido: ${MAX_STEPS_PER_EXECUTION} steps por execução`,
-            timestamp: new Date().toISOString(),
-          },
-        ])),
+        logs: JSON.parse(
+          JSON.stringify([
+            ...logs,
+            {
+              step: execution.currentStep,
+              type: "error",
+              result: `Limite de segurança atingido: ${MAX_STEPS_PER_EXECUTION} steps por execução`,
+              timestamp: new Date().toISOString(),
+            },
+          ])
+        ),
       },
     });
     return;
@@ -167,7 +181,17 @@ export async function executeWorkflow(executionId: string) {
           where: { id: executionId },
           data: {
             currentStep: i + 1,
-            logs: JSON.parse(JSON.stringify([...logs, { step: i, type: "delay", result: `Aguardando ${minutes}min`, timestamp: new Date().toISOString() }])),
+            logs: JSON.parse(
+              JSON.stringify([
+                ...logs,
+                {
+                  step: i,
+                  type: "delay",
+                  result: `Aguardando ${minutes}min`,
+                  timestamp: new Date().toISOString(),
+                },
+              ])
+            ),
           },
         });
         return; // Exit — cron will resume
@@ -185,7 +209,12 @@ export async function executeWorkflow(executionId: string) {
         if (!passed) {
           await prisma.workflowExecution.update({
             where: { id: executionId },
-            data: { status: "skipped", completedAt: new Date(), currentStep: i, logs: JSON.parse(JSON.stringify(logs)) },
+            data: {
+              status: "skipped",
+              completedAt: new Date(),
+              currentStep: i,
+              logs: JSON.parse(JSON.stringify(logs)),
+            },
           });
           return;
         }
@@ -211,7 +240,12 @@ export async function executeWorkflow(executionId: string) {
 
       await prisma.workflowExecution.update({
         where: { id: executionId },
-        data: { status: "failed", completedAt: new Date(), currentStep: i, logs: JSON.parse(JSON.stringify(logs)) },
+        data: {
+          status: "failed",
+          completedAt: new Date(),
+          currentStep: i,
+          logs: JSON.parse(JSON.stringify(logs)),
+        },
       });
       return;
     }
@@ -220,7 +254,12 @@ export async function executeWorkflow(executionId: string) {
   // All steps completed
   await prisma.workflowExecution.update({
     where: { id: executionId },
-    data: { status: "completed", completedAt: new Date(), currentStep: steps.length, logs: JSON.parse(JSON.stringify(logs)) },
+    data: {
+      status: "completed",
+      completedAt: new Date(),
+      currentStep: steps.length,
+      logs: JSON.parse(JSON.stringify(logs)),
+    },
   });
 }
 
@@ -242,15 +281,24 @@ function evaluateCondition(config: StepConfig, lead: any): boolean {
   else return true; // Unknown field, pass through
 
   switch (operator) {
-    case "equals": return leadValue === value;
-    case "not_equals": return leadValue !== value;
-    case "gt": return (leadValue as number) > (value as number);
-    case "lt": return (leadValue as number) < (value as number);
-    case "gte": return (leadValue as number) >= (value as number);
-    case "lte": return (leadValue as number) <= (value as number);
-    case "contains": return Array.isArray(leadValue) && leadValue.includes(value);
-    case "not_contains": return Array.isArray(leadValue) && !leadValue.includes(value);
-    default: return true;
+    case "equals":
+      return leadValue === value;
+    case "not_equals":
+      return leadValue !== value;
+    case "gt":
+      return (leadValue as number) > (value as number);
+    case "lt":
+      return (leadValue as number) < (value as number);
+    case "gte":
+      return (leadValue as number) >= (value as number);
+    case "lte":
+      return (leadValue as number) <= (value as number);
+    case "contains":
+      return Array.isArray(leadValue) && leadValue.includes(value);
+    case "not_contains":
+      return Array.isArray(leadValue) && !leadValue.includes(value);
+    default:
+      return true;
   }
 }
 
@@ -278,8 +326,13 @@ async function executeAction(config: StepConfig, lead: any, userId: string): Pro
 
       const result = await sendMessage(waConfig, lead.phone, text2);
       if (result.success) {
-        await prisma.message.create({ data: { leadId: lead.id, role: "assistant", content: text2 } });
-        await prisma.lead.update({ where: { id: lead.id }, data: { lastInteractionAt: new Date() } });
+        await prisma.message.create({
+          data: { leadId: lead.id, role: "assistant", content: text2 },
+        });
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: { lastInteractionAt: new Date() },
+        });
         return `Mensagem enviada: "${text2.slice(0, 50)}..."`;
       }
       return `Falha ao enviar: ${result.error}`;
@@ -294,7 +347,9 @@ async function executeAction(config: StepConfig, lead: any, userId: string): Pro
           subject: (config.subject as string) || "",
           message: (config.message as string) || "",
         });
-        return res.ok ? `Email enviado: "${(config.subject as string || "").slice(0, 50)}"` : `Falha email: ${res.error}`;
+        return res.ok
+          ? `Email enviado: "${((config.subject as string) || "").slice(0, 50)}"`
+          : `Falha email: ${res.error}`;
       } catch (err) {
         return `Email indisponivel: ${err instanceof Error ? err.message : "erro"}`;
       }
@@ -336,10 +391,16 @@ async function executeAction(config: StepConfig, lead: any, userId: string): Pro
       const attendantId = config.attendantId as string;
       if (attendantId === "auto") {
         // Round-robin
-        const attendants = await prisma.attendant.findMany({ where: { userId, isActive: true }, select: { id: true } });
+        const attendants = await prisma.attendant.findMany({
+          where: { userId, isActive: true },
+          select: { id: true },
+        });
         if (attendants.length === 0) return "Nenhum atendente ativo";
         const counts = await Promise.all(
-          attendants.map(async (a) => ({ id: a.id, count: await prisma.lead.count({ where: { userId, assignedTo: a.id } }) }))
+          attendants.map(async (a) => ({
+            id: a.id,
+            count: await prisma.lead.count({ where: { userId, assignedTo: a.id } }),
+          }))
         );
         counts.sort((a, b) => a.count - b.count);
         await prisma.lead.update({ where: { id: lead.id }, data: { assignedTo: counts[0].id } });
@@ -352,8 +413,12 @@ async function executeAction(config: StepConfig, lead: any, userId: string): Pro
     case "update_score": {
       const delta = (config.delta as number) || 0;
       const newScore = Math.max(0, Math.min(100, lead.score + delta));
-      const label = newScore >= 80 ? "vip" : newScore >= 50 ? "quente" : newScore >= 25 ? "morno" : "frio";
-      await prisma.lead.update({ where: { id: lead.id }, data: { score: newScore, scoreLabel: label } });
+      const label =
+        newScore >= 80 ? "vip" : newScore >= 50 ? "quente" : newScore >= 25 ? "morno" : "frio";
+      await prisma.lead.update({
+        where: { id: lead.id },
+        data: { score: newScore, scoreLabel: label },
+      });
       return `Score ${delta > 0 ? "+" : ""}${delta} = ${newScore}`;
     }
 
@@ -480,7 +545,10 @@ export async function restoreWorkflowVersion(
       },
     });
 
-    log.info("workflow_version_restored", { fromVersion: version.version, workflowId: version.workflowId });
+    log.info("workflow_version_restored", {
+      fromVersion: version.version,
+      workflowId: version.workflowId,
+    });
     return true;
   });
 }

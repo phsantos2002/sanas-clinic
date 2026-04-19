@@ -44,27 +44,53 @@ export async function getDashboardIntelligence(): Promise<{
 
   // Parallel data fetch
   const [
-    leadsToday, hotLeads, stuckLeads, unansweredLeads,
-    clientsMonth, avgScore, publishedWeek, draftPosts,
-    scheduledToday, activeChats,
+    leadsToday,
+    hotLeads,
+    stuckLeads,
+    unansweredLeads,
+    clientsMonth,
+    avgScore,
+    publishedWeek,
+    draftPosts,
+    scheduledToday,
+    activeChats,
   ] = await Promise.all([
     prisma.lead.count({ where: { userId: user.id, createdAt: { gte: todayStart } } }),
     prisma.lead.count({ where: { userId: user.id, score: { gte: 50 } } }),
     prisma.lead.count({
-      where: { userId: user.id, lastInteractionAt: { lt: new Date(now.getTime() - 5 * 86400000) }, stage: { eventName: { not: "Purchase" } } },
+      where: {
+        userId: user.id,
+        lastInteractionAt: { lt: new Date(now.getTime() - 5 * 86400000) },
+        stage: { eventName: { not: "Purchase" } },
+      },
     }),
     prisma.lead.count({
-      where: { userId: user.id, lastInteractionAt: { lt: new Date(now.getTime() - 6 * 3600000) }, stage: { eventName: { not: "Purchase" } } },
+      where: {
+        userId: user.id,
+        lastInteractionAt: { lt: new Date(now.getTime() - 6 * 3600000) },
+        stage: { eventName: { not: "Purchase" } },
+      },
     }),
-    prisma.lead.count({ where: { userId: user.id, stage: { eventName: "Purchase" }, createdAt: { gte: monthStart } } }),
+    prisma.lead.count({
+      where: { userId: user.id, stage: { eventName: "Purchase" }, createdAt: { gte: monthStart } },
+    }),
     prisma.lead.aggregate({ where: { userId: user.id }, _avg: { score: true } }),
-    prisma.socialPost.count({ where: { userId: user.id, status: "published", publishedAt: { gte: weekAgo } } }),
+    prisma.socialPost.count({
+      where: { userId: user.id, status: "published", publishedAt: { gte: weekAgo } },
+    }),
     prisma.socialPost.count({ where: { userId: user.id, status: "draft" } }),
     prisma.socialPost.count({
-      where: { userId: user.id, status: "scheduled", scheduledAt: { gte: todayStart, lt: new Date(todayStart.getTime() + 86400000) } },
+      where: {
+        userId: user.id,
+        status: "scheduled",
+        scheduledAt: { gte: todayStart, lt: new Date(todayStart.getTime() + 86400000) },
+      },
     }),
     prisma.lead.count({
-      where: { userId: user.id, lastInteractionAt: { gte: new Date(now.getTime() - 24 * 3600000) } },
+      where: {
+        userId: user.id,
+        lastInteractionAt: { gte: new Date(now.getTime() - 24 * 3600000) },
+      },
     }),
   ]);
 
@@ -93,7 +119,10 @@ export async function getDashboardIntelligence(): Promise<{
 
   if (leadsToday > 0) {
     const yesterdayLeads = await prisma.lead.count({
-      where: { userId: user.id, createdAt: { gte: new Date(todayStart.getTime() - 86400000), lt: todayStart } },
+      where: {
+        userId: user.id,
+        createdAt: { gte: new Date(todayStart.getTime() - 86400000), lt: todayStart },
+      },
     });
     if (leadsToday > yesterdayLeads * 1.5 && yesterdayLeads > 0) {
       alerts.push({
@@ -139,7 +168,8 @@ export async function getDashboardIntelligence(): Promise<{
 
   for (const post of todayPosts) {
     agenda.push({
-      time: post.scheduledAt?.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) || "",
+      time:
+        post.scheduledAt?.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) || "",
       title: `Post: ${post.title || "Sem titulo"}`,
       type: "post",
       status: post.status === "published" ? "done" : "upcoming",
@@ -181,9 +211,15 @@ export async function getDailyBrief(force = false) {
   const weekAgo = new Date(now.getTime() - 7 * 86400000);
 
   const [newLeads, unanswered, hotLeads, stuckLeads, avgScore, postsWeek] = await Promise.all([
-    prisma.lead.count({ where: { userId: user.id, createdAt: { gte: new Date(now.getTime() - 86400000) } } }),
     prisma.lead.count({
-      where: { userId: user.id, lastInteractionAt: { lt: new Date(now.getTime() - 6 * 3600000) }, stage: { eventName: { not: "Purchase" } } },
+      where: { userId: user.id, createdAt: { gte: new Date(now.getTime() - 86400000) } },
+    }),
+    prisma.lead.count({
+      where: {
+        userId: user.id,
+        lastInteractionAt: { lt: new Date(now.getTime() - 6 * 3600000) },
+        stage: { eventName: { not: "Purchase" } },
+      },
     }),
     prisma.lead.findMany({
       where: { userId: user.id, score: { gte: 50 } },
@@ -192,17 +228,25 @@ export async function getDailyBrief(force = false) {
       take: 3,
     }),
     prisma.lead.count({
-      where: { userId: user.id, lastInteractionAt: { lt: new Date(now.getTime() - 3 * 86400000) }, stage: { eventName: { not: "Purchase" } } },
+      where: {
+        userId: user.id,
+        lastInteractionAt: { lt: new Date(now.getTime() - 3 * 86400000) },
+        stage: { eventName: { not: "Purchase" } },
+      },
     }),
     prisma.lead.aggregate({ where: { userId: user.id }, _avg: { score: true } }),
-    prisma.socialPost.count({ where: { userId: user.id, status: "published", publishedAt: { gte: weekAgo } } }),
+    prisma.socialPost.count({
+      where: { userId: user.id, status: "published", publishedAt: { gte: weekAgo } },
+    }),
   ]);
 
   const parts: string[] = [];
   const actions: { label: string; href: string }[] = [];
 
   if (newLeads > 0) {
-    parts.push(`Voce tem ${newLeads} lead${newLeads > 1 ? "s" : ""} novo${newLeads > 1 ? "s" : ""} nas ultimas 24h.`);
+    parts.push(
+      `Voce tem ${newLeads} lead${newLeads > 1 ? "s" : ""} novo${newLeads > 1 ? "s" : ""} nas ultimas 24h.`
+    );
   }
   if (hotLeads.length > 0) {
     const names = hotLeads.map((l) => l.name).join(", ");
@@ -210,7 +254,9 @@ export async function getDailyBrief(force = false) {
     actions.push({ label: "Ver leads quentes", href: "/dashboard/pipeline" });
   }
   if (unanswered > 0) {
-    parts.push(`${unanswered} lead${unanswered > 1 ? "s" : ""} esta${unanswered > 1 ? "o" : ""} sem resposta ha mais de 6h.`);
+    parts.push(
+      `${unanswered} lead${unanswered > 1 ? "s" : ""} esta${unanswered > 1 ? "o" : ""} sem resposta ha mais de 6h.`
+    );
     actions.push({ label: "Responder leads", href: "/dashboard/chat" });
   }
   if (stuckLeads > 3) {
@@ -218,7 +264,9 @@ export async function getDailyBrief(force = false) {
     actions.push({ label: "Reativar", href: "/dashboard/chat/broadcast" });
   }
   if (postsWeek > 0) {
-    parts.push(`${postsWeek} post${postsWeek > 1 ? "s" : ""} publicado${postsWeek > 1 ? "s" : ""} esta semana.`);
+    parts.push(
+      `${postsWeek} post${postsWeek > 1 ? "s" : ""} publicado${postsWeek > 1 ? "s" : ""} esta semana.`
+    );
   }
   if (parts.length === 0) {
     parts.push("Tudo tranquilo por aqui. Que tal criar um novo post ou revisar seu pipeline?");
@@ -249,7 +297,14 @@ export async function getTodaysTasks() {
         { lastInteractionAt: { lt: new Date(now.getTime() - 12 * 3600000) } },
       ],
     },
-    select: { id: true, name: true, phone: true, score: true, scoreLabel: true, lastInteractionAt: true },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      score: true,
+      scoreLabel: true,
+      lastInteractionAt: true,
+    },
     orderBy: { score: "desc" },
     take: 5,
   });
@@ -294,7 +349,14 @@ export async function getActivityFeed(limit = 20) {
 
   type FeedItem = {
     id: string;
-    type: "new_lead" | "stage_change" | "message" | "post_published" | "workflow_run" | "alert" | "score_update";
+    type:
+      | "new_lead"
+      | "stage_change"
+      | "message"
+      | "post_published"
+      | "workflow_run"
+      | "alert"
+      | "score_update";
     text: string;
     entityName: string;
     entityUrl?: string;
@@ -313,7 +375,12 @@ export async function getActivityFeed(limit = 20) {
     }),
     prisma.leadStageHistory.findMany({
       where: { lead: { userId: user.id }, createdAt: { gte: dayAgo } },
-      select: { id: true, lead: { select: { name: true, id: true } }, stage: { select: { name: true } }, createdAt: true },
+      select: {
+        id: true,
+        lead: { select: { name: true, id: true } },
+        stage: { select: { name: true } },
+        createdAt: true,
+      },
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
@@ -325,7 +392,12 @@ export async function getActivityFeed(limit = 20) {
     }),
     prisma.message.findMany({
       where: { lead: { userId: user.id }, role: "user", createdAt: { gte: dayAgo } },
-      select: { id: true, lead: { select: { name: true, id: true } }, content: true, createdAt: true },
+      select: {
+        id: true,
+        lead: { select: { name: true, id: true } },
+        content: true,
+        createdAt: true,
+      },
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
@@ -390,21 +462,32 @@ export async function getHealthScore() {
   const now = new Date();
   const monthAgo = new Date(now.getTime() - 30 * 86400000);
 
-  const [avgScoreResult, totalLeads, convertedLeads, totalMessages, respondedMessages] = await Promise.all([
-    prisma.lead.aggregate({ where: { userId: user.id }, _avg: { score: true } }),
-    prisma.lead.count({ where: { userId: user.id, createdAt: { gte: monthAgo } } }),
-    prisma.lead.count({ where: { userId: user.id, stage: { eventName: "Purchase" }, createdAt: { gte: monthAgo } } }),
-    prisma.message.count({ where: { lead: { userId: user.id }, role: "user", createdAt: { gte: monthAgo } } }),
-    prisma.message.count({ where: { lead: { userId: user.id }, role: "assistant", createdAt: { gte: monthAgo } } }),
-  ]);
+  const [avgScoreResult, totalLeads, convertedLeads, totalMessages, respondedMessages] =
+    await Promise.all([
+      prisma.lead.aggregate({ where: { userId: user.id }, _avg: { score: true } }),
+      prisma.lead.count({ where: { userId: user.id, createdAt: { gte: monthAgo } } }),
+      prisma.lead.count({
+        where: { userId: user.id, stage: { eventName: "Purchase" }, createdAt: { gte: monthAgo } },
+      }),
+      prisma.message.count({
+        where: { lead: { userId: user.id }, role: "user", createdAt: { gte: monthAgo } },
+      }),
+      prisma.message.count({
+        where: { lead: { userId: user.id }, role: "assistant", createdAt: { gte: monthAgo } },
+      }),
+    ]);
 
   const leadScore = Math.min(Math.round(avgScoreResult._avg.score || 0), 100);
-  const responseRate = totalMessages > 0 ? Math.min(Math.round((respondedMessages / totalMessages) * 100), 100) : 50;
-  const conversionRate = totalLeads > 0 ? Math.min(Math.round((convertedLeads / totalLeads) * 100), 100) : 0;
+  const responseRate =
+    totalMessages > 0 ? Math.min(Math.round((respondedMessages / totalMessages) * 100), 100) : 50;
+  const conversionRate =
+    totalLeads > 0 ? Math.min(Math.round((convertedLeads / totalLeads) * 100), 100) : 0;
   // Simplified ROAS placeholder (would need real Meta data)
   const roasScore = 50;
 
-  const overall = Math.round(leadScore * 0.25 + responseRate * 0.25 + roasScore * 0.25 + conversionRate * 0.25);
+  const overall = Math.round(
+    leadScore * 0.25 + responseRate * 0.25 + roasScore * 0.25 + conversionRate * 0.25
+  );
 
   const breakdown = [
     { label: "Score dos leads", value: leadScore, weight: 25 },
@@ -413,7 +496,10 @@ export async function getHealthScore() {
     { label: "Conversao", value: conversionRate, weight: 25 },
   ];
 
-  const weakest = breakdown.reduce((min, item) => (item.value < min.value ? item : min), breakdown[0]);
+  const weakest = breakdown.reduce(
+    (min, item) => (item.value < min.value ? item : min),
+    breakdown[0]
+  );
 
   return {
     score: overall,

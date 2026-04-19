@@ -32,7 +32,12 @@ const NODE_TYPES = [
   { type: "action", subtype: "move_stage", label: "Mover Etapa", color: "bg-teal-500" },
   { type: "action", subtype: "add_tag", label: "Adicionar Tag", color: "bg-teal-500" },
   { type: "action", subtype: "remove_tag", label: "Remover Tag", color: "bg-teal-500" },
-  { type: "action", subtype: "assign_attendant", label: "Atribuir Atendente", color: "bg-teal-500" },
+  {
+    type: "action",
+    subtype: "assign_attendant",
+    label: "Atribuir Atendente",
+    color: "bg-teal-500",
+  },
   { type: "action", subtype: "update_score", label: "Atualizar Score", color: "bg-teal-500" },
   { type: "action", subtype: "delay", label: "Aguardar", color: "bg-slate-500" },
 ] as const;
@@ -61,10 +66,15 @@ export function WorkflowCanvas({ workflowId, initialNodes, initialEdges, stages,
     }, 2000);
   }, [nodes, edges, onSave]);
 
-  useEffect(() => { triggerAutoSave(); }, [nodes, edges]);
+  useEffect(() => {
+    triggerAutoSave();
+  }, [nodes, edges]);
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (e.target === canvasRef.current || (e.target as HTMLElement).classList.contains("canvas-bg")) {
+    if (
+      e.target === canvasRef.current ||
+      (e.target as HTMLElement).classList.contains("canvas-bg")
+    ) {
       setIsDragging(true);
       dragRef.current = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y };
       setSelectedNode(null);
@@ -79,12 +89,17 @@ export function WorkflowCanvas({ workflowId, initialNodes, initialEdges, stages,
     }
   };
 
-  const handleCanvasMouseUp = () => { setIsDragging(false); };
+  const handleCanvasMouseUp = () => {
+    setIsDragging(false);
+  };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setShowNodeMenu({ x: (e.clientX - rect.left - pan.x) / zoom, y: (e.clientY - rect.top - pan.y) / zoom });
+    setShowNodeMenu({
+      x: (e.clientX - rect.left - pan.x) / zoom,
+      y: (e.clientY - rect.top - pan.y) / zoom,
+    });
   };
 
   const addNode = (type: string, subtype: string, label: string) => {
@@ -158,20 +173,37 @@ export function WorkflowCanvas({ workflowId, initialNodes, initialEdges, stages,
         {/* Toolbar */}
         <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-slate-200">
           <div className="flex items-center gap-2">
-            <button onClick={() => setZoom((z) => Math.min(z + 0.1, 2))} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+            <button
+              onClick={() => setZoom((z) => Math.min(z + 0.1, 2))}
+              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+            >
               <ZoomIn className="h-4 w-4" />
             </button>
-            <span className="text-xs text-slate-400 w-10 text-center">{Math.round(zoom * 100)}%</span>
-            <button onClick={() => setZoom((z) => Math.max(z - 0.1, 0.3))} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+            <span className="text-xs text-slate-400 w-10 text-center">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              onClick={() => setZoom((z) => Math.max(z - 0.1, 0.3))}
+              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+            >
               <ZoomOut className="h-4 w-4" />
             </button>
-            <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+            <button
+              onClick={() => {
+                setZoom(1);
+                setPan({ x: 0, y: 0 });
+              }}
+              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+            >
               <Maximize2 className="h-4 w-4" />
             </button>
           </div>
           <div className="flex items-center gap-2">
             {saving && <span className="text-[10px] text-slate-400">Salvando...</span>}
-            <button onClick={handleSave} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700">
+            <button
+              onClick={handleSave}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700"
+            >
               <Save className="h-3.5 w-3.5" /> Salvar
             </button>
           </div>
@@ -197,7 +229,10 @@ export function WorkflowCanvas({ workflowId, initialNodes, initialEdges, stages,
 
           <svg
             className="absolute inset-0 pointer-events-none"
-            style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "0 0" }}
+            style={{
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              transformOrigin: "0 0",
+            }}
           >
             {edges.map((edge) => {
               const source = nodes.find((n) => n.id === edge.sourceNodeId);
@@ -213,7 +248,13 @@ export function WorkflowCanvas({ workflowId, initialNodes, initialEdges, stages,
                   <path
                     d={`M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`}
                     fill="none"
-                    stroke={edge.sourcePort === "yes" ? "#10b981" : edge.sourcePort === "no" ? "#ef4444" : "#94a3b8"}
+                    stroke={
+                      edge.sourcePort === "yes"
+                        ? "#10b981"
+                        : edge.sourcePort === "no"
+                          ? "#ef4444"
+                          : "#94a3b8"
+                    }
                     strokeWidth={2}
                     markerEnd="url(#arrowhead)"
                   />
@@ -221,13 +262,26 @@ export function WorkflowCanvas({ workflowId, initialNodes, initialEdges, stages,
               );
             })}
             <defs>
-              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+              <marker
+                id="arrowhead"
+                markerWidth="10"
+                markerHeight="7"
+                refX="10"
+                refY="3.5"
+                orient="auto"
+              >
                 <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
               </marker>
             </defs>
           </svg>
 
-          <div style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "0 0", position: "absolute" }}>
+          <div
+            style={{
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              transformOrigin: "0 0",
+              position: "absolute",
+            }}
+          >
             {nodes.map((node) => (
               <WorkflowNode
                 key={node.id}
@@ -260,7 +314,10 @@ export function WorkflowCanvas({ workflowId, initialNodes, initialEdges, stages,
                   {nt.label}
                 </button>
               ))}
-              <button onClick={() => setShowNodeMenu(null)} className="w-full text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 mt-1 border-t border-slate-100">
+              <button
+                onClick={() => setShowNodeMenu(null)}
+                className="w-full text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 mt-1 border-t border-slate-100"
+              >
                 Cancelar
               </button>
             </div>

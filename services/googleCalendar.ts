@@ -58,7 +58,9 @@ export async function exchangeCodeForTokens(code: string) {
   }>;
 }
 
-async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number }> {
+async function refreshAccessToken(
+  refreshToken: string
+): Promise<{ access_token: string; expires_in: number }> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -74,7 +76,9 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
   return res.json();
 }
 
-async function getValidToken(userId: string): Promise<{ token: string; calendarId: string; config: GoogleCalendarConfig } | null> {
+async function getValidToken(
+  userId: string
+): Promise<{ token: string; calendarId: string; config: GoogleCalendarConfig } | null> {
   const config = await prisma.googleCalendar.findUnique({ where: { userId } });
   if (!config) return null;
 
@@ -132,7 +136,7 @@ type CalendarEvent = {
 
 export async function getUpcomingEvents(
   userId: string,
-  daysAhead: number = 7,
+  daysAhead: number = 7
 ): Promise<CalendarEvent[]> {
   const auth = await getValidToken(userId);
   if (!auth) return [];
@@ -162,7 +166,7 @@ export async function getUpcomingEvents(
 export async function getFreeSlots(
   userId: string,
   date: string, // YYYY-MM-DD
-  durationMinutes: number = 60,
+  durationMinutes: number = 60
 ): Promise<{ start: string; end: string }[]> {
   const auth = await getValidToken(userId);
   if (!auth) return [];
@@ -196,8 +200,8 @@ export async function getFreeSlots(
 
   // Calculate free slots
   const busySlots = events
-    .filter(e => e.start?.dateTime && e.end?.dateTime)
-    .map(e => ({
+    .filter((e) => e.start?.dateTime && e.end?.dateTime)
+    .map((e) => ({
       start: new Date(e.start.dateTime).getTime(),
       end: new Date(e.end.dateTime).getTime(),
     }));
@@ -213,12 +217,20 @@ export async function getFreeSlots(
 
   while (cursor + slotDuration <= dEnd.getTime()) {
     const slotEnd = cursor + slotDuration;
-    const isBusy = busySlots.some(b => cursor < b.end && slotEnd > b.start);
+    const isBusy = busySlots.some((b) => cursor < b.end && slotEnd > b.start);
 
     if (!isBusy) {
       slots.push({
-        start: new Date(cursor).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: timezone }),
-        end: new Date(slotEnd).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: timezone }),
+        start: new Date(cursor).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: timezone,
+        }),
+        end: new Date(slotEnd).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: timezone,
+        }),
       });
     }
 
@@ -237,7 +249,7 @@ export async function createCalendarEvent(
     durationMinutes: number;
     attendeeEmail?: string;
     attendeeName?: string;
-  },
+  }
 ): Promise<{ success: boolean; eventId?: string; eventLink?: string; error?: string }> {
   const auth = await getValidToken(userId);
   if (!auth) return { success: false, error: "Google Calendar nao conectado" };
@@ -260,9 +272,7 @@ export async function createCalendarEvent(
   };
 
   if (params.attendeeEmail) {
-    event.attendees = [
-      { email: params.attendeeEmail, displayName: params.attendeeName || "" },
-    ];
+    event.attendees = [{ email: params.attendeeEmail, displayName: params.attendeeName || "" }];
   }
 
   const res = await fetch(
@@ -292,9 +302,7 @@ export async function createCalendarEvent(
 
 // ─── Context for AI ───────────────────────────────────────
 
-export async function getCalendarContextForAI(
-  userId: string,
-): Promise<string | null> {
+export async function getCalendarContextForAI(userId: string): Promise<string | null> {
   const auth = await getValidToken(userId);
   if (!auth) return null;
 
@@ -306,13 +314,21 @@ export async function getCalendarContextForAI(
   const todaySlots = await getFreeSlots(userId, todayStr, 60);
   const tomorrowSlots = await getFreeSlots(userId, tomorrowStr, 60);
 
-  const todayFormatted = todaySlots.length > 0
-    ? todaySlots.slice(0, 5).map(s => `  ${s.start} - ${s.end}`).join("\n")
-    : "  Sem horarios disponiveis";
+  const todayFormatted =
+    todaySlots.length > 0
+      ? todaySlots
+          .slice(0, 5)
+          .map((s) => `  ${s.start} - ${s.end}`)
+          .join("\n")
+      : "  Sem horarios disponiveis";
 
-  const tomorrowFormatted = tomorrowSlots.length > 0
-    ? tomorrowSlots.slice(0, 5).map(s => `  ${s.start} - ${s.end}`).join("\n")
-    : "  Sem horarios disponiveis";
+  const tomorrowFormatted =
+    tomorrowSlots.length > 0
+      ? tomorrowSlots
+          .slice(0, 5)
+          .map((s) => `  ${s.start} - ${s.end}`)
+          .join("\n")
+      : "  Sem horarios disponiveis";
 
   return `AGENDA (Google Calendar conectado):
 Horario de funcionamento: ${auth.config.businessHoursStart} - ${auth.config.businessHoursEnd}

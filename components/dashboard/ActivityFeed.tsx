@@ -1,13 +1,29 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Users, ArrowRight, MessageCircle, PenTool, Zap, AlertTriangle, TrendingUp, Clock } from "lucide-react";
+import {
+  Users,
+  ArrowRight,
+  MessageCircle,
+  PenTool,
+  Zap,
+  AlertTriangle,
+  TrendingUp,
+  Clock,
+} from "lucide-react";
 import Link from "next/link";
 import { getActivityFeed } from "@/app/actions/dashboard";
 
 type FeedItem = {
   id: string;
-  type: "new_lead" | "stage_change" | "message" | "post_published" | "workflow_run" | "alert" | "score_update";
+  type:
+    | "new_lead"
+    | "stage_change"
+    | "message"
+    | "post_published"
+    | "workflow_run"
+    | "alert"
+    | "score_update";
   text: string;
   entityName: string;
   entityUrl?: string;
@@ -76,14 +92,19 @@ export function ActivityFeed() {
             const Icon = cfg.icon;
             return (
               <div key={item.id} className="flex items-start gap-2.5 py-1.5">
-                <div className={`h-6 w-6 rounded-lg flex items-center justify-center shrink-0 ${cfg.color}`}>
+                <div
+                  className={`h-6 w-6 rounded-lg flex items-center justify-center shrink-0 ${cfg.color}`}
+                >
                   <Icon className="h-3 w-3" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-slate-600 leading-relaxed">
                     {item.text}{" "}
                     {item.entityUrl ? (
-                      <Link href={item.entityUrl} className="font-medium text-indigo-600 hover:text-indigo-800">
+                      <Link
+                        href={item.entityUrl}
+                        className="font-medium text-indigo-600 hover:text-indigo-800"
+                      >
                         {item.entityName}
                       </Link>
                     ) : (
@@ -91,7 +112,9 @@ export function ActivityFeed() {
                     )}
                   </p>
                 </div>
-                <span className="text-[10px] text-slate-400 shrink-0 mt-0.5">{timeAgo(item.createdAt)}</span>
+                <span className="text-[10px] text-slate-400 shrink-0 mt-0.5">
+                  {timeAgo(item.createdAt)}
+                </span>
               </div>
             );
           })}

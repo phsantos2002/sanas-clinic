@@ -69,7 +69,8 @@ export function ManageStagesSection({ stages }: Props) {
   }
 
   async function handleDelete(stageId: string, stageName: string) {
-    if (!confirm(`Excluir a coluna "${stageName}"? Os leads desta coluna ficarão sem coluna.`)) return;
+    if (!confirm(`Excluir a coluna "${stageName}"? Os leads desta coluna ficarão sem coluna.`))
+      return;
     const result = await deleteStage(stageId);
     if (result.success) {
       toast.success("Coluna excluída");
@@ -115,10 +116,21 @@ export function ManageStagesSection({ stages }: Props) {
                   />
                 </div>
                 <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={handleSaveEdit} disabled={loading}>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-green-600"
+                    onClick={handleSaveEdit}
+                    disabled={loading}
+                  >
                     <Check className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400" onClick={cancelEdit}>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-zinc-400"
+                    onClick={cancelEdit}
+                  >
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -127,13 +139,25 @@ export function ManageStagesSection({ stages }: Props) {
               <>
                 <div className="flex-1">
                   <p className="text-sm font-medium">{stage.name}</p>
-                  <p className="text-xs text-zinc-400">Evento: <span className="text-zinc-600 font-mono">{stage.eventName}</span></p>
+                  <p className="text-xs text-zinc-400">
+                    Evento: <span className="text-zinc-600 font-mono">{stage.eventName}</span>
+                  </p>
                 </div>
                 <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-black" onClick={() => startEdit(stage)}>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-zinc-400 hover:text-black"
+                    onClick={() => startEdit(stage)}
+                  >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-red-600" onClick={() => handleDelete(stage.id, stage.name)}>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-zinc-400 hover:text-red-600"
+                    onClick={() => handleDelete(stage.id, stage.name)}
+                  >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -164,7 +188,15 @@ export function ManageStagesSection({ stages }: Props) {
             <Button size="sm" onClick={handleCreate} disabled={loading || !newName.trim()}>
               Criar
             </Button>
-            <Button size="sm" variant="outline" onClick={() => { setShowAdd(false); setNewName(""); setNewEvent("Lead"); }}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setShowAdd(false);
+                setNewName("");
+                setNewEvent("Lead");
+              }}
+            >
               Cancelar
             </Button>
           </div>

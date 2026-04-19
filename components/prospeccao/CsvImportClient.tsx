@@ -2,15 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Upload,
-  FileText,
-  CheckCircle2,
-  AlertCircle,
-  ArrowRight,
-  X,
-  Download,
-} from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertCircle, ArrowRight, X, Download } from "lucide-react";
 import { toast } from "sonner";
 import { importLeadsBulk } from "@/app/actions/prospeccao";
 import type { CsvLeadRow, ImportResult } from "@/app/actions/prospeccao";
@@ -227,8 +219,7 @@ export function CsvImportClient({ attendants, stages }: Props) {
       <div className="flex items-center gap-2 mb-2">
         {(["upload", "map", "review", "done"] as Step[]).map((s, i) => {
           const active = step === s;
-          const passed =
-            (["upload", "map", "review", "done"] as Step[]).indexOf(step) > i;
+          const passed = (["upload", "map", "review", "done"] as Step[]).indexOf(step) > i;
           return (
             <div key={s} className="flex items-center">
               <div
@@ -242,11 +233,7 @@ export function CsvImportClient({ attendants, stages }: Props) {
               >
                 {passed ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
               </div>
-              {i < 3 && (
-                <div
-                  className={`h-0.5 w-8 ${passed ? "bg-green-500" : "bg-slate-200"}`}
-                />
-              )}
+              {i < 3 && <div className={`h-0.5 w-8 ${passed ? "bg-green-500" : "bg-slate-200"}`} />}
             </div>
           );
         })}
@@ -295,8 +282,8 @@ export function CsvImportClient({ attendants, stages }: Props) {
           </button>
 
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-800">
-            <strong>Colunas aceitas:</strong> nome*, telefone*, email, empresa, cargo,
-            linkedin, setor, cidade, notas. (*obrigatórias)
+            <strong>Colunas aceitas:</strong> nome*, telefone*, email, empresa, cargo, linkedin,
+            setor, cidade, notas. (*obrigatórias)
             <br />
             Leads duplicados pelo telefone são ignorados automaticamente.
           </div>
@@ -336,8 +323,7 @@ export function CsvImportClient({ attendants, stages }: Props) {
                     onChange={(e) =>
                       setMapping((m) => ({
                         ...m,
-                        [f.key]:
-                          e.target.value === "" ? null : Number(e.target.value),
+                        [f.key]: e.target.value === "" ? null : Number(e.target.value),
                       }))
                     }
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -355,13 +341,20 @@ export function CsvImportClient({ attendants, stages }: Props) {
 
             {preview.length > 0 && (
               <div className="mt-4">
-                <p className="text-xs font-medium text-slate-700 mb-2">Preview (primeiras 5 linhas)</p>
+                <p className="text-xs font-medium text-slate-700 mb-2">
+                  Preview (primeiras 5 linhas)
+                </p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-50">
                       <tr>
-                        {FIELDS.filter((f) => mapping[f.key] !== null && mapping[f.key] !== undefined).map((f) => (
-                          <th key={f.key} className="px-2 py-1.5 text-left font-medium text-slate-600">
+                        {FIELDS.filter(
+                          (f) => mapping[f.key] !== null && mapping[f.key] !== undefined
+                        ).map((f) => (
+                          <th
+                            key={f.key}
+                            className="px-2 py-1.5 text-left font-medium text-slate-600"
+                          >
                             {f.label}
                           </th>
                         ))}
@@ -370,8 +363,13 @@ export function CsvImportClient({ attendants, stages }: Props) {
                     <tbody>
                       {preview.map((row, i) => (
                         <tr key={i} className="border-b border-slate-50">
-                          {FIELDS.filter((f) => mapping[f.key] !== null && mapping[f.key] !== undefined).map((f) => (
-                            <td key={f.key} className="px-2 py-1.5 text-slate-600 truncate max-w-[160px]">
+                          {FIELDS.filter(
+                            (f) => mapping[f.key] !== null && mapping[f.key] !== undefined
+                          ).map((f) => (
+                            <td
+                              key={f.key}
+                              className="px-2 py-1.5 text-slate-600 truncate max-w-[160px]"
+                            >
                               {row[f.key] || "—"}
                             </td>
                           ))}
@@ -420,7 +418,9 @@ export function CsvImportClient({ attendants, stages }: Props) {
                 >
                   <option value="">— Não atribuir —</option>
                   {attendants
-                    .filter((a) => a.role === "sdr" || a.role === "attendant" || a.role === "sdr_manager")
+                    .filter(
+                      (a) => a.role === "sdr" || a.role === "attendant" || a.role === "sdr_manager"
+                    )
                     .map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.name} ({a.role})
@@ -465,7 +465,8 @@ export function CsvImportClient({ attendants, stages }: Props) {
             </div>
 
             <div className="bg-slate-50 rounded-xl p-3 text-xs text-slate-600">
-              <strong>{rows.length} leads</strong> serão importados. Duplicados (mesmo telefone) serão ignorados.
+              <strong>{rows.length} leads</strong> serão importados. Duplicados (mesmo telefone)
+              serão ignorados.
             </div>
           </div>
 

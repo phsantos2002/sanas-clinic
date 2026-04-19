@@ -40,7 +40,11 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     // Non-blocking: log to console so Sentry/Datadog can pick it up
-    console.error("[ErrorBoundary]", { section: this.props.section, error, componentStack: info.componentStack });
+    console.error("[ErrorBoundary]", {
+      section: this.props.section,
+      error,
+      componentStack: info.componentStack,
+    });
   }
 
   reset = () => {
@@ -58,9 +62,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
         <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-red-100 mb-3">
           <AlertTriangle className="h-6 w-6 text-red-500" />
         </div>
-        <h3 className="text-sm font-semibold text-red-800 mb-1">
-          Erro ao carregar {section}
-        </h3>
+        <h3 className="text-sm font-semibold text-red-800 mb-1">Erro ao carregar {section}</h3>
         <p className="text-xs text-red-600 max-w-xs mb-4">
           Algo inesperado aconteceu. Tente recarregar ou contate o suporte se o problema persistir.
         </p>

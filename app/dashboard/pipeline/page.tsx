@@ -25,7 +25,9 @@ export default async function PipelinePage() {
       <div className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-slate-900">Pipeline</h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">{leadsResult.total} leads no total</p>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            {leadsResult.total} leads no total
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <CreateLeadModal stages={stages} />

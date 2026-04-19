@@ -14,7 +14,10 @@ export async function POST(request: NextRequest) {
 
   const rl = rateLimit(`upload:${user.id}`, RATE_LIMITS.upload);
   if (!rl.allowed) {
-    return NextResponse.json({ error: "Muitas requisicoes. Tente novamente em breve." }, { status: 429 });
+    return NextResponse.json(
+      { error: "Muitas requisicoes. Tente novamente em breve." },
+      { status: 429 }
+    );
   }
 
   const form = await request.formData();
@@ -25,10 +28,7 @@ export async function POST(request: NextRequest) {
 
   // Validate file size (max 100MB)
   if (file.size > 100 * 1024 * 1024) {
-    return NextResponse.json(
-      { error: "Arquivo muito grande. Maximo 100MB." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Arquivo muito grande. Maximo 100MB." }, { status: 400 });
   }
 
   // Validate file type
@@ -42,26 +42,16 @@ export async function POST(request: NextRequest) {
     "video/webm",
   ];
   if (!allowedTypes.includes(file.type)) {
-    return NextResponse.json(
-      { error: "Tipo de arquivo nao suportado" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Tipo de arquivo nao suportado" }, { status: 400 });
   }
 
   try {
     const ext = file.name.split(".").pop() || "bin";
-    const blob = await put(
-      `social/${user.id}/${Date.now()}.${ext}`,
-      file,
-      { access: "public" }
-    );
+    const blob = await put(`social/${user.id}/${Date.now()}.${ext}`, file, { access: "public" });
 
     return NextResponse.json({ url: blob.url });
   } catch (error) {
     console.error("Upload error:", error);
-    return NextResponse.json(
-      { error: "Erro ao fazer upload" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao fazer upload" }, { status: 500 });
   }
 }

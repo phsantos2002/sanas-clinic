@@ -5,7 +5,12 @@ import { TrendingDown, TrendingUp, Activity, Target, DollarSign, Info, Zap } fro
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getBenchmark, classifyMetric, METRIC_COLORS, type BenchmarkMetrics } from "@/lib/benchmarks";
+import {
+  getBenchmark,
+  classifyMetric,
+  METRIC_COLORS,
+  type BenchmarkMetrics,
+} from "@/lib/benchmarks";
 import { fmt, fmtBrl, type MetaCampaignFull } from "./shared";
 
 type StrategyProps = {
@@ -20,7 +25,13 @@ type StrategyProps = {
 
 // ─── Shared metric row ───
 
-function MetricRow({ label, value, formatted, metric, benchmark }: {
+function MetricRow({
+  label,
+  value,
+  formatted,
+  metric,
+  benchmark,
+}: {
   label: string;
   value: number;
   formatted: string;
@@ -51,8 +62,8 @@ function MetricRow({ label, value, formatted, metric, benchmark }: {
 
 export function LowestCostIndicators({ campaign, objective, segment, coverage }: StrategyProps) {
   const bench = getBenchmark(objective, segment, coverage);
-  const frequency = campaign.impressions > 0 && campaign.reach > 0
-    ? campaign.impressions / campaign.reach : 0;
+  const frequency =
+    campaign.impressions > 0 && campaign.reach > 0 ? campaign.impressions / campaign.reach : 0;
 
   return (
     <Card className="border-emerald-100 bg-gradient-to-br from-emerald-50/40 to-green-50/20 rounded-2xl shadow-sm">
@@ -62,17 +73,46 @@ export function LowestCostIndicators({ campaign, objective, segment, coverage }:
           Menor Custo — Indicadores
         </CardTitle>
         <p className="text-[10px] text-emerald-700/60">
-          Foco em volume: a Meta otimiza automaticamente para obter o máximo de resultados pelo menor custo possível.
+          Foco em volume: a Meta otimiza automaticamente para obter o máximo de resultados pelo
+          menor custo possível.
         </p>
       </CardHeader>
       <CardContent className="space-y-1">
-        <MetricRow label="CTR" value={campaign.ctr} formatted={`${fmt(campaign.ctr)}%`} metric="ctr" benchmark={bench} />
-        <MetricRow label="CPM" value={campaign.cpm} formatted={fmtBrl(campaign.cpm)} metric="cpm" benchmark={bench} />
-        <MetricRow label="CPC" value={campaign.cpc} formatted={fmtBrl(campaign.cpc)} metric="cpc" benchmark={bench} />
-        <MetricRow label="Frequência" value={frequency} formatted={`${fmt(frequency, 1)}x`} metric="frequency" benchmark={bench} />
+        <MetricRow
+          label="CTR"
+          value={campaign.ctr}
+          formatted={`${fmt(campaign.ctr)}%`}
+          metric="ctr"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="CPM"
+          value={campaign.cpm}
+          formatted={fmtBrl(campaign.cpm)}
+          metric="cpm"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="CPC"
+          value={campaign.cpc}
+          formatted={fmtBrl(campaign.cpc)}
+          metric="cpc"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="Frequência"
+          value={frequency}
+          formatted={`${fmt(frequency, 1)}x`}
+          metric="frequency"
+          benchmark={bench}
+        />
 
         <div className="pt-2 text-[10px] text-slate-500 space-y-1 border-t border-emerald-100">
-          <p><strong>Dica:</strong> Com Menor Custo, monitore o CPM e a frequência. Se o CPM subir, expanda o público. Se a frequência passar de {bench.frequency.average}x, renove criativos.</p>
+          <p>
+            <strong>Dica:</strong> Com Menor Custo, monitore o CPM e a frequência. Se o CPM subir,
+            expanda o público. Se a frequência passar de {bench.frequency.average}x, renove
+            criativos.
+          </p>
         </div>
       </CardContent>
     </Card>
@@ -81,10 +121,16 @@ export function LowestCostIndicators({ campaign, objective, segment, coverage }:
 
 // ─── 2) Cost Cap ───
 
-export function CostCapIndicators({ campaign, objective, segment, coverage, maxCostPerResult }: StrategyProps) {
+export function CostCapIndicators({
+  campaign,
+  objective,
+  segment,
+  coverage,
+  maxCostPerResult,
+}: StrategyProps) {
   const bench = getBenchmark(objective, segment, coverage);
-  const frequency = campaign.impressions > 0 && campaign.reach > 0
-    ? campaign.impressions / campaign.reach : 0;
+  const frequency =
+    campaign.impressions > 0 && campaign.reach > 0 ? campaign.impressions / campaign.reach : 0;
   const cpl = campaign.clicks > 0 ? campaign.spend / campaign.clicks : 0; // simplified CPL
 
   const capSet = maxCostPerResult && maxCostPerResult > 0;
@@ -102,13 +148,39 @@ export function CostCapIndicators({ campaign, objective, segment, coverage, maxC
         </p>
       </CardHeader>
       <CardContent className="space-y-1">
-        <MetricRow label="CPC" value={campaign.cpc} formatted={fmtBrl(campaign.cpc)} metric="cpc" benchmark={bench} />
-        <MetricRow label="CPM" value={campaign.cpm} formatted={fmtBrl(campaign.cpm)} metric="cpm" benchmark={bench} />
-        <MetricRow label="CTR" value={campaign.ctr} formatted={`${fmt(campaign.ctr)}%`} metric="ctr" benchmark={bench} />
-        <MetricRow label="Frequência" value={frequency} formatted={`${fmt(frequency, 1)}x`} metric="frequency" benchmark={bench} />
+        <MetricRow
+          label="CPC"
+          value={campaign.cpc}
+          formatted={fmtBrl(campaign.cpc)}
+          metric="cpc"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="CPM"
+          value={campaign.cpm}
+          formatted={fmtBrl(campaign.cpm)}
+          metric="cpm"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="CTR"
+          value={campaign.ctr}
+          formatted={`${fmt(campaign.ctr)}%`}
+          metric="ctr"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="Frequência"
+          value={frequency}
+          formatted={`${fmt(frequency, 1)}x`}
+          metric="frequency"
+          benchmark={bench}
+        />
 
         {capSet && (
-          <div className={`mt-2 p-3 rounded-xl border ${overCap ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
+          <div
+            className={`mt-2 p-3 rounded-xl border ${overCap ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}
+          >
             <div className="flex items-center gap-2">
               <Info className="h-3.5 w-3.5 flex-shrink-0" />
               <div>
@@ -126,7 +198,10 @@ export function CostCapIndicators({ campaign, objective, segment, coverage, maxC
         )}
 
         <div className="pt-2 text-[10px] text-slate-500 space-y-1 border-t border-blue-100">
-          <p><strong>Dica:</strong> Se a entrega cair, aumente o Cost Cap em 10-20%. Se o CPC ficar muito abaixo do cap, reduza gradualmente para encontrar o equilíbrio ideal.</p>
+          <p>
+            <strong>Dica:</strong> Se a entrega cair, aumente o Cost Cap em 10-20%. Se o CPC ficar
+            muito abaixo do cap, reduza gradualmente para encontrar o equilíbrio ideal.
+          </p>
         </div>
       </CardContent>
     </Card>
@@ -135,18 +210,39 @@ export function CostCapIndicators({ campaign, objective, segment, coverage, maxC
 
 // ─── 3) Bid Cap ───
 
-export function BidCapIndicators({ campaign, objective, segment, coverage, maxCostPerResult, bidValue }: StrategyProps) {
+export function BidCapIndicators({
+  campaign,
+  objective,
+  segment,
+  coverage,
+  maxCostPerResult,
+  bidValue,
+}: StrategyProps) {
   const bench = getBenchmark(objective, segment, coverage);
-  const frequency = campaign.impressions > 0 && campaign.reach > 0
-    ? campaign.impressions / campaign.reach : 0;
+  const frequency =
+    campaign.impressions > 0 && campaign.reach > 0 ? campaign.impressions / campaign.reach : 0;
   const [simValue, setSimValue] = useState("");
   const cpc = campaign.cpc;
 
   const simBid = parseFloat(simValue) || 0;
   const hasSimulation = simBid > 0 && cpc > 0;
   const deliveryRatio = hasSimulation ? Math.min(simBid / cpc, 1.5) : 0;
-  const deliveryLabel = deliveryRatio >= 1.2 ? "Alta" : deliveryRatio >= 0.8 ? "Normal" : deliveryRatio >= 0.5 ? "Limitada" : "Muito baixa";
-  const deliveryColor = deliveryRatio >= 1.2 ? "text-emerald-600" : deliveryRatio >= 0.8 ? "text-blue-600" : deliveryRatio >= 0.5 ? "text-amber-600" : "text-red-600";
+  const deliveryLabel =
+    deliveryRatio >= 1.2
+      ? "Alta"
+      : deliveryRatio >= 0.8
+        ? "Normal"
+        : deliveryRatio >= 0.5
+          ? "Limitada"
+          : "Muito baixa";
+  const deliveryColor =
+    deliveryRatio >= 1.2
+      ? "text-emerald-600"
+      : deliveryRatio >= 0.8
+        ? "text-blue-600"
+        : deliveryRatio >= 0.5
+          ? "text-amber-600"
+          : "text-red-600";
 
   const suggestedMin = cpc > 0 ? Math.max(0.01, cpc * 0.8) : null;
   const suggestedMax = cpc > 0 ? cpc * 1.5 : null;
@@ -160,14 +256,39 @@ export function BidCapIndicators({ campaign, objective, segment, coverage, maxCo
           Bid Cap — Indicadores
         </CardTitle>
         <p className="text-[10px] text-violet-700/60">
-          Controle de lance: define o valor máximo por leilão. Ideal para controlar custo com precisão.
+          Controle de lance: define o valor máximo por leilão. Ideal para controlar custo com
+          precisão.
         </p>
       </CardHeader>
       <CardContent className="space-y-2">
-        <MetricRow label="CPC" value={campaign.cpc} formatted={fmtBrl(campaign.cpc)} metric="cpc" benchmark={bench} />
-        <MetricRow label="CPM" value={campaign.cpm} formatted={fmtBrl(campaign.cpm)} metric="cpm" benchmark={bench} />
-        <MetricRow label="CTR" value={campaign.ctr} formatted={`${fmt(campaign.ctr)}%`} metric="ctr" benchmark={bench} />
-        <MetricRow label="Frequência" value={frequency} formatted={`${fmt(frequency, 1)}x`} metric="frequency" benchmark={bench} />
+        <MetricRow
+          label="CPC"
+          value={campaign.cpc}
+          formatted={fmtBrl(campaign.cpc)}
+          metric="cpc"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="CPM"
+          value={campaign.cpm}
+          formatted={fmtBrl(campaign.cpm)}
+          metric="cpm"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="CTR"
+          value={campaign.ctr}
+          formatted={`${fmt(campaign.ctr)}%`}
+          metric="ctr"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="Frequência"
+          value={frequency}
+          formatted={`${fmt(frequency, 1)}x`}
+          metric="frequency"
+          benchmark={bench}
+        />
 
         {suggestedMin != null && suggestedMax != null && suggestedIdeal != null && (
           <div className="bg-white rounded-xl p-3 border border-violet-200 space-y-2">
@@ -186,9 +307,11 @@ export function BidCapIndicators({ campaign, objective, segment, coverage, maxCo
             {bidValue && bidValue > 0 && (
               <p className="text-[10px] text-slate-600">
                 Seu lance atual: <strong>{fmtBrl(bidValue)}</strong>
-                {bidValue < suggestedMin ? " — muito baixo, risco de entrega limitada" :
-                 bidValue > suggestedMax ? " — acima do recomendado, otimize para reduzir" :
-                 " — dentro da faixa ideal"}
+                {bidValue < suggestedMin
+                  ? " — muito baixo, risco de entrega limitada"
+                  : bidValue > suggestedMax
+                    ? " — acima do recomendado, otimize para reduzir"
+                    : " — dentro da faixa ideal"}
               </p>
             )}
           </div>
@@ -220,10 +343,17 @@ export function BidCapIndicators({ campaign, objective, segment, coverage, maxCo
 
 // ─── 4) ROAS Min ───
 
-export function RoasMinIndicators({ campaign, objective, segment, coverage, maxCostPerResult, conversionValue }: StrategyProps) {
+export function RoasMinIndicators({
+  campaign,
+  objective,
+  segment,
+  coverage,
+  maxCostPerResult,
+  conversionValue,
+}: StrategyProps) {
   const bench = getBenchmark(objective, segment, coverage);
-  const frequency = campaign.impressions > 0 && campaign.reach > 0
-    ? campaign.impressions / campaign.reach : 0;
+  const frequency =
+    campaign.impressions > 0 && campaign.reach > 0 ? campaign.impressions / campaign.reach : 0;
 
   const targetRoas = maxCostPerResult ?? 0; // maxCostPerResult = ROAS mínimo desejado
   const avgValue = conversionValue ?? 0;
@@ -244,25 +374,57 @@ export function RoasMinIndicators({ campaign, objective, segment, coverage, maxC
           ROAS Mínimo — Indicadores
         </CardTitle>
         <p className="text-[10px] text-amber-700/60">
-          Foco em retorno: a Meta otimiza para atingir o ROAS mínimo definido, priorizando conversões de maior valor.
+          Foco em retorno: a Meta otimiza para atingir o ROAS mínimo definido, priorizando
+          conversões de maior valor.
         </p>
       </CardHeader>
       <CardContent className="space-y-1">
-        <MetricRow label="CPC" value={campaign.cpc} formatted={fmtBrl(campaign.cpc)} metric="cpc" benchmark={bench} />
-        <MetricRow label="CPM" value={campaign.cpm} formatted={fmtBrl(campaign.cpm)} metric="cpm" benchmark={bench} />
-        <MetricRow label="CTR" value={campaign.ctr} formatted={`${fmt(campaign.ctr)}%`} metric="ctr" benchmark={bench} />
-        <MetricRow label="Frequência" value={frequency} formatted={`${fmt(frequency, 1)}x`} metric="frequency" benchmark={bench} />
+        <MetricRow
+          label="CPC"
+          value={campaign.cpc}
+          formatted={fmtBrl(campaign.cpc)}
+          metric="cpc"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="CPM"
+          value={campaign.cpm}
+          formatted={fmtBrl(campaign.cpm)}
+          metric="cpm"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="CTR"
+          value={campaign.ctr}
+          formatted={`${fmt(campaign.ctr)}%`}
+          metric="ctr"
+          benchmark={bench}
+        />
+        <MetricRow
+          label="Frequência"
+          value={frequency}
+          formatted={`${fmt(frequency, 1)}x`}
+          metric="frequency"
+          benchmark={bench}
+        />
 
         {targetRoas > 0 && (
-          <div className={`mt-2 p-3 rounded-xl border ${roasOk ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}>
+          <div
+            className={`mt-2 p-3 rounded-xl border ${roasOk ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}
+          >
             <p className="text-xs font-semibold">
               ROAS Meta: {fmt(targetRoas, 1)}x
               {avgValue > 0 && <> | Valor/conversão: {fmtBrl(avgValue)}</>}
             </p>
             {avgValue > 0 && spend > 0 && (
               <p className="text-[10px] text-slate-600 mt-0.5">
-                ROAS estimado: <strong className={roasOk ? "text-emerald-600" : "text-amber-600"}>{fmt(currentRoas, 1)}x</strong>
-                {roasOk ? " — acima da meta" : " — abaixo da meta, otimize criativos ou aumente o valor médio"}
+                ROAS estimado:{" "}
+                <strong className={roasOk ? "text-emerald-600" : "text-amber-600"}>
+                  {fmt(currentRoas, 1)}x
+                </strong>
+                {roasOk
+                  ? " — acima da meta"
+                  : " — abaixo da meta, otimize criativos ou aumente o valor médio"}
               </p>
             )}
           </div>
@@ -271,13 +433,17 @@ export function RoasMinIndicators({ campaign, objective, segment, coverage, maxC
         {avgValue === 0 && (
           <div className="mt-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
             <p className="text-[10px] text-slate-500">
-              Configure o <strong>Valor Médio por Conversão</strong> em Configurações para ver o ROAS estimado.
+              Configure o <strong>Valor Médio por Conversão</strong> em Configurações para ver o
+              ROAS estimado.
             </p>
           </div>
         )}
 
         <div className="pt-2 text-[10px] text-slate-500 space-y-1 border-t border-amber-100">
-          <p><strong>Dica:</strong> Com ROAS Mínimo, a Meta pode reduzir a entrega para manter o retorno. Se o volume cair, considere diminuir a meta de ROAS em 0.5x e monitore.</p>
+          <p>
+            <strong>Dica:</strong> Com ROAS Mínimo, a Meta pode reduzir a entrega para manter o
+            retorno. Se o volume cair, considere diminuir a meta de ROAS em 0.5x e monitore.
+          </p>
         </div>
       </CardContent>
     </Card>

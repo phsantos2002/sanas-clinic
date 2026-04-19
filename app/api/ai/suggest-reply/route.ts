@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
 
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
@@ -15,11 +17,13 @@ export async function POST(req: NextRequest) {
   const aiConfig = await prisma.aIConfig.findUnique({ where: { userId: dbUser.id } });
   const apiKey = aiConfig?.openaiKey || aiConfig?.apiKey;
   if (!apiKey) {
-    return NextResponse.json({ suggestions: [
-      "Ola! Como posso ajudar?",
-      "Obrigado pelo contato! Vou verificar isso para voce.",
-      "Posso agendar um horario para voce?",
-    ]});
+    return NextResponse.json({
+      suggestions: [
+        "Ola! Como posso ajudar?",
+        "Obrigado pelo contato! Vou verificar isso para voce.",
+        "Posso agendar um horario para voce?",
+      ],
+    });
   }
 
   try {
@@ -57,10 +61,12 @@ Responda em portugues brasileiro, tom ${(aiConfig?.brandIdentity as Record<strin
 
     return NextResponse.json({ suggestions: suggestions.slice(0, 3) });
   } catch {
-    return NextResponse.json({ suggestions: [
-      "Ola! Como posso ajudar?",
-      "Vou verificar isso para voce!",
-      "Gostaria de agendar um horario?",
-    ]});
+    return NextResponse.json({
+      suggestions: [
+        "Ola! Como posso ajudar?",
+        "Vou verificar isso para voce!",
+        "Gostaria de agendar um horario?",
+      ],
+    });
   }
 }

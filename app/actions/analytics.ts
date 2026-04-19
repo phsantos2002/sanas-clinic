@@ -88,14 +88,25 @@ export async function getAnalytics(): Promise<FullAnalytics | null> {
   const qualifiedCount = qualifiedStage ? (countByStage[qualifiedStage.id] ?? 0) : 0;
   const conversionRate = totalLeads > 0 ? Math.round((clientCount / totalLeads) * 100) : 0;
 
-  const pct = (num: number, den: number) =>
-    den > 0 ? Math.round((num / den) * 100) : 0;
+  const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 100) : 0);
 
   const funnelSteps = [
     { label: "Leads captados", count: totalLeads, rate: 100 },
-    { label: "Conversas WhatsApp", count: leadsWithConversation, rate: pct(leadsWithConversation, totalLeads) },
-    { label: "Qualificados", count: qualifiedCount, rate: pct(qualifiedCount, leadsWithConversation || totalLeads) },
-    { label: "Agendados", count: scheduledCount, rate: pct(scheduledCount, qualifiedCount || totalLeads) },
+    {
+      label: "Conversas WhatsApp",
+      count: leadsWithConversation,
+      rate: pct(leadsWithConversation, totalLeads),
+    },
+    {
+      label: "Qualificados",
+      count: qualifiedCount,
+      rate: pct(qualifiedCount, leadsWithConversation || totalLeads),
+    },
+    {
+      label: "Agendados",
+      count: scheduledCount,
+      rate: pct(scheduledCount, qualifiedCount || totalLeads),
+    },
     { label: "Clientes", count: clientCount, rate: pct(clientCount, scheduledCount || totalLeads) },
   ];
 

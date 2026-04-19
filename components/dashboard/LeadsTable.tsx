@@ -30,7 +30,15 @@ function formatDateTime(date: Date) {
   };
 }
 
-function ActionCell({ lead, onClickLead, onEditLead }: { lead: Lead; onClickLead: (id: string) => void; onEditLead?: (id: string) => void }) {
+function ActionCell({
+  lead,
+  onClickLead,
+  onEditLead,
+}: {
+  lead: Lead;
+  onClickLead: (id: string) => void;
+  onEditLead?: (id: string) => void;
+}) {
   const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -64,18 +72,36 @@ function ActionCell({ lead, onClickLead, onEditLead }: { lead: Lead; onClickLead
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44 rounded-xl">
-        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onClickLead(lead.id); }}>
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            onClickLead(lead.id);
+          }}
+        >
           <Eye className="h-3.5 w-3.5 mr-2" /> Ver Detalhes
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/chat?leadId=${lead.id}`); }}>
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/dashboard/chat?leadId=${lead.id}`);
+          }}
+        >
           <MessageCircle className="h-3.5 w-3.5 mr-2" /> Abrir Chat
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEditLead?.(lead.id); }}>
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            onEditLead?.(lead.id);
+          }}
+        >
           <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete();
+          }}
           className="text-red-600 focus:text-red-600 focus:bg-red-50"
           disabled={deleting}
         >
@@ -102,11 +128,21 @@ export function LeadsTable({ leads, onClickLead, onEditLead }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/60">
-              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Contato</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Origem</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Etapa da Jornada</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Primeira Mensagem</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Ultima Mensagem</th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Contato
+              </th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Origem
+              </th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Etapa da Jornada
+              </th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Primeira Mensagem
+              </th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Ultima Mensagem
+              </th>
               <th className="w-12"></th>
             </tr>
           </thead>
@@ -125,15 +161,21 @@ export function LeadsTable({ leads, onClickLead, onEditLead }: Props) {
                 >
                   <td className="px-5 py-3.5">
                     <div>
-                      <p className="font-semibold text-slate-900 text-sm group-hover:text-indigo-600 transition-colors">{lead.name}</p>
+                      <p className="font-semibold text-slate-900 text-sm group-hover:text-indigo-600 transition-colors">
+                        {lead.name}
+                      </p>
                       <p className="text-xs text-slate-400 mt-0.5">{lead.phone}</p>
-                      {lead.email && <p className="text-[11px] text-slate-300 mt-0.5">{lead.email}</p>}
+                      {lead.email && (
+                        <p className="text-[11px] text-slate-300 mt-0.5">{lead.email}</p>
+                      )}
                     </div>
                   </td>
 
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2.5">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${config?.bg ?? "bg-slate-50"}`}>
+                      <div
+                        className={`flex items-center justify-center w-8 h-8 rounded-lg ${config?.bg ?? "bg-slate-50"}`}
+                      >
                         <SourceIcon source={lead.source} size={18} />
                       </div>
                       <div>
@@ -141,9 +183,7 @@ export function LeadsTable({ leads, onClickLead, onEditLead }: Props) {
                           {config?.label ?? "Não rastreada"}
                         </p>
                         <p className="text-[11px] text-slate-400">
-                          {lead.campaign
-                            ? `Via ${lead.campaign}`
-                            : (config?.subtitle ?? "")}
+                          {lead.campaign ? `Via ${lead.campaign}` : (config?.subtitle ?? "")}
                         </p>
                       </div>
                     </div>
@@ -151,7 +191,9 @@ export function LeadsTable({ leads, onClickLead, onEditLead }: Props) {
 
                   <td className="px-5 py-3.5">
                     {lead.stage ? (
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${stageColor?.bg ?? "bg-slate-100"} ${stageColor?.text ?? "text-slate-700"}`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${stageColor?.bg ?? "bg-slate-100"} ${stageColor?.text ?? "text-slate-700"}`}
+                      >
                         {lead.stage.name}
                       </span>
                     ) : (

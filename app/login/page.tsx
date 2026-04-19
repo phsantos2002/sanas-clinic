@@ -31,11 +31,15 @@ export default async function LoginPage({
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 p-8 space-y-6">
           <div className="text-center space-y-2">
-            <Image src="/logo.png" alt="Sanas Pulse" width={64} height={64} className="mx-auto rounded-2xl" />
+            <Image
+              src="/logo.png"
+              alt="Sanas Pulse"
+              width={64}
+              height={64}
+              className="mx-auto rounded-2xl"
+            />
             <h1 className="text-xl font-bold text-slate-900">Bem-vindo</h1>
-            <p className="text-slate-400 text-sm">
-              CRM de Performance para quem anuncia no Meta
-            </p>
+            <p className="text-slate-400 text-sm">CRM de Performance para quem anuncia no Meta</p>
           </div>
 
           {errorMsg && (
@@ -54,11 +58,23 @@ export default async function LoginPage({
             <form action={signInWithEmail} className="space-y-3">
               <div className="space-y-1.5">
                 <Label className="text-slate-600 text-xs font-medium">Email</Label>
-                <Input name="email" type="email" placeholder="seu@email.com" required className="rounded-xl h-10" />
+                <Input
+                  name="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  required
+                  className="rounded-xl h-10"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-slate-600 text-xs font-medium">Senha</Label>
-                <Input name="password" type="password" placeholder="Sua senha" required className="rounded-xl h-10" />
+                <Input
+                  name="password"
+                  type="password"
+                  placeholder="Sua senha"
+                  required
+                  className="rounded-xl h-10"
+                />
               </div>
               <Button type="submit" className="w-full h-10 rounded-xl font-semibold">
                 Entrar
@@ -71,7 +87,13 @@ export default async function LoginPage({
                   Esqueci minha senha
                 </summary>
                 <form action={resetPassword} className="mt-3 space-y-2">
-                  <Input name="email" type="email" placeholder="seu@email.com" required className="rounded-xl h-10" />
+                  <Input
+                    name="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    required
+                    className="rounded-xl h-10"
+                  />
                   <Button type="submit" variant="outline" size="sm" className="w-full rounded-xl">
                     Enviar email de recuperação
                   </Button>
@@ -89,9 +111,25 @@ export default async function LoginPage({
             </div>
 
             <form action={signUpWithEmail} className="space-y-3">
-              <Input name="email" type="email" placeholder="seu@email.com" required className="rounded-xl h-10" />
-              <Input name="password" type="password" placeholder="Senha (mín. 6 caracteres)" required className="rounded-xl h-10" />
-              <Button type="submit" variant="outline" className="w-full h-10 rounded-xl font-medium">
+              <Input
+                name="email"
+                type="email"
+                placeholder="seu@email.com"
+                required
+                className="rounded-xl h-10"
+              />
+              <Input
+                name="password"
+                type="password"
+                placeholder="Senha (mín. 6 caracteres)"
+                required
+                className="rounded-xl h-10"
+              />
+              <Button
+                type="submit"
+                variant="outline"
+                className="w-full h-10 rounded-xl font-medium"
+              >
                 Criar conta
               </Button>
             </form>

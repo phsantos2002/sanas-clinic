@@ -15,7 +15,16 @@ export function PostPreviewer({ caption, mediaUrl, profileName = "seu_perfil", p
 
   const tabs = platforms.map((p) => ({
     id: p,
-    label: p === "instagram" ? "Instagram" : p === "facebook" ? "Facebook" : p === "linkedin" ? "LinkedIn" : p === "tiktok" ? "TikTok" : p,
+    label:
+      p === "instagram"
+        ? "Instagram"
+        : p === "facebook"
+          ? "Facebook"
+          : p === "linkedin"
+            ? "LinkedIn"
+            : p === "tiktok"
+              ? "TikTok"
+              : p,
   }));
 
   return (
@@ -28,7 +37,9 @@ export function PostPreviewer({ caption, mediaUrl, profileName = "seu_perfil", p
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-                activeTab === tab.id ? "text-indigo-700 border-b-2 border-indigo-600 bg-indigo-50/50" : "text-slate-400 hover:text-slate-600"
+                activeTab === tab.id
+                  ? "text-indigo-700 border-b-2 border-indigo-600 bg-indigo-50/50"
+                  : "text-slate-400 hover:text-slate-600"
               }`}
             >
               {tab.label}
@@ -44,7 +55,9 @@ export function PostPreviewer({ caption, mediaUrl, profileName = "seu_perfil", p
             <div className="flex items-center gap-2 mb-2">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-violet-500 p-0.5">
                 <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
-                  <span className="text-[8px] font-bold text-slate-700">{profileName.charAt(0).toUpperCase()}</span>
+                  <span className="text-[8px] font-bold text-slate-700">
+                    {profileName.charAt(0).toUpperCase()}
+                  </span>
                 </div>
               </div>
               <span className="text-xs font-semibold text-slate-900">{profileName}</span>
@@ -69,8 +82,8 @@ export function PostPreviewer({ caption, mediaUrl, profileName = "seu_perfil", p
             </div>
             {/* Caption */}
             <p className="text-xs text-slate-800 leading-relaxed">
-              <span className="font-semibold">{profileName}</span>{" "}
-              {caption.slice(0, 200)}{caption.length > 200 ? "..." : ""}
+              <span className="font-semibold">{profileName}</span> {caption.slice(0, 200)}
+              {caption.length > 200 ? "..." : ""}
             </p>
           </div>
         )}
@@ -80,7 +93,9 @@ export function PostPreviewer({ caption, mediaUrl, profileName = "seu_perfil", p
             {/* Header */}
             <div className="flex items-center gap-2 mb-3">
               <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-                <span className="text-xs font-bold text-white">{profileName.charAt(0).toUpperCase()}</span>
+                <span className="text-xs font-bold text-white">
+                  {profileName.charAt(0).toUpperCase()}
+                </span>
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">{profileName}</p>
@@ -115,7 +130,9 @@ export function PostPreviewer({ caption, mediaUrl, profileName = "seu_perfil", p
 
         {(activeTab === "linkedin" || activeTab === "tiktok") && (
           <div className="max-w-[320px] mx-auto py-8 text-center">
-            <p className="text-xs text-slate-400">Preview de {activeTab === "linkedin" ? "LinkedIn" : "TikTok"}</p>
+            <p className="text-xs text-slate-400">
+              Preview de {activeTab === "linkedin" ? "LinkedIn" : "TikTok"}
+            </p>
             <p className="text-[10px] text-slate-300 mt-1">Em breve</p>
           </div>
         )}

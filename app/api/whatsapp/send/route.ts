@@ -20,19 +20,44 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
 
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
   if (!dbUser) return NextResponse.json({ error: "Usuario nao encontrado" }, { status: 401 });
 
   const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-  if (!config || config.provider !== "uazapi" || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+  if (
+    !config ||
+    config.provider !== "uazapi" ||
+    !config.uazapiServerUrl ||
+    !config.uazapiInstanceToken
+  ) {
     return NextResponse.json({ error: "Uazapi nao configurado" }, { status: 400 });
   }
 
   const body = await req.json();
-  const { number, numbers, type, text, file, caption, fileName, quotedMsgId, lat, lng, name, address, contactName, contactPhone, question, options, delay } = body;
+  const {
+    number,
+    numbers,
+    type,
+    text,
+    file,
+    caption,
+    fileName,
+    quotedMsgId,
+    lat,
+    lng,
+    name,
+    address,
+    contactName,
+    contactPhone,
+    question,
+    options,
+    delay,
+  } = body;
 
   // Bulk send
   if (type === "bulk" && Array.isArray(numbers)) {
@@ -81,21 +106,27 @@ export async function POST(req: NextRequest) {
       }
 
       case "location": {
-        if (!lat || !lng) return NextResponse.json({ error: "lat e lng obrigatorios" }, { status: 400 });
+        if (!lat || !lng)
+          return NextResponse.json({ error: "lat e lng obrigatorios" }, { status: 400 });
         endpoint = "/send/location";
         payload = { number: phone, lat, lng, name: name || "", address: address || "" };
         break;
       }
 
       case "contact": {
-        if (!contactName || !contactPhone) return NextResponse.json({ error: "contactName e contactPhone obrigatorios" }, { status: 400 });
+        if (!contactName || !contactPhone)
+          return NextResponse.json(
+            { error: "contactName e contactPhone obrigatorios" },
+            { status: 400 }
+          );
         endpoint = "/send/contact";
         payload = { number: phone, contactName, contactNumber: contactPhone.replace(/\D/g, "") };
         break;
       }
 
       case "poll": {
-        if (!question || !Array.isArray(options)) return NextResponse.json({ error: "question e options obrigatorios" }, { status: 400 });
+        if (!question || !Array.isArray(options))
+          return NextResponse.json({ error: "question e options obrigatorios" }, { status: 400 });
         endpoint = "/send/poll";
         payload = { number: phone, question, options };
         break;

@@ -27,15 +27,11 @@ export default function DashboardError({
           <AlertTriangle className="h-8 w-8 text-red-500" />
         </div>
 
-        <h1 className="text-xl font-bold text-slate-800 mb-2">
-          Algo deu errado
-        </h1>
+        <h1 className="text-xl font-bold text-slate-800 mb-2">Algo deu errado</h1>
         <p className="text-sm text-slate-500 mb-6">
           Ocorreu um erro inesperado. Tente recarregar a página ou volte ao início.
           {error.digest && (
-            <span className="block mt-1 text-xs text-slate-400">
-              Código: {error.digest}
-            </span>
+            <span className="block mt-1 text-xs text-slate-400">Código: {error.digest}</span>
           )}
         </p>
 

@@ -19,7 +19,7 @@ type WhatsAppConfig = {
 export async function sendMessage(
   config: WhatsAppConfig,
   to: string,
-  text: string,
+  text: string
 ): Promise<{ success: boolean; error?: string }> {
   if (config.provider === "uazapi") {
     if (!config.uazapiServerUrl || !config.uazapiInstanceToken) {
@@ -29,7 +29,7 @@ export async function sendMessage(
       config.uazapiServerUrl,
       config.uazapiInstanceToken,
       to,
-      text,
+      text
     );
     return { success: res.ok, error: res.ok ? undefined : res.error };
   }

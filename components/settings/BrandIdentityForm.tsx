@@ -98,9 +98,7 @@ export function BrandIdentityForm({ initial }: { initial: BrandIdentity }) {
     <div className="space-y-4">
       {/* Logo Upload */}
       <div>
-        <label className="text-sm font-medium text-slate-700 mb-2 block">
-          Logo da empresa
-        </label>
+        <label className="text-sm font-medium text-slate-700 mb-2 block">Logo da empresa</label>
         <div className="flex items-center gap-4">
           {brand.logo_url ? (
             <div className="relative h-16 w-16 rounded-xl overflow-hidden border border-slate-200">
@@ -145,9 +143,7 @@ export function BrandIdentityForm({ initial }: { initial: BrandIdentity }) {
       {/* Colors */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-sm font-medium text-slate-700 mb-1 block">
-            Cor primaria
-          </label>
+          <label className="text-sm font-medium text-slate-700 mb-1 block">Cor primaria</label>
           <div className="flex items-center gap-2">
             <input
               type="color"
@@ -165,9 +161,7 @@ export function BrandIdentityForm({ initial }: { initial: BrandIdentity }) {
           </div>
         </div>
         <div>
-          <label className="text-sm font-medium text-slate-700 mb-1 block">
-            Cor secundaria
-          </label>
+          <label className="text-sm font-medium text-slate-700 mb-1 block">Cor secundaria</label>
           <div className="flex items-center gap-2">
             <input
               type="color"
@@ -188,9 +182,7 @@ export function BrandIdentityForm({ initial }: { initial: BrandIdentity }) {
 
       {/* Font Selector */}
       <div>
-        <label className="text-sm font-medium text-slate-700 mb-1 block">
-          Fonte preferida
-        </label>
+        <label className="text-sm font-medium text-slate-700 mb-1 block">Fonte preferida</label>
         <select
           value={brand.font || "Inter"}
           onChange={(e) => update("font", e.target.value)}
@@ -206,9 +198,7 @@ export function BrandIdentityForm({ initial }: { initial: BrandIdentity }) {
 
       {/* Business Type */}
       <div>
-        <label className="text-sm font-medium text-slate-700 mb-1 block">
-          Tipo de negocio
-        </label>
+        <label className="text-sm font-medium text-slate-700 mb-1 block">Tipo de negocio</label>
         <select
           value={brand.business_type || ""}
           onChange={(e) => update("business_type", e.target.value)}
@@ -224,9 +214,7 @@ export function BrandIdentityForm({ initial }: { initial: BrandIdentity }) {
 
       {/* Tone */}
       <div>
-        <label className="text-sm font-medium text-slate-700 mb-1 block">
-          Tom de voz padrao
-        </label>
+        <label className="text-sm font-medium text-slate-700 mb-1 block">Tom de voz padrao</label>
         <select
           value={brand.default_tone || "profissional"}
           onChange={(e) => update("default_tone", e.target.value)}
@@ -242,9 +230,7 @@ export function BrandIdentityForm({ initial }: { initial: BrandIdentity }) {
 
       {/* Target Audience */}
       <div>
-        <label className="text-sm font-medium text-slate-700 mb-1 block">
-          Publico-alvo
-        </label>
+        <label className="text-sm font-medium text-slate-700 mb-1 block">Publico-alvo</label>
         <textarea
           value={brand.target_audience || ""}
           onChange={(e) => update("target_audience", e.target.value)}
@@ -273,7 +259,10 @@ export function BrandIdentityForm({ initial }: { initial: BrandIdentity }) {
               </div>
             )}
             <div>
-              <p className="font-semibold text-slate-900 text-sm" style={{ fontFamily: brand.font || "Inter" }}>
+              <p
+                className="font-semibold text-slate-900 text-sm"
+                style={{ fontFamily: brand.font || "Inter" }}
+              >
                 Sua Empresa
               </p>
               <p className="text-xs text-slate-400">
@@ -296,7 +285,8 @@ export function BrandIdentityForm({ initial }: { initial: BrandIdentity }) {
             </div>
           </div>
           <p className="text-xs text-slate-400 mt-2" style={{ fontFamily: brand.font || "Inter" }}>
-            Fonte: {brand.font || "Inter"} — Tom: {TONES.find((t) => t.value === (brand.default_tone || "profissional"))?.label}
+            Fonte: {brand.font || "Inter"} — Tom:{" "}
+            {TONES.find((t) => t.value === (brand.default_tone || "profissional"))?.label}
           </p>
         </div>
       </div>

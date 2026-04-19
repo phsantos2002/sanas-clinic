@@ -34,8 +34,8 @@ const IS_PROD = process.env.NODE_ENV === "production";
 // Cores ANSI apenas em dev
 const COLORS: Record<LogLevel, string> = {
   debug: "\x1b[36m", // cyan
-  info: "\x1b[32m",  // green
-  warn: "\x1b[33m",  // yellow
+  info: "\x1b[32m", // green
+  warn: "\x1b[33m", // yellow
   error: "\x1b[31m", // red
 };
 const RESET = "\x1b[0m";
@@ -117,8 +117,8 @@ export interface Logger {
 function createLogger(bindings: LogContext = {}): Logger {
   return {
     debug: (event, ctx = {}, error) => emit("debug", event, ctx, error, bindings),
-    info:  (event, ctx = {}, error) => emit("info",  event, ctx, error, bindings),
-    warn:  (event, ctx = {}, error) => emit("warn",  event, ctx, error, bindings),
+    info: (event, ctx = {}, error) => emit("info", event, ctx, error, bindings),
+    warn: (event, ctx = {}, error) => emit("warn", event, ctx, error, bindings),
     error: (event, ctx = {}, error) => emit("error", event, ctx, error, bindings),
     child: (childBindings) => createLogger({ ...bindings, ...childBindings }),
   };

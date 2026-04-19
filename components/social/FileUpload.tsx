@@ -29,26 +29,29 @@ export function FileUpload(props: FileUploadProps) {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const uploadFile = useCallback(async (file: File): Promise<string | null> => {
-    const maxSize = (props.maxSizeMB || 100) * 1024 * 1024;
-    if (file.size > maxSize) {
-      alert(`Arquivo muito grande. Maximo ${props.maxSizeMB || 100}MB.`);
-      return null;
-    }
+  const uploadFile = useCallback(
+    async (file: File): Promise<string | null> => {
+      const maxSize = (props.maxSizeMB || 100) * 1024 * 1024;
+      if (file.size > maxSize) {
+        alert(`Arquivo muito grande. Maximo ${props.maxSizeMB || 100}MB.`);
+        return null;
+      }
 
-    const form = new FormData();
-    form.append("file", file);
+      const form = new FormData();
+      form.append("file", file);
 
-    const res = await fetch("/api/upload", { method: "POST", body: form });
-    if (!res.ok) {
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || "Erro ao enviar arquivo");
+        return null;
+      }
+
       const data = await res.json();
-      alert(data.error || "Erro ao enviar arquivo");
-      return null;
-    }
-
-    const data = await res.json();
-    return data.url as string;
-  }, [props.maxSizeMB]);
+      return data.url as string;
+    },
+    [props.maxSizeMB]
+  );
 
   const handleFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -56,15 +59,15 @@ export function FileUpload(props: FileUploadProps) {
 
       if (props.mode === "single") {
         const file = files[0];
-        if (!file) { setUploading(false); return; }
+        if (!file) {
+          setUploading(false);
+          return;
+        }
         const url = await uploadFile(file);
         if (url) props.onChange(url, file);
       } else {
         const maxFiles = props.maxFiles || 10;
-        const filesToUpload = Array.from(files).slice(
-          0,
-          maxFiles - props.value.length
-        );
+        const filesToUpload = Array.from(files).slice(0, maxFiles - props.value.length);
         const urls: string[] = [];
         for (const file of filesToUpload) {
           const url = await uploadFile(file);
@@ -103,18 +106,9 @@ export function FileUpload(props: FileUploadProps) {
       return (
         <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
           {isVideoUrl ? (
-            <video
-              src={props.value!}
-              className="w-full h-40 object-cover"
-              controls
-              muted
-            />
+            <video src={props.value!} className="w-full h-40 object-cover" controls muted />
           ) : (
-            <img
-              src={props.value!}
-              alt="Preview"
-              className="w-full h-40 object-cover"
-            />
+            <img src={props.value!} alt="Preview" className="w-full h-40 object-cover" />
           )}
           <button
             onClick={() => props.onChange(null)}
@@ -128,7 +122,10 @@ export function FileUpload(props: FileUploadProps) {
 
     return (
       <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
@@ -160,12 +157,8 @@ export function FileUpload(props: FileUploadProps) {
               <ImageIcon className="h-8 w-8 text-slate-300" />
             )}
             <div>
-              <p className="text-sm text-slate-600 font-medium">
-                Arraste ou clique para enviar
-              </p>
-              {props.hint && (
-                <p className="text-xs text-slate-400 mt-0.5">{props.hint}</p>
-              )}
+              <p className="text-sm text-slate-600 font-medium">Arraste ou clique para enviar</p>
+              {props.hint && <p className="text-xs text-slate-400 mt-0.5">{props.hint}</p>}
             </div>
           </div>
         )}
@@ -202,7 +195,10 @@ export function FileUpload(props: FileUploadProps) {
 
         {canAddMore && (
           <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
@@ -235,9 +231,7 @@ export function FileUpload(props: FileUploadProps) {
           </div>
         )}
       </div>
-      {props.hint && (
-        <p className="text-xs text-slate-400">{props.hint}</p>
-      )}
+      {props.hint && <p className="text-xs text-slate-400">{props.hint}</p>}
     </div>
   );
 }

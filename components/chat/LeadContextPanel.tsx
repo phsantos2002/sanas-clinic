@@ -81,7 +81,9 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
     return (
       <div className="w-72 border-l border-slate-200 bg-white p-4 hidden lg:flex flex-col items-center justify-center">
         <p className="text-xs text-slate-400 text-center">Lead nao encontrado no CRM</p>
-        <button onClick={onClose} className="mt-2 text-xs text-indigo-600 hover:text-indigo-800">Fechar</button>
+        <button onClick={onClose} className="mt-2 text-xs text-indigo-600 hover:text-indigo-800">
+          Fechar
+        </button>
       </div>
     );
   }
@@ -100,11 +102,17 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
         {/* Identity */}
         <div>
           <div className="flex items-center gap-3">
-            <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white ${
-              lead.scoreLabel === "vip" ? "bg-violet-500" :
-              lead.scoreLabel === "quente" ? "bg-rose-500" :
-              lead.scoreLabel === "morno" ? "bg-amber-500" : "bg-slate-400"
-            }`}>
+            <div
+              className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white ${
+                lead.scoreLabel === "vip"
+                  ? "bg-violet-500"
+                  : lead.scoreLabel === "quente"
+                    ? "bg-rose-500"
+                    : lead.scoreLabel === "morno"
+                      ? "bg-amber-500"
+                      : "bg-slate-400"
+              }`}
+            >
               {lead.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -129,7 +137,9 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
         {/* Stage */}
         {lead.stage && (
           <div>
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Etapa</p>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
+              Etapa
+            </p>
             <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
               <ArrowRight className="h-3.5 w-3.5 text-blue-500" />
               <span className="text-sm font-medium text-blue-700">{lead.stage.name}</span>
@@ -139,7 +149,9 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
 
         {/* AI Toggle */}
         <div>
-          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Assistente IA</p>
+          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
+            Assistente IA
+          </p>
           <button
             onClick={handleToggleAI}
             className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -155,10 +167,15 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
 
         {/* Tags */}
         <div>
-          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Tags</p>
+          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
+            Tags
+          </p>
           <div className="flex flex-wrap gap-1 mb-2">
             {lead.tags.map((tag: string) => (
-              <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 text-violet-600 text-xs rounded">
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 text-violet-600 text-xs rounded"
+              >
                 {tag}
                 <button onClick={() => handleRemoveTag(tag)} className="hover:text-red-500">
                   <Trash2 className="h-2.5 w-2.5" />
@@ -183,7 +200,9 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
 
         {/* Notes */}
         <div>
-          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Notas</p>
+          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
+            Notas
+          </p>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -197,17 +216,24 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
         {/* Timeline */}
         {lead.stageHistory.length > 0 && (
           <div>
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Historico</p>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
+              Historico
+            </p>
             <div className="space-y-1.5">
-              {lead.stageHistory.slice(0, 5).map((h: { id: string; stage: { name: string }; createdAt: Date }) => (
-                <div key={h.id} className="flex items-center gap-2 text-xs">
-                  <Clock className="h-3 w-3 text-slate-300 shrink-0" />
-                  <span className="text-slate-600">{h.stage.name}</span>
-                  <span className="text-slate-400 text-[10px] ml-auto">
-                    {new Date(h.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                  </span>
-                </div>
-              ))}
+              {lead.stageHistory
+                .slice(0, 5)
+                .map((h: { id: string; stage: { name: string }; createdAt: Date }) => (
+                  <div key={h.id} className="flex items-center gap-2 text-xs">
+                    <Clock className="h-3 w-3 text-slate-300 shrink-0" />
+                    <span className="text-slate-600">{h.stage.name}</span>
+                    <span className="text-slate-400 text-[10px] ml-auto">
+                      {new Date(h.createdAt).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                ))}
             </div>
           </div>
         )}
@@ -215,11 +241,25 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
         {/* Attribution */}
         {lead.campaign && (
           <div>
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Atribuicao</p>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
+              Atribuicao
+            </p>
             <div className="text-xs text-slate-500 space-y-0.5">
-              {lead.campaign && <p>Campanha: <span className="text-slate-700">{lead.campaign}</span></p>}
-              {lead.adSetName && <p>Conjunto: <span className="text-slate-700">{lead.adSetName}</span></p>}
-              {lead.adName && <p>Anuncio: <span className="text-slate-700">{lead.adName}</span></p>}
+              {lead.campaign && (
+                <p>
+                  Campanha: <span className="text-slate-700">{lead.campaign}</span>
+                </p>
+              )}
+              {lead.adSetName && (
+                <p>
+                  Conjunto: <span className="text-slate-700">{lead.adSetName}</span>
+                </p>
+              )}
+              {lead.adName && (
+                <p>
+                  Anuncio: <span className="text-slate-700">{lead.adName}</span>
+                </p>
+              )}
             </div>
           </div>
         )}

@@ -37,10 +37,7 @@ export async function toggleAI(leadId: string): Promise<ActionResult> {
   return { success: true };
 }
 
-export async function sendManualMessage(
-  leadId: string,
-  content: string
-): Promise<ActionResult> {
+export async function sendManualMessage(leadId: string, content: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Não autenticado" };
 

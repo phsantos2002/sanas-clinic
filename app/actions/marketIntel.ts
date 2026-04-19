@@ -9,13 +9,15 @@ export async function runMarketAnalysis(params: {
   competitors?: string[];
   niche?: string;
   focus?: "ads" | "content" | "positioning" | "full";
-}): Promise<ActionResult<{
-  analysis: string;
-  suggestions: string[];
-  copyVariations: { angle: string; copies: string[] }[];
-  gaps: string[];
-  positioning: string;
-}>> {
+}): Promise<
+  ActionResult<{
+    analysis: string;
+    suggestions: string[];
+    copyVariations: { angle: string; copies: string[] }[];
+    gaps: string[];
+    positioning: string;
+  }>
+> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 

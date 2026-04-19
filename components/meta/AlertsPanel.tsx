@@ -35,7 +35,7 @@ export function AlertsPanel({ initialAlerts, onResolve, onRefresh }: Props) {
     startTransition(async () => {
       const result = await onResolve(alertId);
       if (result.success) {
-        setAlerts((prev) => prev.map((a) => a.id === alertId ? { ...a, resolved: true } : a));
+        setAlerts((prev) => prev.map((a) => (a.id === alertId ? { ...a, resolved: true } : a)));
         toast.success("Alerta resolvido");
       } else {
         toast.error("Erro ao resolver alerta");

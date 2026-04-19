@@ -40,7 +40,11 @@ export async function getUpcomingMeetings(): Promise<UpcomingMeeting[]> {
         dayBucket = "tomorrow";
         prefix = "Amanhã";
       } else {
-        prefix = start.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" });
+        prefix = start.toLocaleDateString("pt-BR", {
+          weekday: "short",
+          day: "2-digit",
+          month: "short",
+        });
       }
 
       const time = start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });

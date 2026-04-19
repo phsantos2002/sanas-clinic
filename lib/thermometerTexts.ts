@@ -12,12 +12,14 @@ type MetricKey = keyof BenchmarkMetrics;
 const GENERIC_TEXTS: Record<MetricKey, Record<MetricStatus, string>> = {
   ctr: {
     good: "CTR excelente — seus criativos estão gerando alto engajamento. Mantenha a rotação de criativos para evitar saturação.",
-    average: "CTR na média — teste novos formatos (carrossel, vídeo curto) e headlines mais diretas para melhorar.",
+    average:
+      "CTR na média — teste novos formatos (carrossel, vídeo curto) e headlines mais diretas para melhorar.",
     bad: "CTR abaixo do ideal — revise o público-alvo e os criativos. Teste ganchos diferentes nos primeiros 3 segundos.",
   },
   cpm: {
     good: "CPM competitivo — bom custo de alcance. O público está respondendo bem à segmentação.",
-    average: "CPM mediano — considere expandir o público ou testar horários diferentes de veiculação.",
+    average:
+      "CPM mediano — considere expandir o público ou testar horários diferentes de veiculação.",
     bad: "CPM elevado — público saturado ou concorrência alta. Expanda a segmentação ou renove os criativos.",
   },
   cpc: {
@@ -39,7 +41,10 @@ const GENERIC_TEXTS: Record<MetricKey, Record<MetricStatus, string>> = {
 
 // ─── Textos específicos por objetivo ───
 
-const OBJECTIVE_TEXTS: Record<string, Partial<Record<MetricKey, Partial<Record<MetricStatus, string>>>>> = {
+const OBJECTIVE_TEXTS: Record<
+  string,
+  Partial<Record<MetricKey, Partial<Record<MetricStatus, string>>>>
+> = {
   MESSAGES: {
     ctr: {
       good: "CTR alto para mensagens — boa conversão de visualizações em conversas. O criativo está gerando interesse.",
@@ -92,7 +97,10 @@ const OBJECTIVE_TEXTS: Record<string, Partial<Record<MetricKey, Partial<Record<M
 
 // ─── Textos específicos por estratégia de lance ───
 
-const STRATEGY_TEXTS: Record<string, Partial<Record<MetricKey, Partial<Record<MetricStatus, string>>>>> = {
+const STRATEGY_TEXTS: Record<
+  string,
+  Partial<Record<MetricKey, Partial<Record<MetricStatus, string>>>>
+> = {
   COST_CAP: {
     cpc: {
       bad: "CPC acima do Cost Cap configurado. A Meta vai reduzir entrega automaticamente. Aumente o cap em 10-20% ou melhore criativos.",
@@ -109,7 +117,8 @@ const STRATEGY_TEXTS: Record<string, Partial<Record<MetricKey, Partial<Record<Me
   BID_CAP: {
     cpc: {
       bad: "CPC alto com Bid Cap ativo. Seu lance pode estar baixo demais, limitando a entrega. Aumente o bid gradualmente em 10-15%.",
-      average: "CPC no limite do Bid Cap. Você está competindo no limite — considere um leve aumento para manter volume.",
+      average:
+        "CPC no limite do Bid Cap. Você está competindo no limite — considere um leve aumento para manter volume.",
       good: "CPC abaixo do lance máximo — boa folga no Bid Cap. A entrega deve estar fluindo bem.",
     },
     cpm: {
@@ -172,8 +181,11 @@ export function getThermometerText(
  */
 export function getStatusLabel(status: MetricStatus): string {
   switch (status) {
-    case "good": return "Ótimo";
-    case "average": return "Regular";
-    case "bad": return "Fraco";
+    case "good":
+      return "Ótimo";
+    case "average":
+      return "Regular";
+    case "bad":
+      return "Fraco";
   }
 }

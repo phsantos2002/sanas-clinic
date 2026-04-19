@@ -30,10 +30,7 @@ export type RouteContext = {
   params: Promise<Record<string, string>>;
 };
 
-export type ApiHandler = (
-  req: NextRequest,
-  ctx?: RouteContext
-) => Promise<NextResponse>;
+export type ApiHandler = (req: NextRequest, ctx?: RouteContext) => Promise<NextResponse>;
 
 /**
  * Cria um handler de rota com tratamento de erros padronizado.

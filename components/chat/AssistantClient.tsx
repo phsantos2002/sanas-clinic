@@ -21,7 +21,9 @@ export function AssistantClient() {
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleSend = async (text?: string) => {
     const msg = (text || input).trim();
@@ -67,7 +69,8 @@ export function AssistantClient() {
               </div>
               <h2 className="font-bold text-slate-900 text-lg">Assistente Sanas Pulse</h2>
               <p className="text-sm text-slate-400 text-center mt-1 max-w-md">
-                Pergunto qualquer coisa sobre seu negocio. Uso dados reais do seu pipeline, ads e conteudo.
+                Pergunto qualquer coisa sobre seu negocio. Uso dados reais do seu pipeline, ads e
+                conteudo.
               </p>
 
               <div className="grid grid-cols-2 gap-2 mt-6 w-full max-w-md">
@@ -86,18 +89,21 @@ export function AssistantClient() {
           )}
 
           {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div
+              key={i}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
               <div className={`max-w-[85%] ${msg.role === "user" ? "" : "flex gap-2"}`}>
                 {msg.role === "assistant" && (
                   <div className="h-7 w-7 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg flex items-center justify-center shrink-0 mt-1">
                     <Bot className="h-4 w-4 text-white" />
                   </div>
                 )}
-                <div className={`rounded-2xl px-4 py-3 text-sm ${
-                  msg.role === "user"
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-50 text-slate-800"
-                }`}>
+                <div
+                  className={`rounded-2xl px-4 py-3 text-sm ${
+                    msg.role === "user" ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-800"
+                  }`}
+                >
                   <div className="whitespace-pre-wrap">{msg.content}</div>
                 </div>
               </div>

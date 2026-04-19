@@ -11,7 +11,11 @@ type Props = {
 
 export function BestTimeSelector({ platform, onSelect }: Props) {
   const [loading, setLoading] = useState(false);
-  const [suggestion, setSuggestion] = useState<{ day: string; hour: string; reason: string } | null>(null);
+  const [suggestion, setSuggestion] = useState<{
+    day: string;
+    hour: string;
+    reason: string;
+  } | null>(null);
 
   const handleSuggest = async () => {
     setLoading(true);

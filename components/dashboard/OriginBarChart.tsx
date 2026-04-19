@@ -23,14 +23,22 @@ function formatDateLabel(dateStr: string) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
 
-function fillDays(data: DailyOriginStats[], startDate?: string, endDate?: string): DailyOriginStats[] {
+function fillDays(
+  data: DailyOriginStats[],
+  startDate?: string,
+  endDate?: string
+): DailyOriginStats[] {
   if (data.length === 0 && !startDate) return data;
 
   const dataMap = new Map<string, DailyOriginStats>();
   for (const d of data) dataMap.set(d.date, d);
 
-  const start = startDate ? new Date(startDate + "T12:00:00") : new Date(data[0].date + "T12:00:00");
-  const end = endDate ? new Date(endDate + "T12:00:00") : new Date(data[data.length - 1].date + "T12:00:00");
+  const start = startDate
+    ? new Date(startDate + "T12:00:00")
+    : new Date(data[0].date + "T12:00:00");
+  const end = endDate
+    ? new Date(endDate + "T12:00:00")
+    : new Date(data[data.length - 1].date + "T12:00:00");
 
   const result: DailyOriginStats[] = [];
   const current = new Date(start);
@@ -88,11 +96,7 @@ export function OriginBarChart({ data, startDate, endDate }: Props) {
             boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
           }}
         />
-        <Legend
-          iconType="circle"
-          iconSize={8}
-          wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-        />
+        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
         <Bar dataKey="Meta Ads" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
         <Bar dataKey="Outras Origens" stackId="a" fill="#a1a1aa" />
         <Bar dataKey="Não rastreada" stackId="a" fill="#fb923c" radius={[4, 4, 0, 0]} />

@@ -15,7 +15,13 @@ type Props = {
   selectionMode?: boolean;
 };
 
-export function KanbanColumn({ column, onClickLead, selectedIds, onToggleSelect, selectionMode }: Props) {
+export function KanbanColumn({
+  column,
+  onClickLead,
+  selectedIds,
+  onToggleSelect,
+  selectionMode,
+}: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const color = getStageColor(column.name);
 

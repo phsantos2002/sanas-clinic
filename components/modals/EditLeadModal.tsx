@@ -92,14 +92,24 @@ export function EditLeadModal({ lead, stages, open, onClose }: Props) {
                 <User className="h-3.5 w-3.5 text-indigo-500" />
                 Nome
               </Label>
-              <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input
+                id="edit-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="edit-phone" className="flex items-center gap-1.5 text-xs">
                 <Phone className="h-3.5 w-3.5 text-indigo-500" />
                 Telefone
               </Label>
-              <Input id="edit-phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+              <Input
+                id="edit-phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
             </div>
           </div>
 
@@ -109,14 +119,25 @@ export function EditLeadModal({ lead, stages, open, onClose }: Props) {
                 <Mail className="h-3.5 w-3.5 text-indigo-500" />
                 Email
               </Label>
-              <Input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+              <Input
+                id="edit-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@exemplo.com"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="edit-cpf" className="flex items-center gap-1.5 text-xs">
                 <FileText className="h-3.5 w-3.5 text-indigo-500" />
                 CPF
               </Label>
-              <Input id="edit-cpf" value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
+              <Input
+                id="edit-cpf"
+                value={cpf}
+                onChange={(e) => setCpf(e.target.value)}
+                placeholder="000.000.000-00"
+              />
             </div>
           </div>
 
@@ -126,14 +147,24 @@ export function EditLeadModal({ lead, stages, open, onClose }: Props) {
                 <MapPin className="h-3.5 w-3.5 text-indigo-500" />
                 Endereço
               </Label>
-              <Input id="edit-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Rua, número" />
+              <Input
+                id="edit-address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Rua, número"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="edit-city" className="flex items-center gap-1.5 text-xs">
                 <MapPin className="h-3.5 w-3.5 text-indigo-500" />
                 Cidade
               </Label>
-              <Input id="edit-city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Cidade - UF" />
+              <Input
+                id="edit-city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Cidade - UF"
+              />
             </div>
           </div>
 

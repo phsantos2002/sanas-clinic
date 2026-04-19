@@ -56,11 +56,15 @@ export function FacebookPixelForm({ pixel }: Props) {
             onChange={(e) => setAccessToken(e.target.value)}
             required
           />
-          <p className="text-xs text-zinc-400">Usado para enviar eventos de conversão ao Facebook.</p>
+          <p className="text-xs text-zinc-400">
+            Usado para enviar eventos de conversão ao Facebook.
+          </p>
         </div>
 
         <div className="border-t border-zinc-100 pt-4 space-y-3">
-          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Meta Ads (Analytics)</p>
+          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
+            Meta Ads (Analytics)
+          </p>
           <div className="space-y-1.5">
             <Label htmlFor="adAccountId">ID da Conta de Anúncios</Label>
             <Input
@@ -69,7 +73,9 @@ export function FacebookPixelForm({ pixel }: Props) {
               value={adAccountId}
               onChange={(e) => setAdAccountId(e.target.value)}
             />
-            <p className="text-xs text-zinc-400">Encontre em Gerenciador de Anúncios → URL ou coluna ID da conta.</p>
+            <p className="text-xs text-zinc-400">
+              Encontre em Gerenciador de Anúncios → URL ou coluna ID da conta.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="metaAdsToken">Token de Acesso — Marketing API</Label>
@@ -80,7 +86,10 @@ export function FacebookPixelForm({ pixel }: Props) {
               value={metaAdsToken}
               onChange={(e) => setMetaAdsToken(e.target.value)}
             />
-            <p className="text-xs text-zinc-400">Token de usuário com permissão <span className="font-mono">ads_read</span>. Gere em developers.facebook.com.</p>
+            <p className="text-xs text-zinc-400">
+              Token de usuário com permissão <span className="font-mono">ads_read</span>. Gere em
+              developers.facebook.com.
+            </p>
           </div>
         </div>
 
@@ -113,8 +122,9 @@ export function FacebookPixelForm({ pixel }: Props) {
       {pixel && (
         <div className="border-t border-zinc-100 pt-4">
           <p className="text-xs text-zinc-400">
-            As configurações de campanha (objetivo, estratégia de lance, segmento, etc.) agora são feitas
-            individualmente em cada campanha na <span className="font-medium text-indigo-600">aba Meta Ads</span>.
+            As configurações de campanha (objetivo, estratégia de lance, segmento, etc.) agora são
+            feitas individualmente em cada campanha na{" "}
+            <span className="font-medium text-indigo-600">aba Meta Ads</span>.
           </p>
         </div>
       )}

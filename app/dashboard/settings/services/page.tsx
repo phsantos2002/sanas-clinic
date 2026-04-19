@@ -4,10 +4,7 @@ import { ServicesManager } from "@/components/settings/ServicesManager";
 import { CalendarConfig } from "@/components/settings/CalendarConfig";
 
 export default async function ServicesPage() {
-  const [services, calendarConfig] = await Promise.all([
-    getServices(),
-    getCalendarConfig(),
-  ]);
+  const [services, calendarConfig] = await Promise.all([getServices(), getCalendarConfig()]);
 
   return (
     <div className="space-y-4 max-w-2xl">
