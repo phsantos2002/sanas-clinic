@@ -7,12 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MetaIcon } from "@/components/icons/SourceIcons";
 import type { MetaCampaignFull, MetaAdSet, MetaCampaignInsights } from "@/app/actions/meta";
+import type { MetaAccountFinancials } from "@/services/metaAds";
 import type { CampaignConfig } from "@/types";
 import { type Stage } from "./shared";
 import { CampaignTabs } from "./CampaignTabs";
 import { CampaignPanel } from "./CampaignPanel";
 import { AccountPhaseCard } from "./AccountPhaseCard";
 import { CreateCampaignWizard } from "./CreateCampaignWizard";
+import { FinancialCard } from "./FinancialCard";
 
 type Phase = "LEARNING" | "STABILIZING" | "SCALING" | "MATURE";
 const VALID_PHASES = new Set<string>(["LEARNING", "STABILIZING", "SCALING", "MATURE"]);
@@ -36,6 +38,7 @@ type Props = {
   conversionDestination?: string | null;
   userId?: string;
   campaignConfigs?: CampaignConfig[];
+  financials?: (MetaAccountFinancials & { adAccountId: string }) | null;
 };
 
 export function MetaPageClient({
@@ -54,6 +57,7 @@ export function MetaPageClient({
   conversionDestination,
   userId,
   campaignConfigs: initialConfigs,
+  financials,
 }: Props) {
   const router = useRouter();
   const [configMap, setConfigMap] = useState<Record<string, CampaignConfig>>(() => {
@@ -148,7 +152,10 @@ export function MetaPageClient({
       {/* [1] Header */}
       <Header onNewCampaign={() => setShowWizard(true)} />
 
-      {/* [2] Account Phase — compact banner */}
+      {/* [2] Financial Card — balance, spend cap, amount spent + deep links Meta */}
+      {financials && <FinancialCard financials={financials} />}
+
+      {/* [3] Account Phase — compact banner */}
       {userId && (
         <AccountPhaseCard
           userId={userId}

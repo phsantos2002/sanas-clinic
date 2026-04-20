@@ -1,4 +1,9 @@
-import { getMetaCampaigns, getSelectedCampaignData, getPixelEvents } from "@/app/actions/meta";
+import {
+  getMetaCampaigns,
+  getSelectedCampaignData,
+  getPixelEvents,
+  getMetaAccountFinancials,
+} from "@/app/actions/meta";
 import { getStages } from "@/app/actions/stages";
 import { getCurrentUser } from "@/app/actions/user";
 import { getAllCampaignConfigs } from "@/app/actions/pixel";
@@ -7,13 +12,14 @@ import { MetaPageClient } from "@/components/meta/MetaPageClient";
 import { MetaDiagnosis } from "@/components/meta/MetaDiagnosis";
 
 export default async function MetaPage() {
-  const [{ campaigns, config }, selectedData, { events, pixelId }, stages, user] =
+  const [{ campaigns, config }, selectedData, { events, pixelId }, stages, user, financials] =
     await Promise.all([
       getMetaCampaigns(),
       getSelectedCampaignData(),
       getPixelEvents(),
       getStages(),
       getCurrentUser(),
+      getMetaAccountFinancials().catch(() => null),
     ]);
 
   let accountPhase: string | null = null;
@@ -56,6 +62,7 @@ export default async function MetaPage() {
         conversionDestination={conversionDestination}
         userId={user?.id}
         campaignConfigs={campaignConfigs}
+        financials={financials}
       />
     </div>
   );

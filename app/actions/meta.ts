@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
 import { recordCampaignAction } from "./campaignActions";
+import { fetchAccountFinancials, type MetaAccountFinancials } from "@/services/metaAds";
 
 const GRAPH_URL = "https://graph.facebook.com/v18.0";
 
@@ -627,6 +628,18 @@ export async function getSelectedCampaignData(): Promise<{
       error: String(e),
     };
   }
+}
+
+// ─── Account financials (balance, spend cap, amount spent) ───
+
+export async function getMetaAccountFinancials(): Promise<
+  (MetaAccountFinancials & { adAccountId: string }) | null
+> {
+  const config = await getMetaConfig();
+  if (!config) return null;
+  const financials = await fetchAccountFinancials(config.adAccountId, config.metaAdsToken);
+  if (!financials) return null;
+  return { ...financials, adAccountId: config.adAccountId };
 }
 
 // ─── List campaigns for selector ───

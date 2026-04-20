@@ -25,6 +25,46 @@ export type MetaCampaign = {
   reach: number;
 };
 
+export type MetaAccountFinancials = {
+  balance: number;
+  spendCap: number;
+  amountSpent: number;
+  currency: string;
+  accountStatus: number;
+  isActive: boolean;
+};
+
+export async function fetchAccountFinancials(
+  adAccountId: string,
+  accessToken: string
+): Promise<MetaAccountFinancials | null> {
+  const accountId = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const fields = "balance,spend_cap,amount_spent,currency,account_status";
+  const url = `${GRAPH_URL}/${accountId}?fields=${fields}&access_token=${accessToken}`;
+
+  try {
+    const res = await fetch(url, { next: { revalidate: 300 } });
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      console.error("[MetaAds] financials error:", json.error?.message ?? "unknown");
+      return null;
+    }
+    const toMoney = (v: unknown) => (typeof v === "string" ? parseFloat(v) : Number(v) || 0) / 100;
+    const accountStatus = Number(json.account_status) || 0;
+    return {
+      balance: toMoney(json.balance),
+      spendCap: toMoney(json.spend_cap),
+      amountSpent: toMoney(json.amount_spent),
+      currency: json.currency || "BRL",
+      accountStatus,
+      isActive: accountStatus === 1,
+    };
+  } catch (e) {
+    console.error("[MetaAds] financials fetch error:", e);
+    return null;
+  }
+}
+
 type ActionValue = { action_type: string; value: string };
 
 function parseInsightFields(data: Record<string, string>) {
