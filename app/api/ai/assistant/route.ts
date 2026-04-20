@@ -4,8 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
-const anthropic = new Anthropic();
-
 // ── Tools available to the assistant ─────────────────────────
 
 const tools: Anthropic.Tool[] = [
@@ -398,6 +396,15 @@ async function executeTool(
 // ── Main API Route ───────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "Assistente IA indisponivel — configure ANTHROPIC_API_KEY no servidor." },
+      { status: 503 }
+    );
+  }
+  const anthropic = new Anthropic({ apiKey });
+
   const supabase = await createClient();
   const {
     data: { user },
