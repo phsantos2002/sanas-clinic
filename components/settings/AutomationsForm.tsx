@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { MessageCircle, BarChart3, Kanban } from "lucide-react";
+import { MessageCircle, BarChart3, Kanban, LayoutGrid } from "lucide-react";
 
 type Automations = Record<string, boolean>;
 
@@ -82,6 +82,35 @@ const SECTIONS = [
         key: "stuckLeadAlert",
         label: "Alerta de leads parados",
         desc: "Notifica leads sem movimentacao ha 5+ dias",
+      },
+    ],
+  },
+  {
+    title: "Abas do Chat",
+    icon: LayoutGrid,
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-50",
+    description: "Controle quais funcionalidades aparecem no menu superior do Chat",
+    toggles: [
+      {
+        key: "chatTab_assistant",
+        label: "Mostrar Assistente IA",
+        desc: "Assistente com ferramentas de pipeline, leads e metricas",
+      },
+      {
+        key: "chatTab_templates",
+        label: "Mostrar Templates",
+        desc: "Biblioteca de mensagens pre-prontas",
+      },
+      {
+        key: "chatTab_broadcast",
+        label: "Mostrar Broadcast",
+        desc: "Envio em massa para segmentos de leads",
+      },
+      {
+        key: "chatTab_team",
+        label: "Mostrar Equipe",
+        desc: "Gestao de SDRs, atendentes e metas",
       },
     ],
   },
