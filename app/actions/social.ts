@@ -227,22 +227,25 @@ export async function getSocialPosts(filters?: {
   }));
 }
 
-export async function getScheduledPosts(month: number, year: number): Promise<SocialPostData[]> {
-  const user = await getCurrentUser();
-  if (!user) return [];
-
-  const startDate = new Date(year, month, 1);
-  const endDate = new Date(year, month + 1, 0, 23, 59, 59);
-
-  const posts = await prisma.socialPost.findMany({
-    where: {
-      userId: user.id,
-      scheduledAt: { gte: startDate, lte: endDate },
-    },
-    orderBy: { scheduledAt: "asc" },
-  });
-
-  return posts.map((p) => ({
+function mapPost(p: {
+  id: string;
+  title: string | null;
+  caption: string | null;
+  hashtags: string[];
+  mediaUrls: string[];
+  mediaType: string | null;
+  platforms: string[];
+  scheduledAt: Date | null;
+  publishedAt: Date | null;
+  status: string;
+  aiGenerated: boolean;
+  aiCostEstimate: number | null;
+  publishResults: unknown;
+  engagementData: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}): SocialPostData {
+  return {
     id: p.id,
     title: p.title,
     caption: p.caption,
@@ -259,7 +262,38 @@ export async function getScheduledPosts(month: number, year: number): Promise<So
     engagementData: p.engagementData as Record<string, unknown> | null,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
-  }));
+  };
+}
+
+export async function getScheduledPosts(month: number, year: number): Promise<SocialPostData[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  const startDate = new Date(year, month, 1);
+  const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+  const posts = await prisma.socialPost.findMany({
+    where: {
+      userId: user.id,
+      scheduledAt: { gte: startDate, lte: endDate },
+    },
+    orderBy: { scheduledAt: "asc" },
+  });
+
+  return posts.map(mapPost);
+}
+
+export async function getAllScheduledPosts(limit = 100): Promise<SocialPostData[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  const posts = await prisma.socialPost.findMany({
+    where: { userId: user.id },
+    orderBy: [{ scheduledAt: "desc" }, { createdAt: "desc" }],
+    take: limit,
+  });
+
+  return posts.map(mapPost);
 }
 
 export async function createSocialPost(data: {
