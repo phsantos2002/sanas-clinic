@@ -45,6 +45,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Tipo de arquivo nao suportado" }, { status: 400 });
   }
 
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return NextResponse.json(
+      {
+        error:
+          "Storage não configurado. Adicione BLOB_READ_WRITE_TOKEN nas envs da Vercel (Storage > Blob).",
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const ext = file.name.split(".").pop() || "bin";
     const blob = await put(`social/${user.id}/${Date.now()}.${ext}`, file, { access: "public" });
@@ -52,6 +62,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: blob.url });
   } catch (error) {
     console.error("Upload error:", error);
-    return NextResponse.json({ error: "Erro ao fazer upload" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Erro ao fazer upload";
+    return NextResponse.json({ error: `Falha ao salvar no storage: ${msg}` }, { status: 500 });
   }
 }

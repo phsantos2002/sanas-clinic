@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Image, Video, Layers, Clock } from "lucide-react";
+import { toast } from "sonner";
 import { createSocialPost } from "@/app/actions/social";
 import { PLATFORM_OPTIONS } from "@/components/icons/PlatformLogos";
 import { FileUpload } from "./FileUpload";
@@ -47,7 +48,29 @@ export function CreatePostModal({
   };
 
   const handleSubmit = async () => {
-    if (!title.trim() && !caption.trim()) return;
+    if (!title.trim() && !caption.trim()) {
+      toast.error("Adicione ao menos um título ou legenda");
+      return;
+    }
+
+    const urls = getMediaUrls();
+    if (status === "scheduled" && urls.length === 0) {
+      toast.error("Adicione a mídia antes de agendar o post");
+      return;
+    }
+    if (mediaType === "carousel" && status === "scheduled" && urls.length < 2) {
+      toast.error("Carrossel precisa de pelo menos 2 imagens");
+      return;
+    }
+    if (status === "scheduled" && !scheduledDate) {
+      toast.error("Selecione data de agendamento");
+      return;
+    }
+    if (platforms.length === 0) {
+      toast.error("Selecione ao menos uma plataforma");
+      return;
+    }
+
     setSaving(true);
 
     const scheduledAt =
@@ -62,7 +85,7 @@ export function CreatePostModal({
         .split(/[\s,]+/)
         .map((h) => h.replace(/^#/, "").trim())
         .filter(Boolean),
-      mediaUrls: getMediaUrls(),
+      mediaUrls: urls,
       mediaType,
       platforms,
       scheduledAt,
@@ -72,6 +95,8 @@ export function CreatePostModal({
     setSaving(false);
     if (result.success) {
       onCreated();
+    } else {
+      toast.error(result.error ?? "Erro ao criar post");
     }
   };
 

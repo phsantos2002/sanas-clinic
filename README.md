@@ -66,6 +66,7 @@ Ver `.env.example` para documentação completa.
 - `CRON_SECRET` — Protege endpoints `/api/cron/*`
 - `META_APP_SECRET` — Verificação HMAC de webhooks Meta
 - `ANTHROPIC_API_KEY` — Chave Claude para o Assistente IA do dashboard (sem ela, o chat retorna 503)
+- `BLOB_READ_WRITE_TOKEN` — Token do Vercel Blob Storage (upload de mídia em Postagens; configure via Vercel > Storage > Blob)
 
 **Configuradas pelo usuário na interface (Config > Integrações):**
 OpenAI, Gemini, Replicate, Fal.ai, Meta Pixel, Meta Ads, Google Business

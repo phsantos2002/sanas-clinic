@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Upload, X, Image as ImageIcon, Film, Plus } from "lucide-react";
+import { X, Image as ImageIcon, Film, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 type SingleUploadProps = {
   mode: "single";
@@ -33,22 +34,25 @@ export function FileUpload(props: FileUploadProps) {
     async (file: File): Promise<string | null> => {
       const maxSize = (props.maxSizeMB || 100) * 1024 * 1024;
       if (file.size > maxSize) {
-        alert(`Arquivo muito grande. Maximo ${props.maxSizeMB || 100}MB.`);
+        toast.error(`Arquivo muito grande. Maximo ${props.maxSizeMB || 100}MB.`);
         return null;
       }
 
       const form = new FormData();
       form.append("file", file);
 
-      const res = await fetch("/api/upload", { method: "POST", body: form });
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.error || "Erro ao enviar arquivo");
+      try {
+        const res = await fetch("/api/upload", { method: "POST", body: form });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          toast.error(data.error || `Erro ao enviar arquivo (${res.status})`);
+          return null;
+        }
+        return data.url as string;
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro de conexão no upload");
         return null;
       }
-
-      const data = await res.json();
-      return data.url as string;
     },
     [props.maxSizeMB]
   );
