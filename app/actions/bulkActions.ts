@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
 import { logBulkActivity } from "@/services/leadActivity";
+import { fireTrigger } from "@/services/workflowEngine";
 import type { ActionResult } from "@/types";
 
 const MAX_BULK = 500;
@@ -49,6 +50,11 @@ export async function bulkMoveStage(
       actorName: user.name ?? user.email ?? undefined,
     }))
   );
+
+  // Fire stage_change workflow trigger for each lead (non-blocking)
+  for (const leadId of leadIds) {
+    fireTrigger(user.id, "stage_change", leadId, { stageId }).catch(() => {});
+  }
 
   revalidatePath("/dashboard/pipeline");
   return { success: true, data: { moved: result.count } };

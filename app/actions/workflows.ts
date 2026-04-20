@@ -62,6 +62,28 @@ export async function getWorkflows(): Promise<WorkflowData[]> {
   }));
 }
 
+// Count workflows triggered by each stage_change for a given user
+// Returns: { [stageId]: count }
+export async function getStageWorkflowCounts(): Promise<Record<string, number>> {
+  const user = await getCurrentUser();
+  if (!user) return {};
+
+  const workflows = await prisma.workflow.findMany({
+    where: { userId: user.id, isActive: true },
+    select: { trigger: true },
+  });
+
+  const counts: Record<string, number> = {};
+  for (const w of workflows) {
+    const trigger = w.trigger as TriggerConfig;
+    if (trigger.type !== "stage_change") continue;
+    const stageId = (trigger.config?.stageId as string | undefined) ?? null;
+    if (!stageId) continue;
+    counts[stageId] = (counts[stageId] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export async function createWorkflow(data: {
   name: string;
   description?: string;

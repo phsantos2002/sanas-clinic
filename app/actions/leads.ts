@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
 import { sendFacebookEvent } from "@/services/facebookEvents";
+import { fireTrigger } from "@/services/workflowEngine";
 import { createLeadSchema, updateLeadSchema, normalizePhone } from "@/lib/validations";
 import type { ActionResult, Lead, LeadDetail, LeadSourceStats } from "@/types";
 
@@ -240,6 +241,9 @@ export async function moveLead(leadId: string, newStageId: string): Promise<Acti
       leadId,
       stageName: stage.name,
     }).catch(() => {});
+
+    // Fire stage_change workflow trigger (non-blocking)
+    fireTrigger(user.id, "stage_change", leadId, { stageId: newStageId }).catch(() => {});
 
     revalidatePath("/dashboard");
     return { success: true };

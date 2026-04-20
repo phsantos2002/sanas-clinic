@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2, Plus, Check, X } from "lucide-react";
+import { Pencil, Trash2, Plus, Check, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { createStage, updateStage, deleteStage } from "@/app/actions/stages";
 import { toast } from "sonner";
 import type { Stage } from "@/types";
+import type { AttendantData } from "@/app/actions/whatsappHub";
+import { StageActionModal } from "./StageActionModal";
 
 const FACEBOOK_EVENTS = [
   { value: "Lead", label: "Lead — cadastro de interesse" },
@@ -26,6 +28,8 @@ const FACEBOOK_EVENTS = [
 
 type Props = {
   stages: Stage[];
+  attendants?: AttendantData[];
+  stageWorkflowCounts?: Record<string, number>;
 };
 
 type EditingState = {
@@ -34,13 +38,15 @@ type EditingState = {
   eventName: string;
 };
 
-export function ManageStagesSection({ stages }: Props) {
+export function ManageStagesSection({ stages, attendants = [], stageWorkflowCounts = {} }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [newName, setNewName] = useState("");
   const [newEvent, setNewEvent] = useState("Lead");
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [actionStage, setActionStage] = useState<Stage | null>(null);
+  const [countsLocal, setCountsLocal] = useState(stageWorkflowCounts);
 
   function startEdit(stage: Stage) {
     setEditingId(stage.id);
@@ -141,9 +147,25 @@ export function ManageStagesSection({ stages }: Props) {
                   <p className="text-sm font-medium">{stage.name}</p>
                   <p className="text-xs text-zinc-400">
                     Evento: <span className="text-zinc-600 font-mono">{stage.eventName}</span>
+                    {countsLocal[stage.id] > 0 && (
+                      <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
+                        <Zap className="h-3 w-3" />
+                        {countsLocal[stage.id]} ação{countsLocal[stage.id] > 1 ? "ões" : ""}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 gap-1 px-2"
+                    onClick={() => setActionStage(stage)}
+                    title="Configurar ação automática"
+                  >
+                    <Zap className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Ações</span>
+                  </Button>
                   <Button
                     size="icon"
                     variant="ghost"
@@ -206,6 +228,21 @@ export function ManageStagesSection({ stages }: Props) {
           <Plus className="h-4 w-4" />
           Nova coluna
         </Button>
+      )}
+
+      {actionStage && (
+        <StageActionModal
+          stage={actionStage}
+          attendants={attendants}
+          onClose={() => setActionStage(null)}
+          onCreated={() => {
+            setCountsLocal((c) => ({
+              ...c,
+              [actionStage.id]: (c[actionStage.id] ?? 0) + 1,
+            }));
+            setActionStage(null);
+          }}
+        />
       )}
     </div>
   );

@@ -14,6 +14,7 @@ import { useState, useEffect } from "react";
 import { KanbanColumn } from "./KanbanColumn";
 import { LeadCard } from "./LeadCard";
 import { moveLead } from "@/app/actions/leads";
+import { bulkMoveStage } from "@/app/actions/bulkActions";
 import { toast } from "sonner";
 import type { KanbanColumn as KanbanColumnType } from "@/types";
 
@@ -69,28 +70,37 @@ export function KanbanBoard({
     if (!sourceColumn || !targetColumn) return;
     if (sourceColumn.id === targetColumn.id) return;
 
+    // Multi-drag: se o card arrastado está selecionado e há mais de um selecionado,
+    // move todos os selecionados de uma vez.
+    const isMultiDrag = !!(selectedIds && selectedIds.size > 1 && selectedIds.has(leadId));
+    const idsToMove = isMultiDrag ? Array.from(selectedIds!) : [leadId];
+
     setColumns((prev) => {
-      const lead = prev.find((c) => c.id === sourceColumn.id)?.leads.find((l) => l.id === leadId);
-      if (!lead) return prev;
+      const allLeads = prev.flatMap((c) => c.leads);
+      const movingLeads = idsToMove
+        .map((id) => allLeads.find((l) => l.id === id))
+        .filter((l): l is NonNullable<typeof l> => !!l);
+      const movingIds = new Set(movingLeads.map((l) => l.id));
 
       return prev.map((col) => {
-        if (col.id === sourceColumn.id) {
-          return { ...col, leads: col.leads.filter((l) => l.id !== leadId) };
-        }
         if (col.id === targetColumn.id) {
-          return {
-            ...col,
-            leads: [...col.leads, { ...lead, stageId: targetColumn.id }],
-          };
+          const kept = col.leads.filter((l) => !movingIds.has(l.id));
+          const incoming = movingLeads.map((l) => ({ ...l, stageId: targetColumn.id }));
+          return { ...col, leads: [...kept, ...incoming] };
         }
-        return col;
+        return { ...col, leads: col.leads.filter((l) => !movingIds.has(l.id)) };
       });
     });
 
-    const result = await moveLead(leadId, targetColumn.id);
+    const result = isMultiDrag
+      ? await bulkMoveStage(idsToMove, targetColumn.id)
+      : await moveLead(leadId, targetColumn.id);
+
     if (!result.success) {
       toast.error(result.error);
       setColumns(initialColumns);
+    } else if (isMultiDrag) {
+      toast.success(`${idsToMove.length} leads movidos`);
     }
   }
 
@@ -115,7 +125,18 @@ export function KanbanBoard({
         ))}
       </div>
 
-      <DragOverlay>{activeLead ? <LeadCard lead={activeLead} /> : null}</DragOverlay>
+      <DragOverlay>
+        {activeLead ? (
+          <div className="relative">
+            <LeadCard lead={activeLead} />
+            {selectedIds && selectedIds.size > 1 && selectedIds.has(activeLead.id) && (
+              <span className="absolute -top-2 -right-2 bg-indigo-600 text-white text-xs font-semibold rounded-full h-7 min-w-7 px-2 flex items-center justify-center shadow-lg">
+                +{selectedIds.size - 1}
+              </span>
+            )}
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }
