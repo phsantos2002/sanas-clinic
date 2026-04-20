@@ -1,10 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Bot, Phone, Mail, Tag, Plus, Trash2, Clock, ArrowRight } from "lucide-react";
+import {
+  X,
+  Bot,
+  Phone,
+  Mail,
+  Plus,
+  Trash2,
+  Clock,
+  Pin,
+  Archive,
+  BellOff,
+  BellRing,
+  ArchiveRestore,
+  PinOff,
+} from "lucide-react";
 import { LeadScoreBadge } from "@/components/ui/LeadScoreBadge";
-import { updateLead, addLeadTag, removeLeadTag } from "@/app/actions/leads";
+import { updateLead, addLeadTag, removeLeadTag, moveLead } from "@/app/actions/leads";
 import { toggleAI } from "@/app/actions/messages";
+import { getStages } from "@/app/actions/stages";
+import type { Stage } from "@/types";
 import { toast } from "sonner";
 
 type Props = {
@@ -15,28 +31,117 @@ type Props = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function LeadContextPanel({ leadPhone, onClose }: Props) {
   const [lead, setLead] = useState<any>(null);
+  const [stages, setStages] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTag, setNewTag] = useState("");
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [movingStage, setMovingStage] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [archived, setArchived] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [chatActionBusy, setChatActionBusy] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    import("@/app/actions/leads").then(({ getLeadByPhone }) => {
-      if (getLeadByPhone) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        getLeadByPhone(leadPhone).then((data: any) => {
-          if (data) {
-            setLead(data);
-            setNotes(data.notes || "");
-          }
-          setLoading(false);
-        });
-      } else {
-        setLoading(false);
+    Promise.all([
+      import("@/app/actions/leads").then(({ getLeadByPhone }) =>
+        getLeadByPhone ? getLeadByPhone(leadPhone) : null
+      ),
+      getStages(),
+    ]).then(([leadData, stagesData]) => {
+      if (leadData) {
+        setLead(leadData);
+        setNotes(leadData.notes || "");
       }
+      setStages(stagesData);
+      setLoading(false);
     });
   }, [leadPhone]);
+
+  const handleChangeStage = async (newStageId: string) => {
+    if (!lead || movingStage || lead.stageId === newStageId) return;
+    setMovingStage(true);
+    const result = await moveLead(lead.id, newStageId);
+    setMovingStage(false);
+    if (result.success) {
+      const newStage = stages.find((s) => s.id === newStageId);
+      setLead({
+        ...lead,
+        stageId: newStageId,
+        stage: newStage ? { name: newStage.name } : lead.stage,
+      });
+      toast.success(`Movido para ${newStage?.name ?? "nova etapa"}`);
+    } else {
+      toast.error(result.error ?? "Erro ao mover");
+    }
+  };
+
+  const toChatId = (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    return `${digits}@s.whatsapp.net`;
+  };
+
+  const callWhatsAppAction = async (
+    action: string,
+    body: Record<string, unknown>,
+    busyKey: string,
+    successMsg: string
+  ) => {
+    setChatActionBusy(busyKey);
+    try {
+      const res = await fetch(`/api/whatsapp?action=${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(successMsg);
+        return true;
+      }
+      toast.error(data.error ?? "Erro na ação");
+      return false;
+    } catch {
+      toast.error("Erro de conexão");
+      return false;
+    } finally {
+      setChatActionBusy(null);
+    }
+  };
+
+  const handleTogglePin = async () => {
+    if (!lead) return;
+    const ok = await callWhatsAppAction(
+      "pin-chat",
+      { chatid: toChatId(lead.phone), pin: !pinned },
+      "pin",
+      !pinned ? "Chat fixado" : "Chat desafixado"
+    );
+    if (ok) setPinned(!pinned);
+  };
+
+  const handleToggleArchive = async () => {
+    if (!lead) return;
+    const ok = await callWhatsAppAction(
+      "archive-chat",
+      { chatid: toChatId(lead.phone), archive: !archived },
+      "archive",
+      !archived ? "Conversa arquivada" : "Conversa desarquivada"
+    );
+    if (ok) setArchived(!archived);
+  };
+
+  const handleToggleMute = async () => {
+    if (!lead) return;
+    const ok = await callWhatsAppAction(
+      "mute-chat",
+      { chatid: toChatId(lead.phone), mute: !muted, duration: 28800 },
+      "mute",
+      !muted ? "Notificações silenciadas por 8h" : "Notificações reativadas"
+    );
+    if (ok) setMuted(!muted);
+  };
 
   const handleToggleAI = async () => {
     if (!lead) return;
@@ -98,6 +203,37 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
         </button>
       </div>
 
+      {/* Quick WhatsApp actions */}
+      <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-100 bg-slate-50/50">
+        <QuickActionButton
+          active={pinned}
+          loading={chatActionBusy === "pin"}
+          onClick={handleTogglePin}
+          iconOn={<Pin className="h-3.5 w-3.5" />}
+          iconOff={<PinOff className="h-3.5 w-3.5" />}
+          label={pinned ? "Fixado" : "Fixar"}
+          activeClass="bg-amber-50 text-amber-700"
+        />
+        <QuickActionButton
+          active={archived}
+          loading={chatActionBusy === "archive"}
+          onClick={handleToggleArchive}
+          iconOn={<ArchiveRestore className="h-3.5 w-3.5" />}
+          iconOff={<Archive className="h-3.5 w-3.5" />}
+          label={archived ? "Arquivado" : "Arquivar"}
+          activeClass="bg-slate-100 text-slate-700"
+        />
+        <QuickActionButton
+          active={muted}
+          loading={chatActionBusy === "mute"}
+          onClick={handleToggleMute}
+          iconOn={<BellRing className="h-3.5 w-3.5" />}
+          iconOff={<BellOff className="h-3.5 w-3.5" />}
+          label={muted ? "Silenciado" : "Silenciar"}
+          activeClass="bg-violet-50 text-violet-700"
+        />
+      </div>
+
       <div className="p-4 space-y-4 flex-1">
         {/* Identity */}
         <div>
@@ -134,18 +270,26 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
           </div>
         </div>
 
-        {/* Stage */}
-        {lead.stage && (
-          <div>
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
-              Etapa
-            </p>
-            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
-              <ArrowRight className="h-3.5 w-3.5 text-blue-500" />
-              <span className="text-sm font-medium text-blue-700">{lead.stage.name}</span>
-            </div>
-          </div>
-        )}
+        {/* Stage selector (Pipeline change inline) */}
+        <div>
+          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
+            Etapa do Pipeline
+          </p>
+          <select
+            value={lead.stageId ?? ""}
+            onChange={(e) => handleChangeStage(e.target.value)}
+            disabled={movingStage || stages.length === 0}
+            className="w-full text-sm px-3 py-2 bg-blue-50 text-blue-700 font-medium rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50"
+          >
+            {stages.length === 0 && <option value="">Nenhum estágio configurado</option>}
+            {stages.map((s) => (
+              <option key={s.id} value={s.id} className="bg-white text-slate-700">
+                {s.name}
+              </option>
+            ))}
+          </select>
+          {movingStage && <p className="text-[10px] text-slate-400 mt-1">Movendo...</p>}
+        </div>
 
         {/* AI Toggle */}
         <div>
@@ -265,5 +409,37 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+function QuickActionButton({
+  active,
+  loading,
+  onClick,
+  iconOn,
+  iconOff,
+  label,
+  activeClass,
+}: {
+  active: boolean;
+  loading: boolean;
+  onClick: () => void;
+  iconOn: React.ReactNode;
+  iconOff: React.ReactNode;
+  label: string;
+  activeClass: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      title={label}
+      className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 flex-1 justify-center ${
+        active ? activeClass : "text-slate-500 hover:bg-white hover:text-slate-700"
+      }`}
+    >
+      {active ? iconOn : iconOff}
+      <span className="hidden sm:inline">{label}</span>
+    </button>
   );
 }
