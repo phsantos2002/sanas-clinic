@@ -11,6 +11,7 @@ import {
   Video,
   Layers,
   Clock,
+  Pencil,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -97,6 +98,7 @@ export function CalendarClient({
   const [allPosts, setAllPosts] = useState(initialAllPosts);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [editingPost, setEditingPost] = useState<SocialPostData | null>(null);
 
   const navigateMonth = useCallback(
     async (direction: -1 | 1) => {
@@ -129,8 +131,10 @@ export function CalendarClient({
   const handlePostCreated = async () => {
     setShowCreateModal(false);
     setSelectedDate(null);
+    const wasEdit = !!editingPost;
+    setEditingPost(null);
     await refreshAll();
-    toast.success("Post criado com sucesso!");
+    toast.success(wasEdit ? "Post atualizado" : "Post criado com sucesso!");
   };
 
   const handleDelete = async (id: string) => {
@@ -206,7 +210,7 @@ export function CalendarClient({
       </div>
 
       {view === "list" ? (
-        <ListView posts={allPosts} onDelete={handleDelete} />
+        <ListView posts={allPosts} onDelete={handleDelete} onEdit={setEditingPost} />
       ) : (
         <CalendarView
           month={month}
@@ -221,12 +225,14 @@ export function CalendarClient({
 
       <StatsBar posts={allPosts} />
 
-      {showCreateModal && (
+      {(showCreateModal || editingPost) && (
         <CreatePostModal
           defaultDate={selectedDate}
+          postToEdit={editingPost ?? undefined}
           onClose={() => {
             setShowCreateModal(false);
             setSelectedDate(null);
+            setEditingPost(null);
           }}
           onCreated={handlePostCreated}
         />
@@ -240,9 +246,11 @@ export function CalendarClient({
 function ListView({
   posts,
   onDelete,
+  onEdit,
 }: {
   posts: SocialPostData[];
   onDelete: (id: string) => void;
+  onEdit: (post: SocialPostData) => void;
 }) {
   if (posts.length === 0) {
     return (
@@ -274,7 +282,12 @@ function ListView({
           </h3>
           <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-50">
             {items.map((post) => (
-              <PostRow key={post.id} post={post} onDelete={() => onDelete(post.id)} />
+              <PostRow
+                key={post.id}
+                post={post}
+                onDelete={() => onDelete(post.id)}
+                onEdit={() => onEdit(post)}
+              />
             ))}
           </div>
         </div>
@@ -283,7 +296,15 @@ function ListView({
   );
 }
 
-function PostRow({ post, onDelete }: { post: SocialPostData; onDelete: () => void }) {
+function PostRow({
+  post,
+  onDelete,
+  onEdit,
+}: {
+  post: SocialPostData;
+  onDelete: () => void;
+  onEdit: () => void;
+}) {
   const MediaIcon = MEDIA_ICONS[post.mediaType || "image"] || ImageIcon;
   const status = STATUS_STYLES[post.status] ?? STATUS_STYLES.draft;
   const displayTitle = post.title || post.caption || "(sem título)";
@@ -338,6 +359,15 @@ function PostRow({ post, onDelete }: { post: SocialPostData; onDelete: () => voi
           return Logo ? <Logo key={p} className="h-5 w-5" /> : null;
         })}
       </div>
+
+      {/* Edit */}
+      <button
+        onClick={onEdit}
+        className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors shrink-0"
+        aria-label="Editar post"
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
 
       {/* Delete */}
       <button
