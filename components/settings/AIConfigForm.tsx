@@ -52,6 +52,7 @@ export function AIConfigForm({ config }: Props) {
     config.voiceClonePrompt || VOICE_CLONE_PROMPT
   );
   const [openaiKey, setOpenaiKey] = useState(config.openaiKey);
+  const [anthropicKey, setAnthropicKey] = useState(config.anthropicKey);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -80,10 +81,6 @@ export function AIConfigForm({ config }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!apiKey.trim()) {
-      toast.error("Informe a chave de API do provedor selecionado");
-      return;
-    }
     setLoading(true);
     const result = await saveAIConfig({
       clinicName,
@@ -95,6 +92,7 @@ export function AIConfigForm({ config }: Props) {
       apiKey,
       voiceClonePrompt,
       openaiKey,
+      anthropicKey,
     });
     setLoading(false);
     if (result.success) {
@@ -172,6 +170,39 @@ export function AIConfigForm({ config }: Props) {
             ? "Obtenha em platform.openai.com/api-keys"
             : "Obtenha em aistudio.google.com/apikey"}
           . Você é responsável pelo uso e custos da sua chave.
+        </p>
+      </div>
+
+      {/* Anthropic Key (dashboard assistant) */}
+      <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+        <div>
+          <Label htmlFor="anthropicKey" className="text-sm font-medium text-slate-800">
+            Chave Anthropic (Assistente do Dashboard)
+          </Label>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Usada apenas pelo Assistente IA do Dashboard principal (Claude). Independente da chave
+            acima que roda o chat do WhatsApp.
+          </p>
+        </div>
+        <Input
+          id="anthropicKey"
+          type="password"
+          value={anthropicKey}
+          onChange={(e) => setAnthropicKey(e.target.value)}
+          placeholder="sk-ant-api03-..."
+        />
+        <p className="text-xs text-slate-400">
+          Obtenha em{" "}
+          <a
+            href="https://console.anthropic.com/settings/keys"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-600 hover:underline"
+          >
+            console.anthropic.com
+          </a>
+          . Sem esta chave o Assistente fica indisponível, mas o WhatsApp e o restante do sistema
+          continuam funcionando normalmente.
         </p>
       </div>
 

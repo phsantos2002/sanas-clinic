@@ -15,7 +15,12 @@ export type AIConfigData = {
   apiKey: string;
   voiceClonePrompt: string;
   openaiKey: string;
+  anthropicKey: string;
 };
+
+function maskKey(k: string) {
+  return k ? k.slice(0, 4) + "•".repeat(Math.max(0, k.length - 8)) + k.slice(-4) : "";
+}
 
 export async function getAIConfig(): Promise<AIConfigData | null> {
   const user = await getCurrentUser();
@@ -25,9 +30,6 @@ export async function getAIConfig(): Promise<AIConfigData | null> {
     where: { userId: user.id },
   });
 
-  const apiKey = config?.apiKey ?? "";
-  const openaiKey = config?.openaiKey ?? "";
-
   return {
     clinicName: config?.clinicName ?? "Sanas Pulse",
     systemPrompt: config?.systemPrompt ?? "",
@@ -35,13 +37,10 @@ export async function getAIConfig(): Promise<AIConfigData | null> {
     provider: config?.provider ?? "openai",
     model: config?.model ?? "gpt-4o-mini",
     capabilities: config?.capabilities ?? "text",
-    apiKey: apiKey
-      ? apiKey.slice(0, 4) + "•".repeat(Math.max(0, apiKey.length - 8)) + apiKey.slice(-4)
-      : "",
+    apiKey: maskKey(config?.apiKey ?? ""),
     voiceClonePrompt: config?.voiceClonePrompt ?? "",
-    openaiKey: openaiKey
-      ? openaiKey.slice(0, 4) + "•".repeat(Math.max(0, openaiKey.length - 8)) + openaiKey.slice(-4)
-      : "",
+    openaiKey: maskKey(config?.openaiKey ?? ""),
+    anthropicKey: maskKey(config?.anthropicKey ?? ""),
   };
 }
 
@@ -53,6 +52,7 @@ export async function saveAIConfig(data: AIConfigData): Promise<ActionResult> {
   const isMasked = (v: string) => v.includes("•");
   const apiKey = isMasked(data.apiKey) ? undefined : data.apiKey || null;
   const openaiKey = isMasked(data.openaiKey) ? undefined : data.openaiKey || null;
+  const anthropicKey = isMasked(data.anthropicKey) ? undefined : data.anthropicKey || null;
 
   try {
     await prisma.aIConfig.upsert({
@@ -67,6 +67,7 @@ export async function saveAIConfig(data: AIConfigData): Promise<ActionResult> {
         ...(apiKey !== undefined && { apiKey }),
         voiceClonePrompt: data.voiceClonePrompt || null,
         ...(openaiKey !== undefined && { openaiKey }),
+        ...(anthropicKey !== undefined && { anthropicKey }),
       },
       create: {
         userId: user.id,
@@ -79,6 +80,7 @@ export async function saveAIConfig(data: AIConfigData): Promise<ActionResult> {
         apiKey: apiKey ?? null,
         voiceClonePrompt: data.voiceClonePrompt || null,
         openaiKey: openaiKey ?? null,
+        anthropicKey: anthropicKey ?? null,
       },
     });
 

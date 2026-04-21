@@ -104,6 +104,8 @@ model AIConfig {
   enrichmentProvider String?  @default("none") // "none" | "apollo" | "hunter"
   apolloApiKey       String? // chave Apollo.io
   hunterApiKey       String? // chave Hunter.io
+  // ── Assistente IA (Claude) ──
+  anthropicKey       String? // chave Anthropic para o assistente do dashboard
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -132,7 +134,7 @@ model Pixel {
 }
 
 model Lead {
-  id                 String             @id @default(cuid())
+  id                 String              @id @default(cuid())
   name               String
   phone              String
   email              String?
@@ -142,12 +144,12 @@ model Lead {
   notes              String?
   photoUrl           String?
   userId             String
-  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   stageId            String?
-  stage              Stage?             @relation(fields: [stageId], references: [id])
+  stage              Stage?              @relation(fields: [stageId], references: [id])
   stageHistory       LeadStageHistory[]
   messages           Message[]
-  aiEnabled          Boolean            @default(true)
+  aiEnabled          Boolean             @default(true)
   humanPausedUntil   DateTime? // IA pausada até esta data (intervenção humana)
   lastFollowUpAt     DateTime? // última msg de follow-up enviada
   source             String? // "meta", "google", "whatsapp", "manual"
@@ -165,7 +167,7 @@ model Lead {
   workflowExecutions WorkflowExecution[]
   activities         LeadActivity[]
   // ── Lead Scoring & Tags ──
-  score              Int                @default(0) // 0-100
+  score              Int                 @default(0) // 0-100
   scoreLabel         String? // "frio" | "morno" | "quente" | "vip"
   tags               String[] // ["vip", "retorno", "indicacao"]
   lastInteractionAt  DateTime? // última msg ou mudança de stage
@@ -173,14 +175,14 @@ model Lead {
   // ── Multi-attendant ──
   assignedTo         String? // attendant id
   // ── Prospeccao outbound ──
-  leadType           String             @default("inbound") // "inbound" | "outbound"
+  leadType           String              @default("inbound") // "inbound" | "outbound"
   company            String? // Empresa (B2B)
   jobTitle           String? // Cargo
   linkedinUrl        String? // Perfil LinkedIn
   industry           String? // Setor / indústria
   importBatchId      String? // Lote de importação CSV (para desfazer)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([userId])
   @@index([userId, phone])
@@ -421,21 +423,21 @@ model AiUsageLog {
 // ── WhatsApp Hub: Multi-attendant ────────────────────────────
 
 model Attendant {
-  id              String    @id @default(cuid())
-  userId          String // owner user
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name            String
-  email           String?
-  phone           String?
-  role            String    @default("attendant") // "admin" | "sdr" | "sdr_manager" | "closer" | "closer_manager" | "attendant"
-  isActive        Boolean   @default(true)
-  avatar          String?
-  status          String    @default("offline") // "online" | "away" | "busy" | "offline"
-  statusUpdatedAt DateTime?
+  id                String    @id @default(cuid())
+  userId            String // owner user
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  email             String?
+  phone             String?
+  role              String    @default("attendant") // "admin" | "sdr" | "sdr_manager" | "closer" | "closer_manager" | "attendant"
+  isActive          Boolean   @default(true)
+  avatar            String?
+  status            String    @default("offline") // "online" | "away" | "busy" | "offline"
+  statusUpdatedAt   DateTime?
   // Prospeccao outbound metas
-  dailyActivityGoal Int     @default(50) // metas diarias (atividades esperadas/dia)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  dailyActivityGoal Int       @default(50) // metas diarias (atividades esperadas/dia)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([userId])
   @@index([userId, role])
@@ -588,16 +590,16 @@ model WorkflowExecution {
 // contexto de historico ao SDR/Closer na LeadDetailModal.
 
 model LeadActivity {
-  id         String   @id @default(cuid())
-  leadId     String
-  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  userId     String // owner
-  type       String // "stage_change" | "assignment" | "tag_added" | "tag_removed" | "cadence_enrolled" | "cadence_stopped" | "email_sent" | "email_opened" | "note" | "enrichment" | "import"
-  summary    String // texto curto para a timeline
-  metadata   Json? // dados estruturados (stageFromId, attendantId, cadenceId, etc)
-  actorType  String   @default("system") // "system" | "user" | "ai"
-  actorName  String? // nome do usuario/atendente (auditoria)
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId    String // owner
+  type      String // "stage_change" | "assignment" | "tag_added" | "tag_removed" | "cadence_enrolled" | "cadence_stopped" | "email_sent" | "email_opened" | "note" | "enrichment" | "import"
+  summary   String // texto curto para a timeline
+  metadata  Json? // dados estruturados (stageFromId, attendantId, cadenceId, etc)
+  actorType String   @default("system") // "system" | "user" | "ai"
+  actorName String? // nome do usuario/atendente (auditoria)
+  createdAt DateTime @default(now())
 
   @@index([leadId, createdAt])
   @@index([userId, type])

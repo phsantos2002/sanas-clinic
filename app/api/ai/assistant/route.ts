@@ -396,15 +396,6 @@ async function executeTool(
 // ── Main API Route ───────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "Assistente IA indisponivel — configure ANTHROPIC_API_KEY no servidor." },
-      { status: 503 }
-    );
-  }
-  const anthropic = new Anthropic({ apiKey });
-
   const supabase = await createClient();
   const {
     data: { user },
@@ -426,6 +417,19 @@ export async function POST(req: NextRequest) {
   if (!dbUser) return NextResponse.json({ error: "Usuario nao encontrado" }, { status: 404 });
 
   const config = dbUser.aiConfig;
+
+  // Resolve Anthropic API key from user's AIConfig (fallback to server env for legacy setups)
+  const apiKey = config?.anthropicKey || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      {
+        error: "Assistente IA indisponível — configure sua chave Anthropic em Config → IA Chat.",
+      },
+      { status: 503 }
+    );
+  }
+  const anthropic = new Anthropic({ apiKey });
+
   const brand = (config?.brandIdentity as Record<string, string>) || {};
 
   const systemPrompt = `Voce e o assistente de marketing da "${config?.clinicName || "empresa"}".

@@ -28,6 +28,7 @@ export default async function AISettingsPage() {
               apiKey: "",
               voiceClonePrompt: "",
               openaiKey: "",
+              anthropicKey: "",
             }
           }
         />
