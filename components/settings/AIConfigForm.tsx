@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { saveAIConfig, type AIConfigData } from "@/app/actions/aiConfig";
+import { saveAIConfig, testAIConnection, type AIConfigData } from "@/app/actions/aiConfig";
 import { toast } from "sonner";
-import { Copy, Check, Upload, X, Mic } from "lucide-react";
+import { Copy, Check, Upload, X, Mic, Plug, Loader2 } from "lucide-react";
 import { CustomSelect } from "@/components/ui/custom-select";
 import Image from "next/image";
 
@@ -54,6 +54,12 @@ export function AIConfigForm({ config }: Props) {
   const [openaiKey, setOpenaiKey] = useState(config.openaiKey);
   const [anthropicKey, setAnthropicKey] = useState(config.anthropicKey);
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<
+    | { ok: true; model: string; latencyMs: number; sample?: string }
+    | { ok: false; error: string }
+    | null
+  >(null);
   const [copied, setCopied] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -77,6 +83,20 @@ export function AIConfigForm({ config }: Props) {
     await navigator.clipboard.writeText(voiceClonePrompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleTestConnection() {
+    setTesting(true);
+    setTestResult(null);
+    const result = await testAIConnection();
+    setTesting(false);
+    if (result.success && result.data) {
+      setTestResult({ ok: true, ...result.data });
+      toast.success(`Conectado — ${result.data.latencyMs}ms`);
+    } else {
+      setTestResult({ ok: false, error: result.success ? "Sem dados" : result.error });
+      toast.error(result.success ? "Sem dados" : result.error);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -170,6 +190,53 @@ export function AIConfigForm({ config }: Props) {
             ? "Obtenha em platform.openai.com/api-keys"
             : "Obtenha em aistudio.google.com/apikey"}
           . Você é responsável pelo uso e custos da sua chave.
+        </p>
+
+        {/* Test connection */}
+        <div className="flex items-start gap-3 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleTestConnection}
+            disabled={testing}
+            className="rounded-xl gap-2"
+          >
+            {testing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Plug className="h-3.5 w-3.5" />
+            )}
+            {testing ? "Testando..." : "Testar conexão"}
+          </Button>
+          {testResult && (
+            <div
+              className={`flex-1 text-xs rounded-xl px-3 py-2 ${
+                testResult.ok
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-rose-50 text-rose-700 border border-rose-200"
+              }`}
+            >
+              {testResult.ok ? (
+                <>
+                  <div className="font-semibold">
+                    ✓ {testResult.model} respondeu em {testResult.latencyMs}ms
+                  </div>
+                  {testResult.sample && (
+                    <div className="text-slate-500 mt-0.5">
+                      Resposta: &quot;{testResult.sample}&quot;
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div>✗ {testResult.error}</div>
+              )}
+            </div>
+          )}
+        </div>
+        <p className="text-[11px] text-slate-400">
+          Salve as configurações antes de testar. O teste faz uma chamada curta ao provedor com a
+          chave salva.
         </p>
       </div>
 

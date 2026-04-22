@@ -95,3 +95,91 @@ export async function saveAIConfig(data: AIConfigData): Promise<ActionResult> {
 export async function getAIConfigByUserId(userId: string) {
   return prisma.aIConfig.findUnique({ where: { userId } });
 }
+
+export async function testAIConnection(): Promise<
+  ActionResult<{ model: string; latencyMs: number; sample?: string }>
+> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Não autenticado" };
+
+  const config = await prisma.aIConfig.findUnique({ where: { userId: user.id } });
+  if (!config) return { success: false, error: "Configure o provedor antes de testar" };
+
+  const provider = config.provider ?? "openai";
+  const model = config.model ?? "gpt-4o-mini";
+  const apiKey = config.apiKey;
+
+  if (!apiKey) return { success: false, error: "Chave de API não configurada" };
+
+  const started = Date.now();
+
+  try {
+    if (provider === "openai") {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: "Responda apenas 'ok' para confirmar a conexão." },
+            { role: "user", content: "ping" },
+          ],
+          max_tokens: 5,
+          temperature: 0,
+        }),
+      });
+      const latencyMs = Date.now() - started;
+      if (!res.ok) {
+        const body = await res.text();
+        let msg = `HTTP ${res.status}`;
+        try {
+          const parsed = JSON.parse(body);
+          msg = parsed?.error?.message ?? msg;
+        } catch {}
+        return { success: false, error: `OpenAI: ${msg}` };
+      }
+      const json = (await res.json()) as {
+        choices?: { message?: { content?: string } }[];
+      };
+      const sample = json.choices?.[0]?.message?.content?.trim() ?? "";
+      return { success: true, data: { model, latencyMs, sample } };
+    }
+
+    if (provider === "gemini") {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: "Responda apenas 'ok' para confirmar a conexão." }] }],
+          generationConfig: { maxOutputTokens: 5, temperature: 0 },
+        }),
+      });
+      const latencyMs = Date.now() - started;
+      if (!res.ok) {
+        const body = await res.text();
+        let msg = `HTTP ${res.status}`;
+        try {
+          const parsed = JSON.parse(body);
+          msg = parsed?.error?.message ?? msg;
+        } catch {}
+        return { success: false, error: `Gemini: ${msg}` };
+      }
+      const json = (await res.json()) as {
+        candidates?: { content?: { parts?: { text?: string }[] } }[];
+      };
+      const sample = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+      return { success: true, data: { model, latencyMs, sample } };
+    }
+
+    return { success: false, error: `Provedor não suportado: ${provider}` };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Falha ao testar conexão",
+    };
+  }
+}

@@ -52,6 +52,8 @@ import { Button } from "@/components/ui/button";
 import { LeadContextPanel } from "@/components/chat/LeadContextPanel";
 import { SuggestedReplies } from "@/components/chat/SuggestedReplies";
 import { AIStatusBadge } from "@/components/chat/AIStatusBadge";
+import { getLeadByPhone } from "@/app/actions/leads";
+import { toggleAI } from "@/app/actions/messages";
 import { toast } from "sonner";
 
 type Chat = {
@@ -255,6 +257,9 @@ export function ChatPageClient() {
   const [connectionStatus, setConnectionStatus] = useState<
     "connected" | "disconnected" | "loading"
   >("loading");
+  const [chatLeadId, setChatLeadId] = useState<string | null>(null);
+  const [chatLeadAi, setChatLeadAi] = useState<boolean | null>(null);
+  const [togglingAi, setTogglingAi] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesTopRef = useRef<HTMLDivElement>(null);
@@ -272,6 +277,50 @@ export function ChatPageClient() {
       })
       .catch(() => setConnectionStatus("disconnected"));
   }, []);
+
+  // Load aiEnabled for the currently selected chat's linked lead
+  useEffect(() => {
+    if (!selectedChat) {
+      setChatLeadId(null);
+      setChatLeadAi(null);
+      return;
+    }
+    const phone = selectedChat.wa_chatid?.split("@")[0] || selectedChat.phone || "";
+    if (!phone) {
+      setChatLeadId(null);
+      setChatLeadAi(null);
+      return;
+    }
+    let cancelled = false;
+    getLeadByPhone(phone).then((lead) => {
+      if (cancelled) return;
+      if (lead) {
+        setChatLeadId(lead.id);
+        setChatLeadAi(lead.aiEnabled);
+      } else {
+        setChatLeadId(null);
+        setChatLeadAi(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedChat]);
+
+  const handleToggleChatAI = useCallback(async () => {
+    if (!chatLeadId || togglingAi) return;
+    setTogglingAi(true);
+    const prev = chatLeadAi ?? false;
+    setChatLeadAi(!prev);
+    const result = await toggleAI(chatLeadId);
+    setTogglingAi(false);
+    if (!result.success) {
+      setChatLeadAi(prev);
+      toast.error(result.error ?? "Erro ao alternar IA");
+      return;
+    }
+    toast.success(prev ? "IA pausada — vendedor responde" : "IA ativada");
+  }, [chatLeadId, chatLeadAi, togglingAi]);
 
   // Fetch chats
   const fetchChats = useCallback(
@@ -885,7 +934,9 @@ export function ChatPageClient() {
               </div>
 
               <div className="flex items-center gap-0.5">
-                <AIStatusBadge aiEnabled={true} />
+                {chatLeadAi !== null && (
+                  <AIStatusBadge aiEnabled={chatLeadAi} onToggle={handleToggleChatAI} />
+                )}
                 <button
                   onClick={() => setShowMsgSearch(!showMsgSearch)}
                   className="p-2 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors"

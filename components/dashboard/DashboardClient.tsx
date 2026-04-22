@@ -330,17 +330,23 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
 
         {/* Bulk selection toggle */}
         <Button
-          variant={selectionMode ? "default" : "outline"}
+          variant={selectionMode || selectedIds.size > 0 ? "default" : "outline"}
           size="sm"
           onClick={() => {
             setSelectionMode((v) => !v);
             if (selectionMode) setSelectedIds(new Set());
           }}
-          className={`h-9 text-sm gap-2 rounded-xl ${selectionMode ? "bg-indigo-600 hover:bg-indigo-700 text-white" : ""}`}
-          title="Seleção em massa"
+          className={`h-9 text-sm gap-2 rounded-xl ${selectionMode || selectedIds.size > 0 ? "bg-indigo-600 hover:bg-indigo-700 text-white" : ""}`}
+          title="Seleção em massa (ou use Ctrl/Cmd+click nos cards)"
         >
           <CheckSquare className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{selectionMode ? "Sair" : "Selecionar"}</span>
+          <span className="hidden sm:inline">
+            {selectedIds.size > 0
+              ? `${selectedIds.size} selecionado${selectedIds.size > 1 ? "s" : ""}`
+              : selectionMode
+                ? "Sair"
+                : "Selecionar"}
+          </span>
         </Button>
 
         {/* Export CSV */}

@@ -87,14 +87,23 @@ export function LeadCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative bg-white border rounded-xl p-3.5 shadow-sm group cursor-pointer hover:shadow-md transition-all ${
+      {...attributes}
+      {...listeners}
+      className={`relative bg-white border rounded-xl p-3.5 shadow-sm group cursor-grab active:cursor-grabbing hover:shadow-md transition-all ${
         selected
-          ? "border-indigo-400 ring-2 ring-indigo-200"
+          ? "border-indigo-400 ring-2 ring-indigo-200 bg-indigo-50/30"
           : isStagnant
             ? "border-amber-300 ring-1 ring-amber-200"
             : "border-slate-100 hover:border-slate-200"
       }`}
       onClick={(e) => {
+        // Ctrl/Cmd/Shift + click = toggle selection (no need for selection mode)
+        if ((e.ctrlKey || e.metaKey || e.shiftKey) && onToggleSelect) {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggleSelect(lead.id);
+          return;
+        }
         if (selectionMode && onToggleSelect) {
           e.preventDefault();
           onToggleSelect(lead.id);
@@ -172,13 +181,12 @@ export function LeadCard({
       </div>
 
       <div className="flex items-start gap-2">
-        <button
-          {...attributes}
-          {...listeners}
-          className="mt-0.5 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+        <div
+          className="mt-0.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+          aria-hidden="true"
         >
           <GripVertical className="h-4 w-4" />
-        </button>
+        </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
