@@ -17,7 +17,7 @@ export type PipelineAnalytics = {
   leadsByStage: Array<{
     stageId: string;
     stageName: string;
-    eventName: string;
+    eventName: string | null;
     count: number;
     percentage: number;
   }>;

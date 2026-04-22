@@ -11,8 +11,9 @@ export type Stage = {
   id: string;
   name: string;
   order: number;
-  eventName: string;
+  eventName: string | null;
   userId: string;
+  funnelId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 type SendEventParams = {
   userId: string;
   phone: string;
-  eventName: string;
+  eventName: string | null;
   leadId?: string;
   stageName?: string;
 };
@@ -21,6 +21,8 @@ export async function sendFacebookEvent({
   leadId,
   stageName,
 }: SendEventParams): Promise<void> {
+  // Stages can opt out of firing a Meta event (eventName = null)
+  if (!eventName) return;
   let success = false;
   try {
     const pixel = await prisma.pixel.findUnique({ where: { userId } });

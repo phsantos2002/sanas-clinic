@@ -39,6 +39,7 @@ model User {
   services           Service[]
   workflows          Workflow[]
   googleCalendar     GoogleCalendar?
+  funnels            Funnel[]
 }
 
 model AIConfig {
@@ -212,16 +213,37 @@ model Stage {
   id                      String             @id @default(cuid())
   name                    String
   order                   Int
-  eventName               String
+  eventName               String? // Meta event name to fire on entry — null means "sem enviar evento"
   stagnationDaysThreshold Int? // Dias max sem interação antes de alertar
   userId                  String
+  funnelId                String?
   user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  funnel                  Funnel?            @relation(fields: [funnelId], references: [id], onDelete: Cascade)
   leads                   Lead[]
   history                 LeadStageHistory[]
+  attendantStages         AttendantStage[]
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
 
   @@unique([userId, order])
+  @@index([funnelId])
+}
+
+model Funnel {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  order     Int      @default(0)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stages           Stage[]
+  attendantFunnels AttendantFunnel[]
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model LeadStageHistory {
@@ -429,7 +451,7 @@ model Attendant {
   name              String
   email             String?
   phone             String?
-  role              String    @default("attendant") // "admin" | "sdr" | "sdr_manager" | "closer" | "closer_manager" | "attendant"
+  role              String    @default("attendant") // "admin" | "manager" | "seller" | "cs" (+ legacy sdr/closer/attendant)
   isActive          Boolean   @default(true)
   avatar            String?
   status            String    @default("offline") // "online" | "away" | "busy" | "offline"
@@ -439,8 +461,38 @@ model Attendant {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
+  funnels AttendantFunnel[]
+  stages  AttendantStage[]
+
   @@index([userId])
   @@index([userId, role])
+}
+
+model AttendantFunnel {
+  id          String   @id @default(cuid())
+  attendantId String
+  funnelId    String
+  allStages   Boolean  @default(true) // true = todas as etapas do funil; false = restrito pelas entries em AttendantStage
+  createdAt   DateTime @default(now())
+
+  attendant Attendant @relation(fields: [attendantId], references: [id], onDelete: Cascade)
+  funnel    Funnel    @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+
+  @@unique([attendantId, funnelId])
+  @@index([funnelId])
+}
+
+model AttendantStage {
+  id          String   @id @default(cuid())
+  attendantId String
+  stageId     String
+  createdAt   DateTime @default(now())
+
+  attendant Attendant @relation(fields: [attendantId], references: [id], onDelete: Cascade)
+  stage     Stage     @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([attendantId, stageId])
+  @@index([stageId])
 }
 
 model MessageTemplate {

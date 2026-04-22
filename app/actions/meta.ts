@@ -493,10 +493,13 @@ export async function getPixelEvents(): Promise<{
     select: { name: true, eventName: true },
   });
 
-  const events = stages.map((s) => ({
-    name: s.eventName,
-    count: 0, // Will be populated from pixel events count
-  }));
+  // Skip stages without Meta event
+  const events = stages
+    .filter((s): s is { name: string; eventName: string } => !!s.eventName)
+    .map((s) => ({
+      name: s.eventName,
+      count: 0, // Will be populated from pixel events count
+    }));
 
   // Get recent pixel events count
   const thirtyDaysAgo = new Date();

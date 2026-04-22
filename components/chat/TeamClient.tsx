@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Users, Trash2, UserCircle, Target } from "lucide-react";
+import { Plus, Users, Trash2, UserCircle, Target, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { createAttendant, deleteAttendant, type AttendantData } from "@/app/actions/whatsappHub";
 import { updateAttendantRole, updateAttendantActivityGoal } from "@/app/actions/prospeccao";
+import { setAttendantFunnelAccess } from "@/app/actions/attendantAssignments";
 import { ATTENDANT_ROLES, toCanonicalRole, type AttendantRole } from "@/lib/prospeccao";
+import type { FunnelData } from "@/app/actions/funnels";
+import type { Stage } from "@/types";
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-red-100 text-red-700",
@@ -23,7 +26,13 @@ const ROLE_COLORS: Record<string, string> = {
 
 type TeamAttendant = AttendantData & { dailyActivityGoal?: number };
 
-export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
+type Props = {
+  attendants: TeamAttendant[];
+  funnels?: FunnelData[];
+  stages?: Stage[];
+};
+
+export function TeamClient({ attendants, funnels = [], stages = [] }: Props) {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
@@ -31,9 +40,32 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<AttendantRole>("seller");
   const [creating, setCreating] = useState(false);
+  // Access assignment (optional on create)
+  const [accessFunnelId, setAccessFunnelId] = useState<string>("");
+  const [accessMode, setAccessMode] = useState<"all" | "some">("all");
+  const [accessStageIds, setAccessStageIds] = useState<Set<string>>(new Set());
+
+  const funnelStages = accessFunnelId ? stages.filter((s) => s.funnelId === accessFunnelId) : [];
+
+  function resetCreateForm() {
+    setName("");
+    setEmail("");
+    setPhone("");
+    setRole("seller");
+    setAccessFunnelId("");
+    setAccessMode("all");
+    setAccessStageIds(new Set());
+  }
 
   const handleCreate = async () => {
     if (!name.trim()) return;
+    // Admin and manager roles typically have full access; don't require a funnel.
+    const wantsAccess = !!accessFunnelId;
+    if (wantsAccess && accessMode === "some" && accessStageIds.size === 0) {
+      toast.error("Selecione pelo menos uma etapa");
+      return;
+    }
+
     setCreating(true);
     const result = await createAttendant({
       name: name.trim(),
@@ -41,16 +73,29 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
       phone: phone.trim() || undefined,
       role,
     });
+
+    if (!result.success) {
+      setCreating(false);
+      toast.error(result.error);
+      return;
+    }
+
+    const attendantId = result.data?.id;
+    if (attendantId && wantsAccess) {
+      const assign = await setAttendantFunnelAccess(attendantId, accessFunnelId, {
+        allStages: accessMode === "all",
+        stageIds: accessMode === "some" ? Array.from(accessStageIds) : undefined,
+      });
+      if (!assign.success) {
+        toast.error(`Usuario criado, mas acesso falhou: ${assign.error}`);
+      }
+    }
+
     setCreating(false);
-    if (result.success) {
-      toast.success("Usuario adicionado!");
-      setShowCreate(false);
-      setName("");
-      setEmail("");
-      setPhone("");
-      setRole("seller");
-      router.refresh();
-    } else toast.error(result.error);
+    toast.success("Usuario adicionado!");
+    setShowCreate(false);
+    resetCreateForm();
+    router.refresh();
   };
 
   const handleDelete = async (id: string) => {
@@ -212,7 +257,7 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-3">
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
             <h3 className="font-semibold text-slate-900">Novo Usuario</h3>
             <input
               type="text"
@@ -249,9 +294,97 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
                 ))}
               </select>
             </div>
-            <div className="flex gap-2">
+
+            {/* Funnel access */}
+            {funnels.length > 0 && (
+              <div className="border-t border-slate-100 pt-3 space-y-2">
+                <label className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+                  <Filter className="h-3.5 w-3.5" /> Acesso ao funil
+                </label>
+                <select
+                  value={accessFunnelId}
+                  onChange={(e) => {
+                    setAccessFunnelId(e.target.value);
+                    setAccessStageIds(new Set());
+                    setAccessMode("all");
+                  }}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">— Sem acesso restrito (ve tudo) —</option>
+                  {funnels.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+
+                {accessFunnelId && (
+                  <>
+                    <div className="flex items-center gap-4 text-sm pt-1">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="accessMode"
+                          checked={accessMode === "all"}
+                          onChange={() => setAccessMode("all")}
+                        />
+                        <span>Todas as etapas</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="accessMode"
+                          checked={accessMode === "some"}
+                          onChange={() => setAccessMode("some")}
+                        />
+                        <span>Etapas especificas</span>
+                      </label>
+                    </div>
+
+                    {accessMode === "some" && (
+                      <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto bg-slate-50 rounded-xl p-2">
+                        {funnelStages.length === 0 ? (
+                          <p className="text-xs text-slate-400 col-span-2 text-center py-2">
+                            Este funil nao tem etapas ainda.
+                          </p>
+                        ) : (
+                          funnelStages.map((s) => {
+                            const checked = accessStageIds.has(s.id);
+                            return (
+                              <label
+                                key={s.id}
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-white cursor-pointer text-xs"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    setAccessStageIds((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(s.id)) next.delete(s.id);
+                                      else next.add(s.id);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                <span className="truncate">{s.name}</span>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
               <button
-                onClick={() => setShowCreate(false)}
+                onClick={() => {
+                  setShowCreate(false);
+                  resetCreateForm();
+                }}
                 className="flex-1 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50"
               >
                 Cancelar

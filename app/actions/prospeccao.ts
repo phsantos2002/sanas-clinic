@@ -63,7 +63,7 @@ export async function importLeadsBulk(data: {
   let skipped = 0;
 
   // Fetch stage (with eventName for Pixel fire)
-  let targetStage: { id: string; name: string; eventName: string } | null = null;
+  let targetStage: { id: string; name: string; eventName: string | null } | null = null;
   if (data.defaultStageId) {
     targetStage = await prisma.stage.findFirst({
       where: { id: data.defaultStageId, userId: user.id },

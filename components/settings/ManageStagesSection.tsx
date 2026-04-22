@@ -12,6 +12,7 @@ import type { AttendantData } from "@/app/actions/whatsappHub";
 import { StageActionModal } from "./StageActionModal";
 
 const FACEBOOK_EVENTS = [
+  { value: "", label: "— Sem enviar evento —" },
   { value: "Lead", label: "Lead — cadastro de interesse" },
   { value: "Contact", label: "Contact — primeiro contato" },
   { value: "QualifiedLead", label: "QualifiedLead — lead qualificado" },
@@ -30,15 +31,21 @@ type Props = {
   stages: Stage[];
   attendants?: AttendantData[];
   stageWorkflowCounts?: Record<string, number>;
+  funnelId?: string | null;
 };
 
 type EditingState = {
   id: string;
   name: string;
-  eventName: string;
+  eventName: string; // empty string means "no event" (saved as null)
 };
 
-export function ManageStagesSection({ stages, attendants = [], stageWorkflowCounts = {} }: Props) {
+export function ManageStagesSection({
+  stages,
+  attendants = [],
+  stageWorkflowCounts = {},
+  funnelId = null,
+}: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [newName, setNewName] = useState("");
@@ -50,7 +57,7 @@ export function ManageStagesSection({ stages, attendants = [], stageWorkflowCoun
 
   function startEdit(stage: Stage) {
     setEditingId(stage.id);
-    setEditing({ id: stage.id, name: stage.name, eventName: stage.eventName });
+    setEditing({ id: stage.id, name: stage.name, eventName: stage.eventName ?? "" });
   }
 
   function cancelEdit() {
@@ -63,7 +70,7 @@ export function ManageStagesSection({ stages, attendants = [], stageWorkflowCoun
     setLoading(true);
     const result = await updateStage(editing.id, {
       name: editing.name,
-      eventName: editing.eventName,
+      eventName: editing.eventName ? editing.eventName : null,
     });
     setLoading(false);
     if (result.success) {
@@ -88,7 +95,11 @@ export function ManageStagesSection({ stages, attendants = [], stageWorkflowCoun
   async function handleCreate() {
     if (!newName.trim()) return;
     setLoading(true);
-    const result = await createStage({ name: newName.trim(), eventName: newEvent });
+    const result = await createStage({
+      name: newName.trim(),
+      eventName: newEvent ? newEvent : null,
+      funnelId: funnelId ?? null,
+    });
     setLoading(false);
     if (result.success) {
       toast.success("Coluna criada");
@@ -146,7 +157,10 @@ export function ManageStagesSection({ stages, attendants = [], stageWorkflowCoun
                 <div className="flex-1">
                   <p className="text-sm font-medium">{stage.name}</p>
                   <p className="text-xs text-zinc-400">
-                    Evento: <span className="text-zinc-600 font-mono">{stage.eventName}</span>
+                    Evento:{" "}
+                    <span className="text-zinc-600 font-mono">
+                      {stage.eventName || "— sem evento"}
+                    </span>
                     {countsLocal[stage.id] > 0 && (
                       <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
                         <Zap className="h-3 w-3" />

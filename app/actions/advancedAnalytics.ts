@@ -9,7 +9,7 @@ import { getCurrentUser } from "./user";
 
 export type FunnelStep = {
   stageName: string;
-  eventName: string;
+  eventName: string | null;
   count: number;
   percentage: number;
   avgDaysFromPrevious: number | null;

@@ -156,7 +156,7 @@ export const healthConfig: Record<
 
 // ─── Shared Types ───
 
-export type Stage = { id: string; name: string; eventName: string };
+export type Stage = { id: string; name: string; eventName: string | null };
 
 // Re-export types from meta actions for convenience
 export type { MetaCampaignFull, MetaAdSet, MetaAd, MetaCampaignInsights } from "@/app/actions/meta";

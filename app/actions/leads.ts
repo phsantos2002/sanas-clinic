@@ -528,7 +528,7 @@ export async function getLeadTimeline(leadId: string): Promise<TimelineEvent[]> 
       title: `Movido para "${sh.stage.name}"`,
       description: `Evento: ${sh.stage.eventName}`,
       timestamp: sh.createdAt,
-      metadata: { stageName: sh.stage.name, eventName: sh.stage.eventName },
+      metadata: { stageName: sh.stage.name, eventName: sh.stage.eventName ?? "" },
     });
   }
 

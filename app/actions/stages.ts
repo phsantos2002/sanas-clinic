@@ -17,7 +17,8 @@ export async function getStages(): Promise<Stage[]> {
 
 export async function createStage(data: {
   name: string;
-  eventName: string;
+  eventName: string | null;
+  funnelId?: string | null;
 }): Promise<ActionResult<Stage>> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Não autenticado" };
@@ -28,12 +29,21 @@ export async function createStage(data: {
       orderBy: { order: "desc" },
     });
 
+    // Validate funnel ownership if provided
+    if (data.funnelId) {
+      const owned = await prisma.funnel.findFirst({
+        where: { id: data.funnelId, userId: user.id },
+      });
+      if (!owned) return { success: false, error: "Funil invalido" };
+    }
+
     const stage = await prisma.stage.create({
       data: {
         name: data.name,
-        eventName: data.eventName,
+        eventName: data.eventName ?? null,
         order: (last?.order ?? 0) + 1,
         userId: user.id,
+        funnelId: data.funnelId ?? null,
       },
     });
 
@@ -47,12 +57,19 @@ export async function createStage(data: {
 
 export async function updateStage(
   stageId: string,
-  data: { name?: string; eventName?: string }
+  data: { name?: string; eventName?: string | null; funnelId?: string | null }
 ): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Não autenticado" };
 
   try {
+    if (data.funnelId) {
+      const owned = await prisma.funnel.findFirst({
+        where: { id: data.funnelId, userId: user.id },
+      });
+      if (!owned) return { success: false, error: "Funil invalido" };
+    }
+
     await prisma.stage.update({
       where: { id: stageId, userId: user.id },
       data,
