@@ -1,13 +1,13 @@
 import { getAttendants } from "@/app/actions/whatsappHub";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/app/actions/user";
-import { GoogleMapsProspector } from "@/components/prospeccao/GoogleMapsProspector";
+import { CNPJProspector } from "@/components/prospeccao/CNPJProspector";
 
 export default async function ProspeccaoPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [attendants, stages, outboundCount, sqlCount, googleMapsCount] = await Promise.all([
+  const [attendants, stages, outboundCount, sqlCount, cnpjCount] = await Promise.all([
     getAttendants(),
     prisma.stage.findMany({
       where: { userId: user.id },
@@ -18,7 +18,7 @@ export default async function ProspeccaoPage() {
     prisma.lead.count({
       where: { userId: user.id, leadType: "outbound", tags: { has: "sql" } },
     }),
-    prisma.lead.count({ where: { userId: user.id, source: "google_maps" } }),
+    prisma.lead.count({ where: { userId: user.id, source: "cnpj" } }),
   ]);
 
   const conversionPct = outboundCount > 0 ? Math.round((sqlCount / outboundCount) * 100) : 0;
@@ -29,7 +29,8 @@ export default async function ProspeccaoPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Prospecção</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Encontre leads frios no Google Maps e envie direto para uma coluna do pipeline.
+          Encontre empresas brasileiras por atividade e envie direto para uma coluna do pipeline.
+          Dados oficiais da Receita Federal.
         </p>
       </div>
 
@@ -39,8 +40,8 @@ export default async function ProspeccaoPage() {
           <p className="text-2xl font-bold text-slate-900">{outboundCount}</p>
         </div>
         <div className="bg-white border border-slate-100 rounded-2xl p-4">
-          <p className="text-xs text-slate-400 mb-1">Via Google Maps</p>
-          <p className="text-2xl font-bold text-slate-900">{googleMapsCount}</p>
+          <p className="text-xs text-slate-400 mb-1">Via CNPJ/Receita</p>
+          <p className="text-2xl font-bold text-slate-900">{cnpjCount}</p>
         </div>
         <div className="bg-white border border-slate-100 rounded-2xl p-4">
           <p className="text-xs text-slate-400 mb-1">Taxa de qualificação</p>
@@ -57,7 +58,7 @@ export default async function ProspeccaoPage() {
           .
         </div>
       ) : (
-        <GoogleMapsProspector
+        <CNPJProspector
           stages={stages}
           attendants={attendants.map((a) => ({ id: a.id, name: a.name, role: a.role }))}
         />
