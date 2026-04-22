@@ -114,7 +114,13 @@ async function loadAvatarCache(
   if (phones.length === 0) return new Map();
   const minFetchedAt = new Date(Date.now() - AVATAR_TTL_MS);
   const rows = await prisma.whatsAppAvatarCache.findMany({
-    where: { userId, phone: { in: phones }, fetchedAt: { gte: minFetchedAt } },
+    where: {
+      userId,
+      phone: { in: phones },
+      fetchedAt: { gte: minFetchedAt },
+      // Only return entries that actually have an avatar; empties are not cached.
+      OR: [{ imagePreview: { not: "" } }, { image: { not: "" } }],
+    },
     select: { phone: true, imagePreview: true, image: true },
   });
   return new Map(rows.map((r) => [r.phone, { imagePreview: r.imagePreview, image: r.image }]));
@@ -125,9 +131,12 @@ async function saveAvatarCache(
   entries: { phone: string; imagePreview: string; image: string }[]
 ) {
   if (entries.length === 0) return;
-  // upsert in parallel — Prisma doesn't have bulk upsert
+  // Skip empty avatars — we want to retry these on the next request rather than
+  // permanently treating "no avatar yet" as a final answer.
+  const real = entries.filter((e) => e.imagePreview || e.image);
+  if (real.length === 0) return;
   await Promise.allSettled(
-    entries.map((e) =>
+    real.map((e) =>
       prisma.whatsAppAvatarCache.upsert({
         where: { userId_phone: { userId, phone: e.phone } },
         update: { imagePreview: e.imagePreview, image: e.image, fetchedAt: new Date() },

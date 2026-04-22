@@ -1596,12 +1596,21 @@ function ChatItem({
           isSelected ? "bg-emerald-50" : "hover:bg-slate-50"
         }`}
       >
-        <div className="w-11 h-11 rounded-full flex-shrink-0 overflow-hidden bg-slate-200 flex items-center justify-center">
-          {pic ? (
+        <div className="w-11 h-11 rounded-full flex-shrink-0 overflow-hidden bg-slate-200 flex items-center justify-center relative">
+          <span className="text-sm font-bold text-slate-500 absolute inset-0 flex items-center justify-center">
+            {getInitials(name)}
+          </span>
+          {pic && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={pic} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-sm font-bold text-slate-500">{getInitials(name)}</span>
+            <img
+              src={pic}
+              alt=""
+              className="w-full h-full object-cover relative"
+              onError={(e) => {
+                // URL expired or unreachable: hide image so initials show through
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
           )}
         </div>
 
