@@ -78,6 +78,7 @@ async function getUazapiConfig() {
   }
 
   return {
+    userId: dbUser.id,
     serverUrl: config.uazapiServerUrl.trim().replace(/\/+$/, ""),
     token: config.uazapiInstanceToken.trim(),
   };
@@ -102,24 +103,43 @@ async function uazapi(
   return res.json().catch(() => ({}));
 }
 
-// ── Avatar cache (process-local, TTL) ─────────────────────────
+// ── Avatar cache (DB-backed, persists across cold starts) ─────
 // Avoids re-querying Uazapi /chat/details for every chat on each poll.
-type AvatarEntry = { imagePreview: string; image: string; expiresAt: number };
-const AVATAR_CACHE = new Map<string, AvatarEntry>();
-const AVATAR_TTL_MS = 1000 * 60 * 60 * 24; // 24h
+const AVATAR_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
-function getCachedAvatar(phone: string): { imagePreview: string; image: string } | null {
-  const entry = AVATAR_CACHE.get(phone);
-  if (!entry) return null;
-  if (entry.expiresAt < Date.now()) {
-    AVATAR_CACHE.delete(phone);
-    return null;
-  }
-  return { imagePreview: entry.imagePreview, image: entry.image };
+async function loadAvatarCache(
+  userId: string,
+  phones: string[]
+): Promise<Map<string, { imagePreview: string; image: string }>> {
+  if (phones.length === 0) return new Map();
+  const minFetchedAt = new Date(Date.now() - AVATAR_TTL_MS);
+  const rows = await prisma.whatsAppAvatarCache.findMany({
+    where: { userId, phone: { in: phones }, fetchedAt: { gte: minFetchedAt } },
+    select: { phone: true, imagePreview: true, image: true },
+  });
+  return new Map(rows.map((r) => [r.phone, { imagePreview: r.imagePreview, image: r.image }]));
 }
 
-function setCachedAvatar(phone: string, value: { imagePreview: string; image: string }) {
-  AVATAR_CACHE.set(phone, { ...value, expiresAt: Date.now() + AVATAR_TTL_MS });
+async function saveAvatarCache(
+  userId: string,
+  entries: { phone: string; imagePreview: string; image: string }[]
+) {
+  if (entries.length === 0) return;
+  // upsert in parallel — Prisma doesn't have bulk upsert
+  await Promise.allSettled(
+    entries.map((e) =>
+      prisma.whatsAppAvatarCache.upsert({
+        where: { userId_phone: { userId, phone: e.phone } },
+        update: { imagePreview: e.imagePreview, image: e.image, fetchedAt: new Date() },
+        create: {
+          userId,
+          phone: e.phone,
+          imagePreview: e.imagePreview,
+          image: e.image,
+        },
+      })
+    )
+  );
 }
 
 export async function GET(req: NextRequest) {
@@ -154,12 +174,22 @@ export async function GET(req: NextRequest) {
         const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/find", body);
         const chats = data.chats ?? data ?? [];
 
-        // Apply cached profile pics first (avoids hammering Uazapi on every poll)
+        // Phones we may need avatars for
+        const phonesToCheck: string[] = [];
+        for (const chat of chats) {
+          if (!chat.wa_chatid) continue;
+          if (!chat.imagePreview && !chat.image) {
+            phonesToCheck.push((chat.wa_chatid as string).split("@")[0]);
+          }
+        }
+
+        // Hydrate from DB cache first
+        const cache = await loadAvatarCache(config.userId, phonesToCheck);
         for (const chat of chats) {
           if (!chat.wa_chatid) continue;
           const phone = (chat.wa_chatid as string).split("@")[0];
           if (!chat.imagePreview && !chat.image) {
-            const cached = getCachedAvatar(phone);
+            const cached = cache.get(phone);
             if (cached) {
               chat.imagePreview = cached.imagePreview;
               chat.image = cached.image;
@@ -167,10 +197,11 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        // Enrich any remaining chats (cache miss) with profile pics, batched.
+        // Enrich any remaining (cache miss) chats with profile pics, batched.
         const toEnrich = chats.filter(
           (c: Record<string, unknown>) => !c.imagePreview && !c.image && c.wa_chatid
         );
+        const newlyFetched: { phone: string; imagePreview: string; image: string }[] = [];
         const ENRICH_CONCURRENCY = 10;
         for (let i = 0; i < toEnrich.length; i += ENRICH_CONCURRENCY) {
           const batch = toEnrich.slice(i, i + ENRICH_CONCURRENCY);
@@ -189,17 +220,17 @@ export async function GET(req: NextRequest) {
                 const image = detail.image || "";
                 chat.imagePreview = imagePreview;
                 chat.image = image;
-                if (imagePreview || image) {
-                  setCachedAvatar(phone, { imagePreview, image });
-                } else {
-                  // Cache "no avatar" briefly to avoid retrying every poll
-                  setCachedAvatar(phone, { imagePreview: "", image: "" });
-                }
+                newlyFetched.push({ phone, imagePreview, image });
               } catch {
-                /* skip — group/contact without preview is fine */
+                /* skip */
               }
             })
           );
+        }
+
+        // Persist newly fetched avatars (fire-and-forget — don't block response)
+        if (newlyFetched.length > 0) {
+          saveAvatarCache(config.userId, newlyFetched).catch(() => {});
         }
 
         return NextResponse.json({ chats, total: data.pagination?.total ?? chats.length });

@@ -322,7 +322,7 @@ export function ChatPageClient() {
     toast.success(prev ? "IA pausada — vendedor responde" : "IA ativada");
   }, [chatLeadId, chatLeadAi, togglingAi]);
 
-  // Fetch chats
+  // Fetch chats — paginates through all pages until exhausted (no chat is ever hidden)
   const fetchChats = useCallback(
     async (silent = false) => {
       if (!silent) setLoading(true);
@@ -331,11 +331,26 @@ export function ChatPageClient() {
         const archiveParam = tab === "archived" ? "&archived=true" : "";
         const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
         const unreadParam = chatFilter === "unread" ? "&unread=true" : "";
-        const res = await fetch(
-          `/api/whatsapp?action=chats&limit=200${type}${archiveParam}${searchParam}${unreadParam}`
-        );
-        const data = await res.json();
-        setChats(data.chats ?? []);
+
+        const PAGE = 200;
+        const MAX_PAGES = 25; // safety cap: up to 5000 chats
+        let offset = 0;
+        const all: Chat[] = [];
+
+        for (let i = 0; i < MAX_PAGES; i++) {
+          const res = await fetch(
+            `/api/whatsapp?action=chats&limit=${PAGE}&offset=${offset}${type}${archiveParam}${searchParam}${unreadParam}`
+          );
+          const data = await res.json();
+          const page: Chat[] = data.chats ?? [];
+          all.push(...page);
+          // Show progress as we go so the user sees chats appearing
+          if (!silent && all.length > 0) setChats([...all]);
+          if (page.length < PAGE) break; // last page
+          offset += PAGE;
+        }
+
+        setChats(all);
       } catch {
         if (!silent) setChats([]);
       }
