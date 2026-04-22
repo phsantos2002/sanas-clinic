@@ -17,6 +17,7 @@ import {
   AdvancedAnalyticsSection,
   AnalyticsNarrative,
 } from "@/components/dashboard/AnalyticsDynamic";
+import { OutboundPerformance } from "@/components/dashboard/OutboundPerformance";
 
 export default async function AnalyticsPage() {
   const [data, sourceStats, creatives, user, funnel, ltv, cac, scores, aiUsage] = await Promise.all(
@@ -113,6 +114,9 @@ export default async function AnalyticsPage() {
         campaignConfigMap={configMap}
       />
       {creatives.length > 0 && <AdCreativeReportTable creatives={creatives} />}
+
+      {/* Outbound Performance (ex-Prospecção > Performance) */}
+      <OutboundPerformance />
 
       {/* Advanced Analytics */}
       <AdvancedAnalyticsSection

@@ -18,6 +18,9 @@ import { bulkMoveStage } from "@/app/actions/bulkActions";
 import { toast } from "sonner";
 import type { KanbanColumn as KanbanColumnType } from "@/types";
 
+type Attendant = { id: string; name: string; role: string };
+type StageLite = { id: string; name: string };
+
 type Props = {
   columns: KanbanColumnType[];
   onClickLead?: (leadId: string) => void;
@@ -25,6 +28,8 @@ type Props = {
   selectedIds?: Set<string>;
   onToggleSelect?: (leadId: string) => void;
   selectionMode?: boolean;
+  attendants?: Attendant[];
+  stages?: StageLite[];
 };
 
 export function KanbanBoard({
@@ -34,6 +39,8 @@ export function KanbanBoard({
   selectedIds,
   onToggleSelect,
   selectionMode,
+  attendants,
+  stages,
 }: Props) {
   const [columns, setColumns] = useState(initialColumns);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -121,6 +128,8 @@ export function KanbanBoard({
             selectedIds={selectedIds}
             onToggleSelect={onToggleSelect}
             selectionMode={selectionMode}
+            attendants={attendants}
+            stages={stages}
           />
         ))}
       </div>

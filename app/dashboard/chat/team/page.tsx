@@ -1,7 +1,5 @@
-import { getAttendants } from "@/app/actions/whatsappHub";
-import { TeamClient } from "@/components/chat/TeamClient";
+import { redirect } from "next/navigation";
 
-export default async function TeamPage() {
-  const attendants = await getAttendants();
-  return <TeamClient attendants={attendants} />;
+export default function ChatTeamRedirect() {
+  redirect("/dashboard/settings/team");
 }

@@ -200,7 +200,7 @@ export function BulkActionBar({ selectedIds, stages, attendants, cadences, onCle
                 <p className="px-4 py-2 text-xs text-slate-400">
                   Nenhuma cadência criada.{" "}
                   <a
-                    href="/dashboard/prospeccao/cadencias/nova"
+                    href="/dashboard/settings/tools/cadencias/nova"
                     className="text-indigo-600 hover:underline"
                   >
                     Criar

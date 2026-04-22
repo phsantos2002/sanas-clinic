@@ -395,6 +395,8 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
           selectionMode={selectionMode}
+          attendants={attendants}
+          stages={stages}
         />
       ) : (
         <LeadsTable

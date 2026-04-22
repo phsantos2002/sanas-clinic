@@ -137,7 +137,7 @@ export async function createCadence(data: {
       },
     });
 
-    revalidatePath("/dashboard/prospeccao/cadencias");
+    revalidatePath("/dashboard/settings/tools");
     return { success: true, data: { id: created.id } };
   } catch {
     return { success: false, error: "Erro ao criar cadencia" };
@@ -205,7 +205,7 @@ export async function updateCadence(
       });
     }
 
-    revalidatePath("/dashboard/prospeccao/cadencias");
+    revalidatePath("/dashboard/settings/tools");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao atualizar cadencia" };
@@ -222,7 +222,7 @@ export async function deleteCadence(id: string): Promise<ActionResult> {
   if (!existing) return { success: false, error: "Cadencia nao encontrada" };
 
   await prisma.workflow.delete({ where: { id } });
-  revalidatePath("/dashboard/prospeccao/cadencias");
+  revalidatePath("/dashboard/settings/tools");
   return { success: true };
 }
 
@@ -293,7 +293,7 @@ export async function enrollLeadsInCadence(
     });
   }
 
-  revalidatePath("/dashboard/prospeccao/cadencias");
+  revalidatePath("/dashboard/settings/tools");
   revalidatePath("/dashboard/pipeline");
 
   return { success: true, data: { enrolled, skipped } };
@@ -335,7 +335,7 @@ export async function unenrollLead(leadId: string, cadenceId: string): Promise<A
     data: { status: "cancelled", completedAt: new Date() },
   });
 
-  revalidatePath("/dashboard/prospeccao/cadencias");
+  revalidatePath("/dashboard/settings/tools");
   return { success: true };
 }
 

@@ -44,7 +44,7 @@ export function TeamPerformanceMini({ metrics }: { metrics: SDRMetrics }) {
             <TrendingUp className="h-8 w-8 text-slate-200 mb-2" />
             <p className="text-xs text-slate-400 max-w-[220px]">Nenhum membro cadastrado.</p>
             <Link
-              href="/dashboard/chat/team"
+              href="/dashboard/settings/team"
               className="text-[11px] text-indigo-600 hover:underline mt-2"
             >
               Cadastrar equipe

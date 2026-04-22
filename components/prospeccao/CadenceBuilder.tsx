@@ -104,7 +104,7 @@ export function CadenceBuilder({ initial }: Props) {
       return;
     }
     toast.success(initial ? "Cadencia atualizada" : "Cadencia criada");
-    router.push("/dashboard/prospeccao/cadencias");
+    router.push("/dashboard/settings/tools");
     router.refresh();
   };
 

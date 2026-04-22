@@ -13,6 +13,8 @@ type Stage = { id: string; name: string };
 type Props = {
   attendants: Attendant[];
   stages: Stage[];
+  lockedStage?: { id: string; name: string };
+  onDone?: () => void;
 };
 
 const FIELDS: { key: keyof CsvLeadRow; label: string; required: boolean }[] = [
@@ -29,7 +31,7 @@ const FIELDS: { key: keyof CsvLeadRow; label: string; required: boolean }[] = [
 
 type Step = "upload" | "map" | "review" | "done";
 
-export function CsvImportClient({ attendants, stages }: Props) {
+export function CsvImportClient({ attendants, stages, lockedStage, onDone }: Props) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("upload");
   const [fileName, setFileName] = useState<string>("");
@@ -37,7 +39,7 @@ export function CsvImportClient({ attendants, stages }: Props) {
   const [rows, setRows] = useState<string[][]>([]);
   const [mapping, setMapping] = useState<Record<string, number | null>>({});
   const [assignedTo, setAssignedTo] = useState<string>("");
-  const [defaultStageId, setDefaultStageId] = useState<string>("");
+  const [defaultStageId, setDefaultStageId] = useState<string>(lockedStage?.id ?? "");
   const [extraTagsRaw, setExtraTagsRaw] = useState<string>("");
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -433,18 +435,27 @@ export function CsvImportClient({ attendants, stages }: Props) {
                 <label className="text-xs font-medium text-slate-700 mb-1 block">
                   Estágio inicial
                 </label>
-                <select
-                  value={defaultStageId}
-                  onChange={(e) => setDefaultStageId(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">— Primeiro estágio —</option>
-                  {stages.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                {lockedStage ? (
+                  <div className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-slate-50 text-slate-700">
+                    {lockedStage.name}
+                    <span className="text-[10px] text-slate-400 ml-2">
+                      (coluna selecionada — evento Pixel desta coluna será disparado)
+                    </span>
+                  </div>
+                ) : (
+                  <select
+                    value={defaultStageId}
+                    onChange={(e) => setDefaultStageId(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">— Primeiro estágio —</option>
+                    {stages.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="sm:col-span-2">
@@ -532,12 +543,21 @@ export function CsvImportClient({ attendants, stages }: Props) {
             >
               Importar outra lista
             </button>
-            <button
-              onClick={() => router.push("/dashboard/pipeline?filter=outbound")}
-              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700"
-            >
-              Ver no pipeline
-            </button>
+            {onDone ? (
+              <button
+                onClick={onDone}
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700"
+              >
+                Fechar
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push("/dashboard/pipeline?filter=outbound")}
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700"
+              >
+                Ver no pipeline
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -3,8 +3,12 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { LeadCard } from "./LeadCard";
+import { KanbanColumnImportButton } from "./KanbanColumnImportButton";
 import { getStageColor } from "@/components/icons/SourceIcons";
 import type { KanbanColumn as KanbanColumnType } from "@/types";
+
+type Attendant = { id: string; name: string; role: string };
+type StageLite = { id: string; name: string };
 
 type Props = {
   column: KanbanColumnType;
@@ -13,6 +17,8 @@ type Props = {
   selectedIds?: Set<string>;
   onToggleSelect?: (leadId: string) => void;
   selectionMode?: boolean;
+  attendants?: Attendant[];
+  stages?: StageLite[];
 };
 
 export function KanbanColumn({
@@ -21,6 +27,8 @@ export function KanbanColumn({
   selectedIds,
   onToggleSelect,
   selectionMode,
+  attendants,
+  stages,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const color = getStageColor(column.name);
@@ -32,9 +40,20 @@ export function KanbanColumn({
           <div className={`w-2.5 h-2.5 rounded-full ${color.bg}`} />
           <h3 className="text-sm font-semibold text-slate-900">{column.name}</h3>
         </div>
-        <span className={`text-xs font-bold ${color.text} ${color.bg} rounded-full px-2.5 py-0.5`}>
-          {column.leads.length}
-        </span>
+        <div className="flex items-center gap-1">
+          {attendants && stages && (
+            <KanbanColumnImportButton
+              stage={{ id: column.id, name: column.name }}
+              attendants={attendants}
+              stages={stages}
+            />
+          )}
+          <span
+            className={`text-xs font-bold ${color.text} ${color.bg} rounded-full px-2.5 py-0.5`}
+          >
+            {column.leads.length}
+          </span>
+        </div>
       </div>
 
       <div

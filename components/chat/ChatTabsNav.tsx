@@ -27,7 +27,7 @@ const ALL_TABS = [
     exact: false,
     key: "broadcast",
   },
-  { href: "/dashboard/chat/team", label: "Equipe", icon: Users, exact: false, key: "team" },
+  { href: "/dashboard/settings/team", label: "Equipe", icon: Users, exact: false, key: "team" },
 ];
 
 export function ChatTabsNav({ visibleTabs }: { visibleTabs: string[] }) {

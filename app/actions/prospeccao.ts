@@ -7,6 +7,7 @@ import { getCurrentUser } from "./user";
 import { normalizePhone } from "@/lib/validations";
 import { ATTENDANT_ROLES, type AttendantRole } from "@/lib/prospeccao";
 import { logLeadActivity } from "@/services/leadActivity";
+import { sendFacebookEvent } from "@/services/facebookEvents";
 import type { ActionResult } from "@/types";
 
 // ══════════════════════════════════════════════════════════════
@@ -61,16 +62,22 @@ export async function importLeadsBulk(data: {
   let created = 0;
   let skipped = 0;
 
-  // Fetch default stage if not provided — use first stage
-  let stageId = data.defaultStageId;
-  if (!stageId) {
-    const firstStage = await prisma.stage.findFirst({
+  // Fetch stage (with eventName for Pixel fire)
+  let targetStage: { id: string; name: string; eventName: string } | null = null;
+  if (data.defaultStageId) {
+    targetStage = await prisma.stage.findFirst({
+      where: { id: data.defaultStageId, userId: user.id },
+      select: { id: true, name: true, eventName: true },
+    });
+  }
+  if (!targetStage) {
+    targetStage = await prisma.stage.findFirst({
       where: { userId: user.id },
       orderBy: { order: "asc" },
-      select: { id: true },
+      select: { id: true, name: true, eventName: true },
     });
-    stageId = firstStage?.id;
   }
+  const stageId = targetStage?.id;
 
   const tags = ["outbound", ...(data.extraTags || []).filter(Boolean)];
 
@@ -133,6 +140,17 @@ export async function importLeadsBulk(data: {
         actorType: "user",
         actorName: user.name ?? user.email ?? undefined,
       });
+
+      // Fire Pixel event for the target stage (fire-and-forget)
+      if (targetStage?.eventName) {
+        sendFacebookEvent({
+          userId: user.id,
+          phone: cleanPhone,
+          eventName: targetStage.eventName,
+          leadId: createdLead.id,
+          stageName: targetStage.name,
+        }).catch(() => {});
+      }
     } catch (err) {
       errors.push({
         row: i + 1,
@@ -237,7 +255,7 @@ export async function updateAttendantRole(id: string, role: AttendantRole): Prom
     data: { role },
   });
 
-  revalidatePath("/dashboard/chat/team");
+  revalidatePath("/dashboard/settings/team");
   return { success: true };
 }
 
@@ -257,7 +275,7 @@ export async function updateAttendantActivityGoal(
     data: { dailyActivityGoal },
   });
 
-  revalidatePath("/dashboard/chat/team");
+  revalidatePath("/dashboard/settings/team");
   return { success: true };
 }
 
