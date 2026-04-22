@@ -114,7 +114,33 @@ export function CNPJProspector({ stages, attendants }: Props) {
       setResults(data.results);
       setLastQuery([selectedCnae?.label, city, uf].filter(Boolean).join(" • "));
       setSelected(new Set(data.results.map((c: CNPJCompany) => c.cnpj)));
-      toast.success(`${data.results.length} empresas encontradas`);
+
+      if (data.results.length > 0) {
+        toast.success(`${data.results.length} empresas encontradas`);
+      } else if (data.rawTotal > 0) {
+        const sample = Array.isArray(data.sampleCities) ? data.sampleCities.join(", ") : "";
+        toast.warning(
+          `Encontrei ${data.rawTotal} empresas, mas nenhuma passou nos filtros locais.`,
+          {
+            description: sample
+              ? `Cidades encontradas nos resultados: ${sample}. Ajuste o nome da cidade ou deixe em branco.`
+              : "Relaxe o filtro de telefone/email ou remova a cidade.",
+            duration: 15000,
+          }
+        );
+        console.warn(
+          "[CNPJProspector] rawTotal=",
+          data.rawTotal,
+          "sampleCities=",
+          data.sampleCities
+        );
+      } else {
+        toast.warning("Nenhuma empresa encontrada nesse CNAE + UF.", {
+          description:
+            "Tente outra UF ou outro CNAE. A Receita pode não ter registros ativos para essa combinação.",
+          duration: 10000,
+        });
+      }
     } catch {
       toast.error("Erro na requisição");
     }

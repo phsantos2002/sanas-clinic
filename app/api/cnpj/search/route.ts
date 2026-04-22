@@ -70,6 +70,14 @@ function joinAddress(a?: CnpjaAddress): string {
   return parts.join(" - ");
 }
 
+function normalizeText(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
@@ -182,21 +190,29 @@ export async function POST(req: NextRequest) {
     });
 
     // Filtros locais (CNPJá não aceita esses filtros via query).
-    const cityNeedle = body.city?.trim().toLowerCase() ?? "";
+    const cityNeedle = body.city ? normalizeText(body.city) : "";
     const filtered = normalized
       .filter((c) => {
         if (body.requirePhone && !c.phone) return false;
         if (body.requireEmail && !c.email) return false;
         if (body.size && c.size && c.size !== body.size) return false;
         if (cityNeedle) {
-          const cityResp = (c.fullAddress.city ?? "").toLowerCase();
+          const cityResp = normalizeText(c.fullAddress.city ?? "");
           if (!cityResp.includes(cityNeedle) && !cityNeedle.includes(cityResp)) return false;
         }
         return true;
       })
       .slice(0, desired);
 
-    return NextResponse.json({ results: filtered, total: filtered.length });
+    return NextResponse.json({
+      results: filtered,
+      total: filtered.length,
+      rawTotal: normalized.length,
+      filteredOut: normalized.length - filtered.length,
+      sampleCities: Array.from(
+        new Set(normalized.map((n) => n.fullAddress.city).filter(Boolean))
+      ).slice(0, 10),
+    });
   } catch (err) {
     console.error("[CNPJá] fetch error:", err);
     return NextResponse.json({ error: "Erro ao consultar CNPJá" }, { status: 500 });
