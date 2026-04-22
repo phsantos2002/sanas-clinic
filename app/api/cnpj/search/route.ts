@@ -104,17 +104,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "CNAE e UF são obrigatórios" }, { status: 400 });
   }
 
-  const limit = Math.min(Math.max(body.maxResults ?? 20, 1), 50);
+  // Pedimos mais itens à API quando há filtro por presença de telefone/email,
+  // porque esse filtro é aplicado localmente após o retorno.
+  const desired = Math.min(Math.max(body.maxResults ?? 20, 1), 50);
+  const fetchLimit = body.requirePhone || body.requireEmail ? Math.min(desired * 3, 100) : desired;
 
   const params = new URLSearchParams();
-  params.set("activities.id", body.cnae.replace(/\D/g, ""));
-  params.set("address.state", body.state.toUpperCase());
-  if (body.city?.trim()) params.set("address.city", body.city.trim());
-  if (body.size) params.set("company.size.acronym", body.size);
-  params.set("status.id", "2"); // ativas
-  if (body.requirePhone) params.set("phones.0.exists", "true");
-  if (body.requireEmail) params.set("emails.0.exists", "true");
-  params.set("limit", String(limit));
+  params.set("activity", body.cnae.replace(/\D/g, ""));
+  params.set("state", body.state.toUpperCase());
+  if (body.city?.trim()) params.set("city", body.city.trim());
+  params.set("limit", String(fetchLimit));
 
   const url = `https://api.cnpja.com/office?${params.toString()}`;
 
@@ -180,12 +179,15 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    // Filtros extras que podem não ser aplicáveis via query (defesa em profundidade).
-    const filtered = normalized.filter((c) => {
-      if (body.requirePhone && !c.phone) return false;
-      if (body.requireEmail && !c.email) return false;
-      return true;
-    });
+    // Filtros locais (CNPJá /office não aceita esses filtros via query).
+    const filtered = normalized
+      .filter((c) => {
+        if (body.requirePhone && !c.phone) return false;
+        if (body.requireEmail && !c.email) return false;
+        if (body.size && c.size && c.size !== body.size) return false;
+        return true;
+      })
+      .slice(0, desired);
 
     return NextResponse.json({ results: filtered, total: filtered.length });
   } catch (err) {
