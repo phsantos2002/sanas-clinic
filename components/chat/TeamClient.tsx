@@ -6,10 +6,14 @@ import { Plus, Users, Trash2, UserCircle, Target } from "lucide-react";
 import { toast } from "sonner";
 import { createAttendant, deleteAttendant, type AttendantData } from "@/app/actions/whatsappHub";
 import { updateAttendantRole, updateAttendantActivityGoal } from "@/app/actions/prospeccao";
-import { ATTENDANT_ROLES, type AttendantRole } from "@/lib/prospeccao";
+import { ATTENDANT_ROLES, LEGACY_ROLE_LABELS, type AttendantRole } from "@/lib/prospeccao";
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-red-100 text-red-700",
+  manager: "bg-purple-100 text-purple-700",
+  seller: "bg-indigo-100 text-indigo-700",
+  cs: "bg-emerald-100 text-emerald-700",
+  // Legacy fallbacks
   sdr_manager: "bg-purple-100 text-purple-700",
   sdr: "bg-indigo-100 text-indigo-700",
   closer_manager: "bg-emerald-100 text-emerald-700",
@@ -25,7 +29,7 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<AttendantRole>("attendant");
+  const [role, setRole] = useState<AttendantRole>("seller");
   const [creating, setCreating] = useState(false);
 
   const handleCreate = async () => {
@@ -39,20 +43,20 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
     });
     setCreating(false);
     if (result.success) {
-      toast.success("Atendente adicionado!");
+      toast.success("Usuario adicionado!");
       setShowCreate(false);
       setName("");
       setEmail("");
       setPhone("");
-      setRole("attendant");
+      setRole("seller");
       router.refresh();
     } else toast.error(result.error);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Remover este atendente?")) return;
+    if (!confirm("Remover este usuario?")) return;
     await deleteAttendant(id);
-    toast.success("Atendente removido");
+    toast.success("Usuario removido");
     router.refresh();
   };
 
@@ -75,19 +79,29 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
   // Group by role for visual hierarchy
   const grouped: Record<string, TeamAttendant[]> = {};
   for (const a of attendants) {
-    const k = a.role || "attendant";
+    const k = a.role || "seller";
     if (!grouped[k]) grouped[k] = [];
     grouped[k].push(a);
   }
-  const orderedGroups = ATTENDANT_ROLES.map((r) => r.value).filter((k) => grouped[k]?.length > 0);
+  const currentGroups = ATTENDANT_ROLES.map((r) => r.value).filter((k) => grouped[k]?.length > 0);
+  const legacyGroups = Object.keys(grouped)
+    .filter((k) => !ATTENDANT_ROLES.some((r) => r.value === k))
+    .sort();
+  const orderedGroups = [...currentGroups, ...legacyGroups];
+
+  const roleLabel = (roleKey: string): string => {
+    const current = ATTENDANT_ROLES.find((r) => r.value === roleKey);
+    if (current) return current.label;
+    return LEGACY_ROLE_LABELS[roleKey] ?? roleKey;
+  };
 
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-semibold text-slate-900">Equipe de Atendimento & Vendas</h2>
+          <h2 className="font-semibold text-slate-900">Usuarios do sistema</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Organize SDRs (prospecção), Closers (fechamento) e atendentes em papéis claros.
+            Crie acessos de Administrador, Gerente, Vendedor e CS.
           </p>
         </div>
         <button
@@ -101,17 +115,16 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
       {attendants.length === 0 ? (
         <div className="bg-white border border-slate-100 rounded-2xl p-10 text-center">
           <Users className="h-10 w-10 text-slate-200 mx-auto mb-2" />
-          <p className="text-sm text-slate-400">Nenhum atendente cadastrado.</p>
+          <p className="text-sm text-slate-400">Nenhum usuario cadastrado.</p>
         </div>
       ) : (
         <div className="space-y-5">
           {orderedGroups.map((roleKey) => {
-            const roleDef = ATTENDANT_ROLES.find((r) => r.value === roleKey)!;
             return (
               <div key={roleKey}>
                 <div className="flex items-baseline gap-2 mb-2">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    {roleDef.label}
+                    {roleLabel(roleKey)}
                   </h3>
                   <span className="text-[10px] text-slate-400">
                     {grouped[roleKey].length} pessoa{grouped[roleKey].length !== 1 ? "s" : ""}
@@ -205,7 +218,7 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-3">
-            <h3 className="font-semibold text-slate-900">Novo Membro da Equipe</h3>
+            <h3 className="font-semibold text-slate-900">Novo Usuario</h3>
             <input
               type="text"
               value={name}

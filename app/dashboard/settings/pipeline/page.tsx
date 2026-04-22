@@ -2,7 +2,6 @@ import { getStages } from "@/app/actions/stages";
 import { getAttendants } from "@/app/actions/whatsappHub";
 import { getStageWorkflowCounts } from "@/app/actions/workflows";
 import { ManageStagesSection } from "@/components/settings/ManageStagesSection";
-import { TeamClient } from "@/components/chat/TeamClient";
 
 export default async function PipelineSettingsPage() {
   const [stages, attendants, stageWorkflowCounts] = await Promise.all([
@@ -26,17 +25,6 @@ export default async function PipelineSettingsPage() {
           attendants={attendants}
           stageWorkflowCounts={stageWorkflowCounts}
         />
-      </div>
-
-      {/* Team / Attendants */}
-      <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Equipe de Atendimento</h2>
-          <p className="text-sm text-slate-400 mt-0.5">
-            Atendentes que recebem leads por round-robin automatico
-          </p>
-        </div>
-        <TeamClient attendants={attendants} />
       </div>
     </div>
   );

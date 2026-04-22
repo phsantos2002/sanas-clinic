@@ -20,12 +20,6 @@ const OPENAI_MODELS = [
   { id: "gpt-4-turbo", label: "GPT-4 Turbo", capabilities: "multimodal" },
 ];
 
-const GEMINI_MODELS = [
-  { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", capabilities: "multimodal" },
-  { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", capabilities: "multimodal" },
-  { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash", capabilities: "multimodal" },
-];
-
 const VOICE_CLONE_PROMPT = `Olá! Vou gravar um áudio de referência para que a IA possa clonar minha voz e responder aos clientes com naturalidade.
 
 Meu nome é [SEU NOME], sou [SUA PROFISSÃO/CARGO] na [NOME DO NEGÓCIO].
@@ -44,15 +38,20 @@ export function AIConfigForm({ config }: Props) {
   const [clinicName, setClinicName] = useState(config.clinicName);
   const [systemPrompt, setSystemPrompt] = useState(config.systemPrompt);
   const [sendAudio, setSendAudio] = useState(config.sendAudio);
-  const [provider, setProvider] = useState(config.provider);
-  const [model, setModel] = useState(config.model);
-  const [capabilities, setCapabilities] = useState(config.capabilities);
+  // Provider is always "openai" after simplification
+  const provider = "openai";
+  const initialModel = OPENAI_MODELS.find((m) => m.id === config.model)
+    ? config.model
+    : OPENAI_MODELS[0].id;
+  const [model, setModel] = useState(initialModel);
+  const [capabilities, setCapabilities] = useState(
+    OPENAI_MODELS.find((m) => m.id === initialModel)?.capabilities ?? "text"
+  );
   const [apiKey, setApiKey] = useState(config.apiKey);
   const [voiceClonePrompt, setVoiceClonePrompt] = useState(
     config.voiceClonePrompt || VOICE_CLONE_PROMPT
   );
   const [openaiKey, setOpenaiKey] = useState(config.openaiKey);
-  const [anthropicKey, setAnthropicKey] = useState(config.anthropicKey);
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<
@@ -64,14 +63,7 @@ export function AIConfigForm({ config }: Props) {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
-  const availableModels = provider === "openai" ? OPENAI_MODELS : GEMINI_MODELS;
-
-  function handleProviderChange(newProvider: string) {
-    setProvider(newProvider);
-    const models = newProvider === "openai" ? OPENAI_MODELS : GEMINI_MODELS;
-    setModel(models[0].id);
-    setCapabilities(models[0].capabilities);
-  }
+  const availableModels = OPENAI_MODELS;
 
   function handleModelChange(modelId: string) {
     setModel(modelId);
@@ -112,7 +104,7 @@ export function AIConfigForm({ config }: Props) {
       apiKey,
       voiceClonePrompt,
       openaiKey,
-      anthropicKey,
+      anthropicKey: "",
     });
     setLoading(false);
     if (result.success) {
@@ -124,34 +116,14 @@ export function AIConfigForm({ config }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Provider selection */}
-      <div className="space-y-1.5">
-        <Label>Provedor de IA</Label>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => handleProviderChange("openai")}
-            className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 text-sm font-medium transition-all ${
-              provider === "openai"
-                ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-            }`}
-          >
-            <Image src="/icons/openai.svg" alt="OpenAI" width={20} height={20} />
-            ChatGPT (OpenAI)
-          </button>
-          <button
-            type="button"
-            onClick={() => handleProviderChange("gemini")}
-            className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 text-sm font-medium transition-all ${
-              provider === "gemini"
-                ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-            }`}
-          >
-            <Image src="/icons/gemini.svg" alt="Gemini" width={20} height={20} />
-            Gemini (Google)
-          </button>
+      {/* Provider — fixed on OpenAI (ChatGPT) */}
+      <div className="flex items-center gap-2 py-3 px-4 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700">
+        <Image src="/icons/openai.svg" alt="OpenAI" width={20} height={20} />
+        <div className="text-sm">
+          <p className="font-medium">Provedor: ChatGPT (OpenAI)</p>
+          <p className="text-xs text-indigo-600/70">
+            Configure abaixo a chave, o modelo e o comportamento.
+          </p>
         </div>
       </div>
 
@@ -175,21 +147,17 @@ export function AIConfigForm({ config }: Props) {
 
       {/* API Key */}
       <div className="space-y-1.5">
-        <Label htmlFor="apiKey">
-          Chave de API {provider === "openai" ? "OpenAI" : "Google AI"}
-        </Label>
+        <Label htmlFor="apiKey">Chave de API OpenAI</Label>
         <Input
           id="apiKey"
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          placeholder={provider === "openai" ? "sk-..." : "AIza..."}
+          placeholder="sk-..."
         />
         <p className="text-xs text-slate-400">
-          {provider === "openai"
-            ? "Obtenha em platform.openai.com/api-keys"
-            : "Obtenha em aistudio.google.com/apikey"}
-          . Você é responsável pelo uso e custos da sua chave.
+          Obtenha em platform.openai.com/api-keys. Você é responsável pelo uso e custos da sua
+          chave.
         </p>
 
         {/* Test connection */}
@@ -237,39 +205,6 @@ export function AIConfigForm({ config }: Props) {
         <p className="text-[11px] text-slate-400">
           Salve as configurações antes de testar. O teste faz uma chamada curta ao provedor com a
           chave salva.
-        </p>
-      </div>
-
-      {/* Anthropic Key (dashboard assistant) */}
-      <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-        <div>
-          <Label htmlFor="anthropicKey" className="text-sm font-medium text-slate-800">
-            Chave Anthropic (Assistente do Dashboard)
-          </Label>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Usada apenas pelo Assistente IA do Dashboard principal (Claude). Independente da chave
-            acima que roda o chat do WhatsApp.
-          </p>
-        </div>
-        <Input
-          id="anthropicKey"
-          type="password"
-          value={anthropicKey}
-          onChange={(e) => setAnthropicKey(e.target.value)}
-          placeholder="sk-ant-api03-..."
-        />
-        <p className="text-xs text-slate-400">
-          Obtenha em{" "}
-          <a
-            href="https://console.anthropic.com/settings/keys"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-indigo-600 hover:underline"
-          >
-            console.anthropic.com
-          </a>
-          . Sem esta chave o Assistente fica indisponível, mas o WhatsApp e o restante do sistema
-          continuam funcionando normalmente.
         </p>
       </div>
 

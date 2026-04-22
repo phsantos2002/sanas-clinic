@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
 import { logBulkActivity } from "@/services/leadActivity";
 import { fireTrigger } from "@/services/workflowEngine";
+import { AUTO_ASSIGN_ROLES } from "@/lib/prospeccao";
 import type { ActionResult } from "@/types";
 
 const MAX_BULK = 500;
@@ -79,7 +80,7 @@ export async function bulkAssign(
       where: {
         userId: user.id,
         isActive: true,
-        role: { in: ["sdr", "sdr_manager", "attendant", "closer"] },
+        role: { in: AUTO_ASSIGN_ROLES },
       },
       select: { id: true },
     });
