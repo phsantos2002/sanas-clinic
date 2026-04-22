@@ -154,12 +154,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const data: unknown = await r.json();
-    const items: CnpjaOffice[] = Array.isArray(data)
-      ? (data as CnpjaOffice[])
-      : Array.isArray((data as { data?: CnpjaOffice[] }).data)
-        ? (data as { data: CnpjaOffice[] }).data
-        : [];
+    const rawText = await r.text();
+    let data: unknown;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = null;
+    }
+
+    // Tenta extrair a lista de vários paths possíveis:
+    // array raw | { data } | { records } | { offices } | { results } | { items }
+    const asArray = Array.isArray(data) ? (data as CnpjaOffice[]) : null;
+    const candidate =
+      asArray ??
+      (data as { data?: CnpjaOffice[] })?.data ??
+      (data as { records?: CnpjaOffice[] })?.records ??
+      (data as { offices?: CnpjaOffice[] })?.offices ??
+      (data as { results?: CnpjaOffice[] })?.results ??
+      (data as { items?: CnpjaOffice[] })?.items ??
+      null;
+    const items: CnpjaOffice[] = Array.isArray(candidate) ? candidate : [];
 
     const normalized: CompanyResult[] = items.map((o) => {
       const phones = (o.phones ?? []).map(formatPhone).filter((p): p is string => !!p);
@@ -212,6 +226,9 @@ export async function POST(req: NextRequest) {
       sampleCities: Array.from(
         new Set(normalized.map((n) => n.fullAddress.city).filter(Boolean))
       ).slice(0, 10),
+      // Diagnóstico (útil enquanto a integração estabiliza)
+      sentUrl: url.replace(apiKey, "[REDACTED]"),
+      rawResponsePreview: normalized.length === 0 ? rawText.slice(0, 800) : undefined,
     });
   } catch (err) {
     console.error("[CNPJá] fetch error:", err);

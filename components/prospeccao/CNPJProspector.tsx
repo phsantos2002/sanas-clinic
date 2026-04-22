@@ -136,9 +136,14 @@ export function CNPJProspector({ stages, attendants }: Props) {
         );
       } else {
         toast.warning("Nenhuma empresa encontrada nesse CNAE + UF.", {
-          description:
-            "Tente outra UF ou outro CNAE. A Receita pode não ter registros ativos para essa combinação.",
-          duration: 10000,
+          description: data.rawResponsePreview
+            ? `Resposta bruta da API: ${String(data.rawResponsePreview).slice(0, 300)}`
+            : "Tente outra UF ou outro CNAE. A Receita pode não ter registros ativos para essa combinação.",
+          duration: 20000,
+        });
+        console.warn("[CNPJProspector] vazio:", {
+          sentUrl: data.sentUrl,
+          rawResponsePreview: data.rawResponsePreview,
         });
       }
     } catch {
