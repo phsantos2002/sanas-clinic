@@ -23,7 +23,7 @@ export function TeamPerformanceMini({ metrics }: { metrics: SDRMetrics }) {
           <Award className="h-4 w-4 text-amber-600" /> Performance do time
         </h3>
         <Link
-          href="/dashboard/prospeccao/performance"
+          href="/dashboard/settings/team"
           className="text-[11px] text-indigo-600 hover:underline"
         >
           Ver tudo →

@@ -6,7 +6,7 @@ import { Plus, Users, Trash2, UserCircle, Target } from "lucide-react";
 import { toast } from "sonner";
 import { createAttendant, deleteAttendant, type AttendantData } from "@/app/actions/whatsappHub";
 import { updateAttendantRole, updateAttendantActivityGoal } from "@/app/actions/prospeccao";
-import { ATTENDANT_ROLES, LEGACY_ROLE_LABELS, type AttendantRole } from "@/lib/prospeccao";
+import { ATTENDANT_ROLES, toCanonicalRole, type AttendantRole } from "@/lib/prospeccao";
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-red-100 text-red-700",
@@ -76,39 +76,34 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
     } else toast.error(result.error);
   };
 
-  // Group by role for visual hierarchy
-  const grouped: Record<string, TeamAttendant[]> = {};
+  // Group by canonical role (legacy values fold into current roles)
+  const grouped: Record<AttendantRole, TeamAttendant[]> = {
+    admin: [],
+    manager: [],
+    seller: [],
+    cs: [],
+  };
   for (const a of attendants) {
-    const k = a.role || "seller";
-    if (!grouped[k]) grouped[k] = [];
+    const k = toCanonicalRole(a.role);
     grouped[k].push(a);
   }
-  const currentGroups = ATTENDANT_ROLES.map((r) => r.value).filter((k) => grouped[k]?.length > 0);
-  const legacyGroups = Object.keys(grouped)
-    .filter((k) => !ATTENDANT_ROLES.some((r) => r.value === k))
-    .sort();
-  const orderedGroups = [...currentGroups, ...legacyGroups];
+  const orderedGroups = ATTENDANT_ROLES.map((r) => r.value).filter((k) => grouped[k].length > 0);
 
-  const roleLabel = (roleKey: string): string => {
-    const current = ATTENDANT_ROLES.find((r) => r.value === roleKey);
-    if (current) return current.label;
-    return LEGACY_ROLE_LABELS[roleKey] ?? roleKey;
-  };
+  const roleLabel = (roleKey: AttendantRole): string =>
+    ATTENDANT_ROLES.find((r) => r.value === roleKey)?.label ?? roleKey;
 
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-semibold text-slate-900">Usuarios do sistema</h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Crie acessos de Administrador, Gerente, Vendedor e CS.
-          </p>
+          <h2 className="text-base font-semibold text-slate-900">Usuarios</h2>
+          <p className="text-sm text-slate-400 mt-0.5">Quem tem acesso ao CRM e com qual papel.</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700"
         >
-          <Plus className="h-4 w-4" /> Novo
+          <Plus className="h-4 w-4" /> Novo usuario
         </button>
       </div>
 
@@ -165,11 +160,11 @@ export function TeamClient({ attendants }: { attendants: TeamAttendant[] }) {
                             Papel
                           </label>
                           <select
-                            value={att.role}
+                            value={toCanonicalRole(att.role)}
                             onChange={(e) =>
                               handleRoleChange(att.id, e.target.value as AttendantRole)
                             }
-                            className={`w-full text-xs font-medium rounded-lg px-2 py-1 border-0 ${ROLE_COLORS[att.role] || ROLE_COLORS.attendant}`}
+                            className={`w-full text-xs font-medium rounded-lg px-2 py-1 border-0 ${ROLE_COLORS[toCanonicalRole(att.role)] || ROLE_COLORS.seller}`}
                           >
                             {ATTENDANT_ROLES.map((r) => (
                               <option key={r.value} value={r.value}>

@@ -13,12 +13,30 @@ export type AttendantRole = (typeof ATTENDANT_ROLES)[number]["value"];
 
 // Map of legacy role values to current ones — used to render existing data with friendly labels.
 export const LEGACY_ROLE_LABELS: Record<string, string> = {
-  sdr: "Vendedor (legado SDR)",
-  sdr_manager: "Gerente (legado SDR)",
-  closer: "Vendedor (legado Closer)",
-  closer_manager: "Gerente (legado Closer)",
-  attendant: "CS (legado Atendente)",
+  sdr: "Vendedor",
+  sdr_manager: "Gerente",
+  closer: "Vendedor",
+  closer_manager: "Gerente",
+  attendant: "CS",
 };
+
+// Canonical role mapping (legacy → current). Used to group users by effective role.
+export const CANONICAL_ROLE: Record<string, AttendantRole> = {
+  admin: "admin",
+  manager: "manager",
+  seller: "seller",
+  cs: "cs",
+  sdr: "seller",
+  sdr_manager: "manager",
+  closer: "seller",
+  closer_manager: "manager",
+  attendant: "cs",
+};
+
+export function toCanonicalRole(role: string | null | undefined): AttendantRole {
+  if (!role) return "seller";
+  return CANONICAL_ROLE[role] ?? "seller";
+}
 
 // Roles that should receive auto-assigned leads (round-robin).
 export const AUTO_ASSIGN_ROLES: string[] = [

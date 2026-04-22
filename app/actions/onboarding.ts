@@ -236,11 +236,10 @@ export async function getChecklistProgress() {
   const user = await getCurrentUser();
   if (!user) return [];
 
-  const [waConfig, leadCount, workflowCount, postCount] = await Promise.all([
+  const [waConfig, leadCount, aiConfig] = await Promise.all([
     prisma.whatsAppConfig.findUnique({ where: { userId: user.id } }),
     prisma.lead.count({ where: { userId: user.id } }),
-    prisma.workflow.count({ where: { userId: user.id } }),
-    prisma.socialPost.count({ where: { userId: user.id } }),
+    prisma.aIConfig.findUnique({ where: { userId: user.id } }),
   ]);
 
   return [
@@ -259,18 +258,11 @@ export async function getChecklistProgress() {
       href: "/dashboard/pipeline",
     },
     {
-      id: "first_workflow",
-      label: "Configure um workflow",
-      description: "Crie uma automacao de boas-vindas",
-      completed: workflowCount > 0,
-      href: "/dashboard/workflows",
-    },
-    {
-      id: "first_post",
-      label: "Publique seu primeiro post",
-      description: "Crie e agende um post para redes sociais",
-      completed: postCount > 0,
-      href: "/dashboard/posts",
+      id: "configure_ai",
+      label: "Configure a IA do WhatsApp",
+      description: "Adicione a chave OpenAI e o tom de voz",
+      completed: !!aiConfig?.apiKey,
+      href: "/dashboard/settings/ai",
     },
   ];
 }

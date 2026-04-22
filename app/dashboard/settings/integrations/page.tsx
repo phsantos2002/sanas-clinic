@@ -2,15 +2,12 @@ import { getPixel } from "@/app/actions/pixel";
 import { getWhatsAppConfig } from "@/app/actions/whatsapp";
 import { FacebookPixelForm } from "@/components/forms/FacebookPixelForm";
 import { WhatsAppConfigForm } from "@/components/forms/WhatsAppConfigForm";
-import { SetupProgress } from "@/components/settings/SetupProgress";
 
 export default async function IntegrationsPage() {
   const [pixel, whatsappConfig] = await Promise.all([getPixel(), getWhatsAppConfig()]);
 
   return (
     <div className="space-y-4 max-w-2xl">
-      <SetupProgress />
-
       {/* Status Overview */}
       <div className="grid grid-cols-2 gap-3">
         {[
