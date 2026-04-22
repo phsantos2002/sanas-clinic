@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Users, Trash2, UserCircle, Target, Filter } from "lucide-react";
+import { Plus, Users, Trash2, UserCircle, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { createAttendant, deleteAttendant, type AttendantData } from "@/app/actions/whatsappHub";
-import { updateAttendantRole, updateAttendantActivityGoal } from "@/app/actions/prospeccao";
+import { updateAttendantRole } from "@/app/actions/prospeccao";
 import { setAttendantFunnelAccess } from "@/app/actions/attendantAssignments";
 import { ATTENDANT_ROLES, toCanonicalRole, type AttendantRole } from "@/lib/prospeccao";
 import type { FunnelData } from "@/app/actions/funnels";
@@ -24,7 +24,7 @@ const ROLE_COLORS: Record<string, string> = {
   attendant: "bg-slate-100 text-slate-600",
 };
 
-type TeamAttendant = AttendantData & { dailyActivityGoal?: number };
+type TeamAttendant = AttendantData;
 
 type Props = {
   attendants: TeamAttendant[];
@@ -113,14 +113,6 @@ export function TeamClient({ attendants, funnels = [], stages = [] }: Props) {
     } else toast.error(result.error);
   };
 
-  const handleGoalChange = async (id: string, goal: number) => {
-    const result = await updateAttendantActivityGoal(id, goal);
-    if (result.success) {
-      toast.success("Meta salva");
-      router.refresh();
-    } else toast.error(result.error);
-  };
-
   // Group by canonical role (legacy values fold into current roles)
   const grouped: Record<AttendantRole, TeamAttendant[]> = {
     admin: [],
@@ -199,44 +191,23 @@ export function TeamClient({ attendants, funnels = [], stages = [] }: Props) {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-50">
-                        <div>
-                          <label className="text-[10px] font-medium text-slate-500 block mb-1">
-                            Papel
-                          </label>
-                          <select
-                            value={toCanonicalRole(att.role)}
-                            onChange={(e) =>
-                              handleRoleChange(att.id, e.target.value as AttendantRole)
-                            }
-                            className={`w-full text-xs font-medium rounded-lg px-2 py-1 border-0 ${ROLE_COLORS[toCanonicalRole(att.role)] || ROLE_COLORS.seller}`}
-                          >
-                            {ATTENDANT_ROLES.map((r) => (
-                              <option key={r.value} value={r.value}>
-                                {r.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-medium text-slate-500 flex items-center gap-1 mb-1">
-                            <Target className="h-3 w-3" /> Meta/dia
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            max={500}
-                            defaultValue={att.dailyActivityGoal ?? 50}
-                            onBlur={(e) => {
-                              const n = Number(e.target.value);
-                              if (!Number.isNaN(n) && n !== (att.dailyActivityGoal ?? 50)) {
-                                handleGoalChange(att.id, n);
-                              }
-                            }}
-                            className="w-full text-xs rounded-lg px-2 py-1 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                        </div>
+                      <div className="pt-2 border-t border-slate-50">
+                        <label className="text-[10px] font-medium text-slate-500 block mb-1">
+                          Papel
+                        </label>
+                        <select
+                          value={toCanonicalRole(att.role)}
+                          onChange={(e) =>
+                            handleRoleChange(att.id, e.target.value as AttendantRole)
+                          }
+                          className={`w-full sm:w-40 text-xs font-medium rounded-lg px-2 py-1 border-0 ${ROLE_COLORS[toCanonicalRole(att.role)] || ROLE_COLORS.seller}`}
+                        >
+                          {ATTENDANT_ROLES.map((r) => (
+                            <option key={r.value} value={r.value}>
+                              {r.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
                       <button

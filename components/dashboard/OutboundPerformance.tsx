@@ -149,33 +149,22 @@ export async function OutboundPerformance() {
           <div className="space-y-2">
             {metrics.attendants
               .sort((a, b) => b.todayActivity - a.todayActivity)
-              .map((a) => {
-                const pct =
-                  a.dailyActivityGoal > 0
-                    ? Math.min(100, Math.round((a.todayActivity / a.dailyActivityGoal) * 100))
-                    : 0;
-                const barColor =
-                  pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : "bg-slate-300";
-                return (
-                  <div key={a.id} className="grid grid-cols-[1fr,auto,auto] gap-3 items-center">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{a.name}</p>
-                      <p className="text-[10px] text-slate-400">
-                        {ROLE_LABELS[a.role] || a.role} · {a.activeLeads} leads
-                      </p>
-                    </div>
-                    <div className="w-40 h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${barColor} transition-all`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-slate-600 font-semibold tabular-nums w-16 text-right">
-                      {a.todayActivity}/{a.dailyActivityGoal}
-                    </span>
+              .map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-center justify-between gap-3 px-1 py-1.5 rounded-lg hover:bg-slate-50"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-800 truncate">{a.name}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {ROLE_LABELS[a.role] || a.role} · {a.activeLeads} leads
+                    </p>
                   </div>
-                );
-              })}
+                  <span className="text-xs text-slate-600 font-semibold tabular-nums">
+                    {a.todayActivity} ações
+                  </span>
+                </div>
+              ))}
           </div>
         </div>
       )}

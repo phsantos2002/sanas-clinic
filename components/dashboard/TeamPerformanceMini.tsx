@@ -3,12 +3,16 @@ import { Award, TrendingUp } from "lucide-react";
 import type { SDRMetrics } from "@/app/actions/sdrDashboard";
 
 const ROLE_LABELS: Record<string, string> = {
-  sdr: "SDR",
-  sdr_manager: "Ger. SDR",
-  closer: "Closer",
-  closer_manager: "Ger. Closer",
-  attendant: "Atend.",
   admin: "Admin",
+  manager: "Gerente",
+  seller: "Vendedor",
+  cs: "CS",
+  // Legacy
+  sdr: "Vendedor",
+  sdr_manager: "Gerente",
+  closer: "Vendedor",
+  closer_manager: "Gerente",
+  attendant: "CS",
 };
 
 export function TeamPerformanceMini({ metrics }: { metrics: SDRMetrics }) {
@@ -51,36 +55,22 @@ export function TeamPerformanceMini({ metrics }: { metrics: SDRMetrics }) {
             </Link>
           </div>
         ) : (
-          topAttendants.map((a) => {
-            const pct =
-              a.dailyActivityGoal > 0
-                ? Math.min(100, Math.round((a.todayActivity / a.dailyActivityGoal) * 100))
-                : 0;
-            const barColor =
-              pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : "bg-slate-300";
-
-            return (
-              <div key={a.id} className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="min-w-0 flex-1 flex items-center gap-1.5">
-                    <span className="font-medium text-slate-700 truncate">{a.name}</span>
-                    <span className="text-[10px] text-slate-400 shrink-0">
-                      {ROLE_LABELS[a.role] || a.role}
-                    </span>
-                  </div>
-                  <span className="text-slate-500 tabular-nums shrink-0 ml-2">
-                    {a.todayActivity}/{a.dailyActivityGoal}
-                  </span>
-                </div>
-                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${barColor} transition-all`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
+          topAttendants.map((a) => (
+            <div
+              key={a.id}
+              className="flex items-center justify-between text-xs px-1 py-1.5 rounded-lg hover:bg-slate-50"
+            >
+              <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                <span className="font-medium text-slate-700 truncate">{a.name}</span>
+                <span className="text-[10px] text-slate-400 shrink-0">
+                  {ROLE_LABELS[a.role] || a.role}
+                </span>
               </div>
-            );
-          })
+              <span className="text-slate-500 tabular-nums shrink-0 ml-2">
+                {a.todayActivity} hoje
+              </span>
+            </div>
+          ))
         )}
       </div>
     </div>
