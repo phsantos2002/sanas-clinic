@@ -102,6 +102,26 @@ async function uazapi(
   return res.json().catch(() => ({}));
 }
 
+// ── Avatar cache (process-local, TTL) ─────────────────────────
+// Avoids re-querying Uazapi /chat/details for every chat on each poll.
+type AvatarEntry = { imagePreview: string; image: string; expiresAt: number };
+const AVATAR_CACHE = new Map<string, AvatarEntry>();
+const AVATAR_TTL_MS = 1000 * 60 * 60 * 24; // 24h
+
+function getCachedAvatar(phone: string): { imagePreview: string; image: string } | null {
+  const entry = AVATAR_CACHE.get(phone);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    AVATAR_CACHE.delete(phone);
+    return null;
+  }
+  return { imagePreview: entry.imagePreview, image: entry.image };
+}
+
+function setCachedAvatar(phone: string, value: { imagePreview: string; image: string }) {
+  AVATAR_CACHE.set(phone, { ...value, expiresAt: Date.now() + AVATAR_TTL_MS });
+}
+
 export async function GET(req: NextRequest) {
   const config = await getUazapiConfig();
   if (!config) return NextResponse.json({ error: "Nao configurado" }, { status: 401 });
@@ -134,25 +154,53 @@ export async function GET(req: NextRequest) {
         const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/find", body);
         const chats = data.chats ?? data ?? [];
 
-        // Enrich first 20 chats with profile pics in parallel
-        const toEnrich = chats
-          .slice(0, 20)
-          .filter((c: Record<string, unknown>) => !c.imagePreview && c.wa_chatid);
-        await Promise.allSettled(
-          toEnrich.map(async (chat: Record<string, unknown>) => {
-            const phone = (chat.wa_chatid as string).split("@")[0];
-            try {
-              const detail = await uazapi(config.serverUrl, config.token, "POST", "/chat/details", {
-                number: phone,
-                preview: true,
-              });
-              chat.imagePreview = detail.imagePreview || "";
-              chat.image = detail.image || "";
-            } catch {
-              /* skip */
+        // Apply cached profile pics first (avoids hammering Uazapi on every poll)
+        for (const chat of chats) {
+          if (!chat.wa_chatid) continue;
+          const phone = (chat.wa_chatid as string).split("@")[0];
+          if (!chat.imagePreview && !chat.image) {
+            const cached = getCachedAvatar(phone);
+            if (cached) {
+              chat.imagePreview = cached.imagePreview;
+              chat.image = cached.image;
             }
-          })
+          }
+        }
+
+        // Enrich any remaining chats (cache miss) with profile pics, batched.
+        const toEnrich = chats.filter(
+          (c: Record<string, unknown>) => !c.imagePreview && !c.image && c.wa_chatid
         );
+        const ENRICH_CONCURRENCY = 10;
+        for (let i = 0; i < toEnrich.length; i += ENRICH_CONCURRENCY) {
+          const batch = toEnrich.slice(i, i + ENRICH_CONCURRENCY);
+          await Promise.allSettled(
+            batch.map(async (chat: Record<string, unknown>) => {
+              const phone = (chat.wa_chatid as string).split("@")[0];
+              try {
+                const detail = await uazapi(
+                  config.serverUrl,
+                  config.token,
+                  "POST",
+                  "/chat/details",
+                  { number: phone, preview: true }
+                );
+                const imagePreview = detail.imagePreview || "";
+                const image = detail.image || "";
+                chat.imagePreview = imagePreview;
+                chat.image = image;
+                if (imagePreview || image) {
+                  setCachedAvatar(phone, { imagePreview, image });
+                } else {
+                  // Cache "no avatar" briefly to avoid retrying every poll
+                  setCachedAvatar(phone, { imagePreview: "", image: "" });
+                }
+              } catch {
+                /* skip — group/contact without preview is fine */
+              }
+            })
+          );
+        }
 
         return NextResponse.json({ chats, total: data.pagination?.total ?? chats.length });
       }

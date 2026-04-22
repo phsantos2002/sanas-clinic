@@ -244,7 +244,7 @@ export function FunnelsManager({
         <div className="bg-white border border-slate-100 rounded-2xl p-5 space-y-3">
           <div>
             <h2 className="text-base font-semibold text-slate-900">
-              Colunas de &quot;{selectedFunnel.name}&quot;
+              Pipeline do Funil &quot;{selectedFunnel.name}&quot;
             </h2>
             <p className="text-sm text-slate-400 mt-0.5">
               Cada coluna pode disparar um evento Meta ou nenhum.

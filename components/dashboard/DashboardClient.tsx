@@ -1,18 +1,27 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Search, Kanban, List, X, Download, SlidersHorizontal, CheckSquare } from "lucide-react";
+import {
+  Search,
+  Kanban,
+  List,
+  X,
+  Download,
+  SlidersHorizontal,
+  CheckSquare,
+  GitBranch,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { LeadsTable } from "@/components/dashboard/LeadsTable";
 import { LeadDetailModal } from "@/components/modals/LeadDetailModal";
-import { SourceCards } from "@/components/dashboard/SourceCards";
 import { BulkActionBar } from "@/components/dashboard/BulkActionBar";
 import { getAttendants } from "@/app/actions/whatsappHub";
 import { getCadences } from "@/app/actions/cadences";
-import type { Lead, KanbanColumn, LeadSourceStats, Stage } from "@/types";
+import type { FunnelData } from "@/app/actions/funnels";
+import type { Lead, KanbanColumn, Stage } from "@/types";
 
 type SavedFilter = {
   name: string;
@@ -23,11 +32,12 @@ type SavedFilter = {
 type Props = {
   leads: Lead[];
   columns: KanbanColumn[];
-  stats: LeadSourceStats;
   stages: Stage[];
+  funnels?: FunnelData[];
 };
 
 const SAVED_FILTERS_KEY = "sanas-saved-filters";
+const SELECTED_FUNNEL_KEY = "sanas-selected-funnel";
 
 function loadSavedFilters(): SavedFilter[] {
   if (typeof window === "undefined") return [];
@@ -42,7 +52,12 @@ function persistSavedFilters(filters: SavedFilter[]) {
   localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(filters));
 }
 
-export function DashboardClient({ leads, columns, stats, stages }: Props) {
+function loadSelectedFunnel(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(SELECTED_FUNNEL_KEY);
+}
+
+export function DashboardClient({ leads, columns, stages, funnels = [] }: Props) {
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
@@ -57,6 +72,18 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [attendants, setAttendants] = useState<{ id: string; name: string; role: string }[]>([]);
   const [cadences, setCadences] = useState<{ id: string; name: string }[]>([]);
+  // Funnel filter — defaults to default funnel or first available
+  const initialFunnelId =
+    loadSelectedFunnel() ?? funnels.find((f) => f.isDefault)?.id ?? funnels[0]?.id ?? null;
+  const [funnelId, setFunnelIdState] = useState<string | null>(initialFunnelId);
+
+  const setFunnelId = useCallback((id: string | null) => {
+    setFunnelIdState(id);
+    if (typeof window !== "undefined") {
+      if (id) localStorage.setItem(SELECTED_FUNNEL_KEY, id);
+      else localStorage.removeItem(SELECTED_FUNNEL_KEY);
+    }
+  }, []);
 
   // Load bulk-action data once
   useEffect(() => {
@@ -67,6 +94,13 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
       setCadences(list.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name })))
     );
   }, []);
+
+  // Reset stage filter when switching funnels (selected stage may not exist in new funnel)
+  useEffect(() => {
+    if (stageFilter && !stages.some((s) => s.id === stageFilter && s.funnelId === funnelId)) {
+      setStageFilter(null);
+    }
+  }, [funnelId, stageFilter, stages]);
 
   const toggleSelect = useCallback((leadId: string) => {
     setSelectedIds((prev) => {
@@ -190,12 +224,21 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
     URL.revokeObjectURL(url);
   }, [filteredLeads]);
 
+  // Restrict to the selected funnel's stages
+  const visibleStages = useMemo(
+    () => (funnelId ? stages.filter((s) => s.funnelId === funnelId) : stages),
+    [stages, funnelId]
+  );
+
   const filteredColumns = useMemo(() => {
-    return columns.map((col) => ({
-      ...col,
-      leads: col.leads.filter((l) => filteredLeads.some((fl) => fl.id === l.id)),
-    }));
-  }, [columns, filteredLeads]);
+    const visibleStageIds = new Set(visibleStages.map((s) => s.id));
+    return columns
+      .filter((col) => visibleStageIds.has(col.id))
+      .map((col) => ({
+        ...col,
+        leads: col.leads.filter((l) => filteredLeads.some((fl) => fl.id === l.id)),
+      }));
+  }, [columns, filteredLeads, visibleStages]);
 
   // When clicking edit from table/kanban, open detail modal first (user can click edit there)
   const handleEditLead = useCallback((leadId: string) => {
@@ -204,11 +247,21 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Source counter cards */}
-      <SourceCards stats={stats} activeFilter={sourceFilter} onFilter={setSourceFilter} />
-
       {/* Filter bar */}
       <div className="flex items-center gap-2 sm:gap-3 flex-wrap bg-white border border-slate-100 rounded-2xl px-3 py-2.5 sm:px-5 sm:py-3 shadow-sm">
+        {/* Funnel selector */}
+        {funnels.length > 0 && (
+          <div className="flex items-center gap-2">
+            <GitBranch className="h-4 w-4 text-slate-400" />
+            <CustomSelect
+              options={funnels.map((f) => ({ value: f.id, label: f.name }))}
+              value={funnelId ?? funnels[0]?.id ?? ""}
+              onChange={(v) => setFunnelId(v || null)}
+              className="w-[180px]"
+            />
+          </div>
+        )}
+
         {/* Search */}
         <div className="relative w-full sm:flex-1 sm:min-w-[220px] sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
@@ -234,11 +287,11 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
           className="w-full sm:w-[180px]"
         />
 
-        {/* Stage dropdown */}
+        {/* Stage dropdown — restricted to visible funnel */}
         <CustomSelect
           options={[
             { value: "", label: "Todas as Etapas" },
-            ...stages.map((s) => ({ value: s.id, label: s.name })),
+            ...visibleStages.map((s) => ({ value: s.id, label: s.name })),
           ]}
           value={stageFilter ?? ""}
           onChange={(v) => setStageFilter(v || null)}
@@ -402,7 +455,7 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
           onToggleSelect={toggleSelect}
           selectionMode={selectionMode}
           attendants={attendants}
-          stages={stages}
+          stages={visibleStages}
         />
       ) : (
         <LeadsTable
@@ -414,14 +467,14 @@ export function DashboardClient({ leads, columns, stats, stages }: Props) {
 
       <LeadDetailModal
         leadId={selectedLeadId}
-        stages={stages}
+        stages={visibleStages}
         onClose={() => setSelectedLeadId(null)}
       />
 
       {/* Floating bulk action bar */}
       <BulkActionBar
         selectedIds={Array.from(selectedIds)}
-        stages={stages}
+        stages={visibleStages}
         attendants={attendants}
         cadences={cadences}
         onClear={clearSelection}

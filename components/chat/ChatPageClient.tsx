@@ -100,8 +100,8 @@ type Message = {
 
 type Tab = "personal" | "groups" | "archived";
 
-const POLL_INTERVAL = 5000; // 5s auto-refresh for new messages
-const CHAT_POLL_INTERVAL = 15000; // 15s auto-refresh for chat list
+const POLL_INTERVAL = 2000; // 2s auto-refresh for new messages in open chat
+const CHAT_POLL_INTERVAL = 5000; // 5s auto-refresh for chat list
 const MSG_PAGE_SIZE = 100;
 const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "👏"];
 
