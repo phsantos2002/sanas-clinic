@@ -98,8 +98,8 @@ type Message = {
   reactions?: { emoji: string; sender: string }[];
 };
 
-const POLL_INTERVAL = 2000; // 2s auto-refresh for new messages in open chat
-const CHAT_POLL_INTERVAL = 5000; // 5s auto-refresh for chat list
+const POLL_INTERVAL = 1000; // 1s auto-refresh for new messages in open chat (near-realtime)
+const CHAT_POLL_INTERVAL = 3000; // 3s auto-refresh for chat list
 const MSG_PAGE_SIZE = 100;
 const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "👏"];
 
@@ -403,53 +403,72 @@ export function ChatPageClient() {
     [msgSearch]
   );
 
-  // Poll for new messages in selected chat
+  // Check for new messages in the selected chat (extracted so we can also call it on focus)
+  const checkNewMessages = useCallback(async () => {
+    if (!selectedChat || !lastMsgTsRef.current) return;
+    try {
+      const res = await fetch(
+        `/api/whatsapp?action=messages&chatid=${encodeURIComponent(selectedChat.wa_chatid)}&limit=50&afterTs=${lastMsgTsRef.current}`
+      );
+      const data = await res.json();
+      const newMsgs = (data.messages ?? []).map((m: Record<string, unknown>) => ({
+        ...m,
+        text: (m.text as string) || (m.caption as string) || "",
+      }));
+      if (newMsgs.length > 0) {
+        newMsgs.sort((a: Message, b: Message) => a.messageTimestamp - b.messageTimestamp);
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.messageid || m.id));
+          const truly = newMsgs.filter(
+            (m: Message) => !existingIds.has(m.messageid) && !existingIds.has(m.id)
+          );
+          if (truly.length === 0) return prev;
+          lastMsgTsRef.current = truly[truly.length - 1].messageTimestamp;
+
+          const container = messagesContainerRef.current;
+          const isAtBottom =
+            container &&
+            container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+
+          if (isAtBottom) {
+            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+          } else {
+            setUnreadBelowCount((c) => c + truly.length);
+            setShowScrollDown(true);
+          }
+
+          return [...prev, ...truly];
+        });
+        setMsgTotal((t) => t + newMsgs.length);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [selectedChat]);
+
+  // Poll for new messages in selected chat (1s interval)
   useEffect(() => {
     if (!selectedChat) return;
-    const interval = setInterval(async () => {
-      if (!lastMsgTsRef.current) return;
-      try {
-        const res = await fetch(
-          `/api/whatsapp?action=messages&chatid=${encodeURIComponent(selectedChat.wa_chatid)}&limit=50&afterTs=${lastMsgTsRef.current}`
-        );
-        const data = await res.json();
-        const newMsgs = (data.messages ?? []).map((m: Record<string, unknown>) => ({
-          ...m,
-          text: (m.text as string) || (m.caption as string) || "",
-        }));
-        if (newMsgs.length > 0) {
-          newMsgs.sort((a: Message, b: Message) => a.messageTimestamp - b.messageTimestamp);
-          setMessages((prev) => {
-            const existingIds = new Set(prev.map((m) => m.messageid || m.id));
-            const truly = newMsgs.filter(
-              (m: Message) => !existingIds.has(m.messageid) && !existingIds.has(m.id)
-            );
-            if (truly.length === 0) return prev;
-            lastMsgTsRef.current = truly[truly.length - 1].messageTimestamp;
-
-            // Check if scrolled to bottom
-            const container = messagesContainerRef.current;
-            const isAtBottom =
-              container &&
-              container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-
-            if (isAtBottom) {
-              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
-            } else {
-              setUnreadBelowCount((c) => c + truly.length);
-              setShowScrollDown(true);
-            }
-
-            return [...prev, ...truly];
-          });
-          setMsgTotal((t) => t + newMsgs.length);
-        }
-      } catch {
-        /* ignore */
-      }
-    }, POLL_INTERVAL);
+    const interval = setInterval(checkNewMessages, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [selectedChat]);
+  }, [selectedChat, checkNewMessages]);
+
+  // Trigger an immediate refresh whenever the tab regains focus / becomes visible
+  useEffect(() => {
+    if (!selectedChat) return;
+    const handler = () => {
+      if (document.visibilityState === "visible") {
+        checkNewMessages();
+        fetchChats(true);
+      }
+    };
+    window.addEventListener("focus", handler);
+    document.addEventListener("visibilitychange", handler);
+    return () => {
+      window.removeEventListener("focus", handler);
+      document.removeEventListener("visibilitychange", handler);
+    };
+  }, [selectedChat, checkNewMessages, fetchChats]);
 
   useEffect(() => {
     if (!selectedChat) return;

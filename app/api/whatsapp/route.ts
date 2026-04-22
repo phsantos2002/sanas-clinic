@@ -174,6 +174,8 @@ export async function GET(req: NextRequest) {
           sort: "-wa_lastMsgTimestamp",
           limit,
           offset,
+          // Ask Uazapi to include profile pic preview inline when available — saves N round-trips
+          preview: true,
         };
         // Only filter by group flag if explicitly requested
         if (typeParam === "groups") body.wa_isGroup = true;
@@ -216,7 +218,7 @@ export async function GET(req: NextRequest) {
           (c: Record<string, unknown>) => !c.imagePreview && !c.image && c.wa_chatid
         );
         const newlyFetched: { phone: string; imagePreview: string; image: string }[] = [];
-        const ENRICH_CONCURRENCY = 10;
+        const ENRICH_CONCURRENCY = 25;
         for (let i = 0; i < toEnrich.length; i += ENRICH_CONCURRENCY) {
           const batch = toEnrich.slice(i, i + ENRICH_CONCURRENCY);
           await Promise.allSettled(
