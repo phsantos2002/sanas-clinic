@@ -128,14 +128,21 @@ export async function POST(req: NextRequest) {
 
     if (!r.ok) {
       const text = await r.text().catch(() => "");
-      console.error("[CNPJá] API error:", r.status, text);
+      console.error("[CNPJá] API error:", r.status, text, "URL:", url);
       const msg =
         r.status === 401
           ? "Chave CNPJá inválida."
           : r.status === 429
             ? "Limite de requisições do plano CNPJá atingido. Tente mais tarde."
             : `Erro ${r.status} na API CNPJá.`;
-      return NextResponse.json({ error: msg }, { status: 502 });
+      return NextResponse.json(
+        {
+          error: msg,
+          detail: text.slice(0, 1000),
+          sentUrl: url.replace(apiKey, "[REDACTED]"),
+        },
+        { status: 502 }
+      );
     }
 
     const data: unknown = await r.json();

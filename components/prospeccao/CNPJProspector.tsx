@@ -99,7 +99,15 @@ export function CNPJProspector({ stages, attendants }: Props) {
       });
       const data = await r.json();
       if (!r.ok) {
-        toast.error(data.error || "Erro ao buscar");
+        if (data.detail) {
+          toast.error(data.error || "Erro ao buscar", {
+            description: String(data.detail).slice(0, 400),
+            duration: 15000,
+          });
+          console.error("[CNPJProspector] erro detalhado:", data);
+        } else {
+          toast.error(data.error || "Erro ao buscar");
+        }
         setSearching(false);
         return;
       }
