@@ -258,7 +258,9 @@ export async function GET(req: NextRequest) {
         const starred = searchParams.get("starred") === "true";
         const afterTs = searchParams.get("afterTs");
 
-        const body: Record<string, unknown> = { chatid, limit, offset };
+        // Uazapi schema uses `wa_*` field names. Some endpoints accept both, but
+        // /message/find filters strictly on the schema field — use wa_chatid.
+        const body: Record<string, unknown> = { wa_chatid: chatid, limit, offset };
         if (search) body.text = `~${search}`;
         if (starred) body.isStarred = true;
         if (afterTs) body.messageTimestamp = { $gt: parseInt(afterTs) };
@@ -282,7 +284,7 @@ export async function GET(req: NextRequest) {
         const chatid = searchParams.get("chatid");
         const limit = parseInt(searchParams.get("limit") ?? "100");
         const body: Record<string, unknown> = { isStarred: true, limit };
-        if (chatid) body.chatid = chatid;
+        if (chatid) body.wa_chatid = chatid;
         const data = await uazapi(config.serverUrl, config.token, "POST", "/message/find", body);
         return NextResponse.json({ messages: data.messages ?? data ?? [] });
       }
@@ -291,7 +293,7 @@ export async function GET(req: NextRequest) {
         const chatid = searchParams.get("chatid") ?? "";
         const mediaType = searchParams.get("mediaType");
         const limit = parseInt(searchParams.get("limit") ?? "50");
-        const body: Record<string, unknown> = { chatid, limit };
+        const body: Record<string, unknown> = { wa_chatid: chatid, limit };
         if (mediaType) {
           body.messageType = mediaType;
         } else {
