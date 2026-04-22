@@ -257,6 +257,13 @@ export function ChatPageClient() {
   const [chatLeadId, setChatLeadId] = useState<string | null>(null);
   const [chatLeadAi, setChatLeadAi] = useState<boolean | null>(null);
   const [togglingAi, setTogglingAi] = useState(false);
+  // Diagnostic info from the last messages fetch
+  const [msgFetchInfo, setMsgFetchInfo] = useState<{
+    status: number;
+    upstreamError?: string;
+    rawSample?: string;
+    chatId: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesTopRef = useRef<HTMLDivElement>(null);
@@ -375,6 +382,15 @@ export function ChatPageClient() {
           `/api/whatsapp?action=messages&chatid=${encodeURIComponent(chatId)}&limit=${MSG_PAGE_SIZE}&offset=${offset}${searchParam}`
         );
         const data = await res.json();
+
+        if (!append) {
+          setMsgFetchInfo({
+            status: res.status,
+            upstreamError: data?.upstreamError,
+            rawSample: JSON.stringify(data).slice(0, 400),
+            chatId,
+          });
+        }
 
         if (!res.ok) {
           console.error("[chat] fetchMessages HTTP error", res.status, data);
@@ -1029,10 +1045,33 @@ export function ChatPageClient() {
                 </div>
               )}
               {!loadingMsgs && messages.length === 0 && (
-                <div className="flex items-center justify-center py-12">
+                <div className="flex flex-col items-center justify-center py-12 gap-2 px-4">
                   <p className="text-sm text-slate-400 bg-white/80 px-4 py-2 rounded-lg shadow-sm">
                     Nenhuma mensagem encontrada
                   </p>
+                  {msgFetchInfo && (
+                    <details className="bg-white/80 rounded-lg shadow-sm text-[11px] text-slate-500 max-w-xl">
+                      <summary className="px-3 py-1.5 cursor-pointer">
+                        Diagnóstico técnico (clique para ver)
+                      </summary>
+                      <div className="px-3 pb-2 space-y-1 font-mono">
+                        <div>
+                          <b>HTTP:</b> {msgFetchInfo.status}
+                        </div>
+                        <div>
+                          <b>chatId:</b> {msgFetchInfo.chatId}
+                        </div>
+                        {msgFetchInfo.upstreamError && (
+                          <div className="text-rose-600">
+                            <b>upstreamError:</b> {msgFetchInfo.upstreamError}
+                          </div>
+                        )}
+                        <div className="break-all">
+                          <b>resposta:</b> {msgFetchInfo.rawSample}
+                        </div>
+                      </div>
+                    </details>
+                  )}
                 </div>
               )}
 
