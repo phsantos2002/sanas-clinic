@@ -104,15 +104,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "CNAE e UF são obrigatórios" }, { status: 400 });
   }
 
-  // Pedimos mais itens à API quando há filtro por presença de telefone/email,
-  // porque esse filtro é aplicado localmente após o retorno.
+  // Pedimos mais itens à API quando há filtros aplicados localmente
+  // (telefone/email/cidade por nome).
   const desired = Math.min(Math.max(body.maxResults ?? 20, 1), 50);
-  const fetchLimit = body.requirePhone || body.requireEmail ? Math.min(desired * 3, 100) : desired;
+  const hasLocalFilter = !!(body.requirePhone || body.requireEmail || body.city?.trim());
+  const fetchLimit = hasLocalFilter ? Math.min(desired * 5, 100) : desired;
 
+  // Schema da API CNPJá (office.search) usa sufixo `.in` para filtros "in set".
+  // Cidade por nome não é suportado (precisaria de código IBGE) — filtramos localmente.
   const params = new URLSearchParams();
-  params.set("activity", body.cnae.replace(/\D/g, ""));
-  params.set("state", body.state.toUpperCase());
-  if (body.city?.trim()) params.set("city", body.city.trim());
+  params.set("mainActivity.id.in", body.cnae.replace(/\D/g, ""));
+  params.set("address.state.in", body.state.toUpperCase());
   params.set("limit", String(fetchLimit));
 
   const url = `https://api.cnpja.com/office?${params.toString()}`;
@@ -179,12 +181,17 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    // Filtros locais (CNPJá /office não aceita esses filtros via query).
+    // Filtros locais (CNPJá não aceita esses filtros via query).
+    const cityNeedle = body.city?.trim().toLowerCase() ?? "";
     const filtered = normalized
       .filter((c) => {
         if (body.requirePhone && !c.phone) return false;
         if (body.requireEmail && !c.email) return false;
         if (body.size && c.size && c.size !== body.size) return false;
+        if (cityNeedle) {
+          const cityResp = (c.fullAddress.city ?? "").toLowerCase();
+          if (!cityResp.includes(cityNeedle) && !cityNeedle.includes(cityResp)) return false;
+        }
         return true;
       })
       .slice(0, desired);
