@@ -375,6 +375,15 @@ export function ChatPageClient() {
           `/api/whatsapp?action=messages&chatid=${encodeURIComponent(chatId)}&limit=${MSG_PAGE_SIZE}&offset=${offset}${searchParam}`
         );
         const data = await res.json();
+
+        if (!res.ok) {
+          console.error("[chat] fetchMessages HTTP error", res.status, data);
+          if (!append) toast.error(`Erro ${res.status} ao buscar mensagens`);
+        } else if (data?.upstreamError) {
+          console.error("[chat] Uazapi upstream error", data.upstreamError);
+          if (!append) toast.error(`Uazapi: ${data.upstreamError}`);
+        }
+
         const msgs = (data.messages ?? []).map((m: Record<string, unknown>) => ({
           ...m,
           text: (m.text as string) || (m.caption as string) || "",
@@ -385,7 +394,6 @@ export function ChatPageClient() {
           setMessages((prev) => [...msgs, ...prev]);
         } else {
           setMessages(msgs);
-          // Track last message timestamp for polling
           if (msgs.length > 0) {
             lastMsgTsRef.current = msgs[msgs.length - 1].messageTimestamp;
           }
@@ -393,8 +401,9 @@ export function ChatPageClient() {
         }
         setMsgTotal(data.total ?? msgs.length);
         setMsgOffset(offset + msgs.length);
-      } catch {
-        /* ignore */
+      } catch (err) {
+        console.error("[chat] fetchMessages exception", err);
+        if (!append) toast.error("Falha ao carregar mensagens");
       }
 
       setLoadingMsgs(false);
@@ -888,23 +897,25 @@ export function ChatPageClient() {
                 <ArrowLeft className="h-5 w-5 text-slate-600" />
               </button>
 
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center flex-shrink-0">
-                {selectedChat.imagePreview || selectedChat.image ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center flex-shrink-0 relative">
+                <span className="text-sm font-bold text-slate-500 absolute inset-0 flex items-center justify-center">
+                  {getInitials(
+                    selectedChat.wa_contactName ||
+                      selectedChat.wa_groupSubject ||
+                      selectedChat.phone ||
+                      "?"
+                  )}
+                </span>
+                {(selectedChat.imagePreview || selectedChat.image) && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={selectedChat.imagePreview || selectedChat.image}
                     alt=""
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover relative"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                    }}
                   />
-                ) : (
-                  <span className="text-sm font-bold text-slate-500">
-                    {getInitials(
-                      selectedChat.wa_contactName ||
-                        selectedChat.wa_groupSubject ||
-                        selectedChat.phone ||
-                        "?"
-                    )}
-                  </span>
                 )}
               </div>
 

@@ -264,11 +264,17 @@ export async function GET(req: NextRequest) {
         if (afterTs) body.messageTimestamp = { $gt: parseInt(afterTs) };
 
         const data = await uazapi(config.serverUrl, config.token, "POST", "/message/find", body);
-        const messages = data.messages ?? data ?? [];
+        const messages = Array.isArray(data?.messages)
+          ? data.messages
+          : Array.isArray(data)
+            ? data
+            : [];
 
         return NextResponse.json({
           messages,
-          total: data.pagination?.total ?? messages.length,
+          total: data?.pagination?.total ?? messages.length,
+          // Surface upstream errors to the client for diagnosis
+          ...(data?.error ? { upstreamError: String(data.error) } : {}),
         });
       }
 
