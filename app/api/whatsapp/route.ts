@@ -174,8 +174,6 @@ export async function GET(req: NextRequest) {
           sort: "-wa_lastMsgTimestamp",
           limit,
           offset,
-          // Ask Uazapi to include profile pic preview inline when available — saves N round-trips
-          preview: true,
         };
         // Only filter by group flag if explicitly requested
         if (typeParam === "groups") body.wa_isGroup = true;
