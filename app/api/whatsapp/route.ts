@@ -161,22 +161,27 @@ export async function GET(req: NextRequest) {
   try {
     switch (action) {
       case "chats": {
-        const isGroup = searchParams.get("type") === "groups";
         const limit = parseInt(searchParams.get("limit") ?? "200");
         const offset = parseInt(searchParams.get("offset") ?? "0");
         const search = searchParams.get("search") ?? "";
-        const archived = searchParams.get("archived") === "true";
         const pinned = searchParams.get("pinned") === "true";
         const unread = searchParams.get("unread") === "true";
+        // Optional filters — when omitted, returns ALL chats (groups + personal, including archived)
+        const typeParam = searchParams.get("type"); // "groups" | "personal" | null/all
+        const archivedParam = searchParams.get("archived"); // "true" | "false" | null/both
 
         const body: Record<string, unknown> = {
-          wa_isGroup: isGroup,
           sort: "-wa_lastMsgTimestamp",
           limit,
           offset,
         };
+        // Only filter by group flag if explicitly requested
+        if (typeParam === "groups") body.wa_isGroup = true;
+        else if (typeParam === "personal") body.wa_isGroup = false;
+        // Only filter by archive state if explicitly requested
+        if (archivedParam === "true") body.wa_archived = true;
+        else if (archivedParam === "false") body.wa_archived = false;
         if (search) body.wa_contactName = `~${search}`;
-        if (archived) body.wa_archived = true;
         if (pinned) body.wa_pinned = true;
         if (unread) body.wa_unreadCount = { $gt: 0 };
 

@@ -98,8 +98,6 @@ type Message = {
   reactions?: { emoji: string; sender: string }[];
 };
 
-type Tab = "personal" | "groups" | "archived";
-
 const POLL_INTERVAL = 2000; // 2s auto-refresh for new messages in open chat
 const CHAT_POLL_INTERVAL = 5000; // 5s auto-refresh for chat list
 const MSG_PAGE_SIZE = 100;
@@ -227,7 +225,6 @@ function apiPost(action: string, body: Record<string, unknown>) {
 }
 
 export function ChatPageClient() {
-  const [tab, setTab] = useState<Tab>("personal");
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -322,13 +319,11 @@ export function ChatPageClient() {
     toast.success(prev ? "IA pausada — vendedor responde" : "IA ativada");
   }, [chatLeadId, chatLeadAi, togglingAi]);
 
-  // Fetch chats — paginates through all pages until exhausted (no chat is ever hidden)
+  // Fetch chats — paginates through ALL chats (personal + groups + archived)
   const fetchChats = useCallback(
     async (silent = false) => {
       if (!silent) setLoading(true);
       try {
-        const type = tab === "groups" ? "&type=groups" : "";
-        const archiveParam = tab === "archived" ? "&archived=true" : "";
         const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
         const unreadParam = chatFilter === "unread" ? "&unread=true" : "";
 
@@ -339,14 +334,13 @@ export function ChatPageClient() {
 
         for (let i = 0; i < MAX_PAGES; i++) {
           const res = await fetch(
-            `/api/whatsapp?action=chats&limit=${PAGE}&offset=${offset}${type}${archiveParam}${searchParam}${unreadParam}`
+            `/api/whatsapp?action=chats&limit=${PAGE}&offset=${offset}${searchParam}${unreadParam}`
           );
           const data = await res.json();
           const page: Chat[] = data.chats ?? [];
           all.push(...page);
-          // Show progress as we go so the user sees chats appearing
           if (!silent && all.length > 0) setChats([...all]);
-          if (page.length < PAGE) break; // last page
+          if (page.length < PAGE) break;
           offset += PAGE;
         }
 
@@ -356,7 +350,7 @@ export function ChatPageClient() {
       }
       if (!silent) setLoading(false);
     },
-    [tab, search, chatFilter]
+    [search, chatFilter]
   );
 
   useEffect(() => {
@@ -792,40 +786,6 @@ export function ChatPageClient() {
             </div>
           )}
 
-          {/* Tabs */}
-          <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg">
-            <button
-              onClick={() => setTab("personal")}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                tab === "personal"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <User className="h-3.5 w-3.5" /> Contatos
-            </button>
-            <button
-              onClick={() => setTab("groups")}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                tab === "groups"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <Users className="h-3.5 w-3.5" /> Grupos
-            </button>
-            <button
-              onClick={() => setTab("archived")}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                tab === "archived"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <Archive className="h-3.5 w-3.5" /> Arquivo
-            </button>
-          </div>
-
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -848,14 +808,12 @@ export function ChatPageClient() {
           {!loading && chats.length === 0 && (
             <div className="text-center py-12">
               <MessageCircle className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm text-slate-400">
-                {tab === "archived" ? "Nenhuma conversa arquivada" : "Nenhuma conversa encontrada"}
-              </p>
+              <p className="text-sm text-slate-400">Nenhuma conversa encontrada</p>
             </div>
           )}
 
           {/* Pinned section */}
-          {pinnedChats.length > 0 && tab !== "archived" && (
+          {pinnedChats.length > 0 && (
             <>
               <div className="px-4 py-1.5 bg-slate-50 flex items-center gap-1">
                 <Pin className="h-3 w-3 text-slate-400" />
@@ -1619,6 +1577,22 @@ function ChatItem({
             <div className="flex items-center gap-1 min-w-0">
               {chat.wa_pinned && <Pin className="h-3 w-3 text-slate-400 flex-shrink-0" />}
               {chat.wa_muted && <VolumeX className="h-3 w-3 text-slate-300 flex-shrink-0" />}
+              {chat.wa_isGroup && (
+                <span
+                  title="Grupo"
+                  className="inline-flex items-center justify-center h-3.5 w-3.5 rounded bg-violet-100 text-violet-600 flex-shrink-0"
+                >
+                  <Users className="h-2.5 w-2.5" />
+                </span>
+              )}
+              {chat.wa_archived && (
+                <span
+                  title="Arquivado"
+                  className="inline-flex items-center justify-center h-3.5 w-3.5 rounded bg-slate-100 text-slate-500 flex-shrink-0"
+                >
+                  <Archive className="h-2.5 w-2.5" />
+                </span>
+              )}
               <p className="text-sm font-semibold text-slate-900 truncate">{name}</p>
             </div>
             <span
