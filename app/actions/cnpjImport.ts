@@ -30,6 +30,12 @@ export type CNPJCompany = {
   size: string | null;
   openedAt: string | null;
   capital: number | null;
+  isHead?: boolean;
+  simples?: boolean;
+  mei?: boolean;
+  legalNature?: string | null;
+  members?: { name: string; role: string }[];
+  score?: number;
 };
 
 export type CNPJImportResult = {
@@ -38,6 +44,7 @@ export type CNPJImportResult = {
   skipped: number;
   errors: { name: string; reason: string }[];
   batchId: string;
+  createdLeadIds: string[];
 };
 
 export async function importFromCNPJ(data: {
@@ -64,6 +71,7 @@ export async function importFromCNPJ(data: {
 
   const batchId = nanoid(10);
   const errors: { name: string; reason: string }[] = [];
+  const createdLeadIds: string[] = [];
   let created = 0;
   let skipped = 0;
 
@@ -111,10 +119,22 @@ export async function importFromCNPJ(data: {
       notesParts.push(`🧾 CNPJ: ${cnpjFmt}`);
       if (c.cnae) notesParts.push(`🏷️ CNAE: ${c.cnae.code} — ${c.cnae.description}`);
       if (c.size) notesParts.push(`📊 Porte: ${c.size}`);
+      if (c.legalNature) notesParts.push(`⚖️ Natureza: ${c.legalNature}`);
       if (c.capital != null) notesParts.push(`💰 Capital: R$ ${c.capital.toLocaleString("pt-BR")}`);
       if (c.openedAt) notesParts.push(`📅 Aberta em: ${c.openedAt}`);
+      if (c.isHead === false) notesParts.push(`🏢 Filial`);
+      if (c.simples) notesParts.push(`✅ Optante Simples Nacional`);
+      if (c.mei) notesParts.push(`🪪 MEI`);
       if (c.email) notesParts.push(`✉️ ${c.email}`);
       if (c.secondaryPhone) notesParts.push(`📞 Secundário: ${c.secondaryPhone}`);
+      if (c.members && c.members.length > 0) {
+        const list = c.members
+          .slice(0, 5)
+          .map((m) => (m.role ? `${m.name} (${m.role})` : m.name))
+          .join("; ");
+        notesParts.push(`👥 QSA: ${list}`);
+      }
+      if (typeof c.score === "number") notesParts.push(`⭐ Score prévio: ${c.score}/100`);
       if (data.searchQuery) notesParts.push(`🔎 Busca: "${data.searchQuery}"`);
 
       const createdLead = await prisma.lead.create({
@@ -142,6 +162,7 @@ export async function importFromCNPJ(data: {
         },
       });
       created++;
+      createdLeadIds.push(createdLead.id);
 
       await logLeadActivity({
         leadId: createdLead.id,
@@ -181,6 +202,13 @@ export async function importFromCNPJ(data: {
 
   return {
     success: true,
-    data: { total: data.companies.length, created, skipped, errors, batchId },
+    data: {
+      total: data.companies.length,
+      created,
+      skipped,
+      errors,
+      batchId,
+      createdLeadIds,
+    },
   };
 }

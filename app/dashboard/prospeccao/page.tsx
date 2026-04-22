@@ -1,4 +1,5 @@
 import { getAttendants } from "@/app/actions/whatsappHub";
+import { getCadences } from "@/app/actions/cadences";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/app/actions/user";
 import { CNPJProspector } from "@/components/prospeccao/CNPJProspector";
@@ -7,13 +8,14 @@ export default async function ProspeccaoPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [attendants, stages, outboundCount, sqlCount, cnpjCount] = await Promise.all([
+  const [attendants, stages, cadences, outboundCount, sqlCount, cnpjCount] = await Promise.all([
     getAttendants(),
     prisma.stage.findMany({
       where: { userId: user.id },
       orderBy: { order: "asc" },
       select: { id: true, name: true, eventName: true },
     }),
+    getCadences().catch(() => []),
     prisma.lead.count({ where: { userId: user.id, leadType: "outbound" } }),
     prisma.lead.count({
       where: { userId: user.id, leadType: "outbound", tags: { has: "sql" } },
@@ -61,6 +63,7 @@ export default async function ProspeccaoPage() {
         <CNPJProspector
           stages={stages}
           attendants={attendants.map((a) => ({ id: a.id, name: a.name, role: a.role }))}
+          cadences={cadences.map((c) => ({ id: c.id, name: c.name, isActive: c.isActive }))}
         />
       )}
 

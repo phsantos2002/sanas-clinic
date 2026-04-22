@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -13,18 +13,31 @@ import {
   ExternalLink,
   Building2,
   Sparkles,
+  Users,
+  ChevronDown,
+  ChevronUp,
+  Star,
+  Plus,
+  X,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { importFromCNPJ, type CNPJCompany } from "@/app/actions/cnpjImport";
+import { enrollLeadsInCadence } from "@/app/actions/cadences";
 import { CNAE_OPTIONS, UF_OPTIONS } from "@/lib/cnae-list";
+import { CitiesAutocomplete } from "./CitiesAutocomplete";
 
 type Attendant = { id: string; name: string; role: string };
 type Stage = { id: string; name: string; eventName: string };
+type Cadence = { id: string; name: string; isActive: boolean };
 
 type Props = {
   stages: Stage[];
   attendants: Attendant[];
+  cadences: Cadence[];
 };
+
+type City = { code: string; name: string };
 
 function formatCnpj(cnpj: string) {
   return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
@@ -38,24 +51,58 @@ function formatPhone(digits: string) {
   return digits;
 }
 
-export function CNPJProspector({ stages, attendants }: Props) {
+function formatCapital(v: number | null) {
+  if (v == null) return null;
+  if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1).replace(".", ",")} mi`;
+  if (v >= 1_000) return `R$ ${(v / 1_000).toFixed(1).replace(".", ",")} mil`;
+  return `R$ ${v.toLocaleString("pt-BR")}`;
+}
+
+function scoreColor(score: number) {
+  if (score >= 75) return "text-green-700 bg-green-50 border-green-200";
+  if (score >= 50) return "text-amber-700 bg-amber-50 border-amber-200";
+  if (score >= 25) return "text-orange-700 bg-orange-50 border-orange-200";
+  return "text-slate-500 bg-slate-50 border-slate-200";
+}
+
+export function CNPJProspector({ stages, attendants, cadences }: Props) {
   const router = useRouter();
 
-  const [cnae, setCnae] = useState<string>(CNAE_OPTIONS[0]?.code ?? "");
+  // ── Filtros principais ──
+  const [cnaes, setCnaes] = useState<string[]>([CNAE_OPTIONS[0]?.code ?? ""]);
   const [uf, setUf] = useState<string>("SP");
-  const [city, setCity] = useState("");
+  const [cityIbge, setCityIbge] = useState<City | null>(null);
+  const [district, setDistrict] = useState("");
+  const [zipPrefix, setZipPrefix] = useState("");
   const [size, setSize] = useState("");
+  const [ddd, setDdd] = useState("");
   const [requirePhone, setRequirePhone] = useState(true);
   const [requireEmail, setRequireEmail] = useState(false);
   const [maxResults, setMaxResults] = useState(20);
 
+  // ── Filtros avançados ──
+  const [advOpen, setAdvOpen] = useState(false);
+  const [foundedFrom, setFoundedFrom] = useState("");
+  const [foundedTo, setFoundedTo] = useState("");
+  const [equityMin, setEquityMin] = useState<string>("");
+  const [equityMax, setEquityMax] = useState<string>("");
+  const [simples, setSimples] = useState<"yes" | "no" | "any">("any");
+  const [mei, setMei] = useState<"yes" | "no" | "any">("any");
+  const [onlyHead, setOnlyHead] = useState(false);
+
+  // ── Estado de busca ──
   const [searching, setSearching] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [results, setResults] = useState<CNPJCompany[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [expandedQsa, setExpandedQsa] = useState<Set<string>>(new Set());
   const [lastQuery, setLastQuery] = useState("");
+  const [nextToken, setNextToken] = useState<string | null>(null);
 
+  // ── Destino e enrollment ──
   const [stageId, setStageId] = useState<string>(stages[0]?.id ?? "");
   const [assignedTo, setAssignedTo] = useState<string>("");
+  const [cadenceId, setCadenceId] = useState<string>("");
   const [importing, setImporting] = useState(false);
 
   const cnaeGroups = useMemo(() => {
@@ -69,11 +116,40 @@ export function CNPJProspector({ stages, attendants }: Props) {
   }, []);
 
   const selectedStage = stages.find((s) => s.id === stageId);
-  const selectedCnae = CNAE_OPTIONS.find((c) => c.code === cnae);
+  const selectedCnaesLabels = cnaes
+    .map((code) => CNAE_OPTIONS.find((c) => c.code === code)?.label)
+    .filter(Boolean)
+    .join(" + ");
+
+  // Zera a cidade sempre que UF muda (o autocomplete já faz isso, redundante safe).
+  useEffect(() => {
+    setCityIbge(null);
+  }, [uf]);
+
+  const buildPayload = (token?: string) => ({
+    cnaes,
+    state: uf,
+    cityIbgeCode: cityIbge?.code,
+    district: district.trim() || undefined,
+    zipPrefix: zipPrefix.replace(/\D/g, "").slice(0, 8) || undefined,
+    size: size || undefined,
+    ddd: ddd.replace(/\D/g, "").slice(0, 2) || undefined,
+    foundedFrom: foundedFrom || undefined,
+    foundedTo: foundedTo || undefined,
+    equityMin: equityMin ? Number(equityMin.replace(/\D/g, "")) : undefined,
+    equityMax: equityMax ? Number(equityMax.replace(/\D/g, "")) : undefined,
+    simples: simples === "any" ? undefined : simples,
+    mei: mei === "any" ? undefined : mei,
+    onlyHead: onlyHead || undefined,
+    requirePhone,
+    requireEmail,
+    maxResults,
+    token,
+  });
 
   const handleSearch = async () => {
-    if (!cnae) {
-      toast.error("Selecione uma atividade (CNAE)");
+    if (cnaes.filter(Boolean).length === 0) {
+      toast.error("Selecione ao menos uma atividade (CNAE)");
       return;
     }
     if (!uf) {
@@ -83,73 +159,82 @@ export function CNPJProspector({ stages, attendants }: Props) {
     setSearching(true);
     setResults([]);
     setSelected(new Set());
+    setNextToken(null);
     try {
       const r = await fetch("/api/cnpj/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cnae,
-          state: uf,
-          city,
-          size: size || undefined,
-          requirePhone,
-          requireEmail,
-          maxResults,
-        }),
+        body: JSON.stringify(buildPayload()),
       });
       const data = await r.json();
       if (!r.ok) {
-        if (data.detail) {
-          toast.error(data.error || "Erro ao buscar", {
-            description: String(data.detail).slice(0, 400),
-            duration: 15000,
-          });
-          console.error("[CNPJProspector] erro detalhado:", data);
-        } else {
-          toast.error(data.error || "Erro ao buscar");
-        }
+        const desc = data.detail ? String(data.detail).slice(0, 400) : undefined;
+        toast.error(
+          data.error || "Erro ao buscar",
+          desc ? { description: desc, duration: 15000 } : undefined
+        );
+        console.error("[CNPJProspector] erro:", data);
         setSearching(false);
         return;
       }
       setResults(data.results);
-      setLastQuery([selectedCnae?.label, city, uf].filter(Boolean).join(" • "));
       setSelected(new Set(data.results.map((c: CNPJCompany) => c.cnpj)));
+      setNextToken(data.nextToken ?? null);
+      setLastQuery([selectedCnaesLabels, cityIbge?.name, uf].filter(Boolean).join(" • "));
 
       if (data.results.length > 0) {
-        toast.success(`${data.results.length} empresas encontradas`);
+        toast.success(
+          `${data.results.length} empresas encontradas${data.nextToken ? " (mais disponíveis)" : ""}`
+        );
       } else if (data.rawTotal > 0) {
-        const sample = Array.isArray(data.sampleCities) ? data.sampleCities.join(", ") : "";
         toast.warning(
           `Encontrei ${data.rawTotal} empresas, mas nenhuma passou nos filtros locais.`,
           {
-            description: sample
-              ? `Cidades encontradas nos resultados: ${sample}. Ajuste o nome da cidade ou deixe em branco.`
-              : "Relaxe o filtro de telefone/email ou remova a cidade.",
+            description: "Relaxe o filtro de telefone/email, bairro ou cidade.",
             duration: 15000,
           }
         );
-        console.warn(
-          "[CNPJProspector] rawTotal=",
-          data.rawTotal,
-          "sampleCities=",
-          data.sampleCities
-        );
       } else {
-        toast.warning("Nenhuma empresa encontrada nesse CNAE + UF.", {
-          description: data.rawResponsePreview
-            ? `Resposta bruta da API: ${String(data.rawResponsePreview).slice(0, 300)}`
-            : "Tente outra UF ou outro CNAE. A Receita pode não ter registros ativos para essa combinação.",
-          duration: 20000,
-        });
-        console.warn("[CNPJProspector] vazio:", {
-          sentUrl: data.sentUrl,
-          rawResponsePreview: data.rawResponsePreview,
+        toast.warning("Nenhuma empresa encontrada com esses filtros.", {
+          description: "Tente relaxar a UF, remover filtros avançados ou mudar o CNAE.",
+          duration: 10000,
         });
       }
     } catch {
       toast.error("Erro na requisição");
     }
     setSearching(false);
+  };
+
+  const handleLoadMore = async () => {
+    if (!nextToken) return;
+    setLoadingMore(true);
+    try {
+      const r = await fetch("/api/cnpj/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload(nextToken)),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        toast.error(data.error || "Erro ao carregar mais");
+        setLoadingMore(false);
+        return;
+      }
+      const existing = new Set(results.map((r) => r.cnpj));
+      const newOnes = (data.results as CNPJCompany[]).filter((c) => !existing.has(c.cnpj));
+      setResults((prev) => [...prev, ...newOnes]);
+      setSelected((prev) => {
+        const next = new Set(prev);
+        newOnes.forEach((c) => next.add(c.cnpj));
+        return next;
+      });
+      setNextToken(data.nextToken ?? null);
+      toast.success(`+${newOnes.length} empresas`);
+    } catch {
+      toast.error("Erro ao carregar mais");
+    }
+    setLoadingMore(false);
   };
 
   const toggleSelected = (cnpj: string) => {
@@ -164,6 +249,19 @@ export function CNPJProspector({ stages, attendants }: Props) {
   const toggleAll = () => {
     if (selected.size === results.length) setSelected(new Set());
     else setSelected(new Set(results.map((c) => c.cnpj)));
+  };
+
+  const toggleQsa = (cnpj: string) => {
+    setExpandedQsa((prev) => {
+      const next = new Set(prev);
+      if (next.has(cnpj)) next.delete(cnpj);
+      else next.add(cnpj);
+      return next;
+    });
+  };
+
+  const toggleCnae = (code: string) => {
+    setCnaes((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
   };
 
   const handleImport = async () => {
@@ -183,23 +281,40 @@ export function CNPJProspector({ stages, attendants }: Props) {
       assignedTo: assignedTo || null,
       searchQuery: lastQuery,
     });
-    setImporting(false);
 
     if (!r.success) {
       toast.error(r.error);
+      setImporting(false);
       return;
     }
 
-    toast.success(
-      `${r.data!.created} leads importados${r.data!.skipped > 0 ? ` • ${r.data!.skipped} duplicados ignorados` : ""}`
-    );
+    const { created, skipped, createdLeadIds } = r.data!;
+
+    // Enrollment automático em cadência, se escolhida.
+    if (cadenceId && createdLeadIds.length > 0) {
+      const enr = await enrollLeadsInCadence(cadenceId, createdLeadIds);
+      if (enr.success) {
+        toast.success(
+          `${created} leads importados • ${enr.data?.enrolled ?? 0} inscritos na cadência${skipped > 0 ? ` • ${skipped} duplicados` : ""}`
+        );
+      } else {
+        toast.warning(`${created} leads importados, mas cadência falhou: ${enr.error}`);
+      }
+    } else {
+      toast.success(
+        `${created} leads importados${skipped > 0 ? ` • ${skipped} duplicados ignorados` : ""}`
+      );
+    }
+
+    setImporting(false);
     router.refresh();
 
-    // Remove importados do resultado
     const importedCnpjs = new Set(toImport.map((c) => c.cnpj));
     setResults((prev) => prev.filter((c) => !importedCnpjs.has(c.cnpj)));
     setSelected(new Set());
   };
+
+  const activeCadences = cadences.filter((c) => c.isActive);
 
   return (
     <div className="space-y-5">
@@ -211,33 +326,67 @@ export function CNPJProspector({ stages, attendants }: Props) {
           <div>
             <h2 className="font-semibold text-slate-900 text-sm">Prospector CNPJ (Receita)</h2>
             <p className="text-xs text-slate-400">
-              Busque empresas brasileiras por atividade (CNAE) + região. Dados públicos da Receita
-              Federal, com telefone/email de contato.
+              Busque empresas por atividade + região. Filtros avançados, score de qualificação e
+              inscrição em cadência num clique.
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
-          <div className="sm:col-span-3">
-            <label className="text-xs font-medium text-slate-700 mb-1 block">
-              Atividade (CNAE) <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={cnae}
-              onChange={(e) => setCnae(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {cnaeGroups.map(([group, opts]) => (
-                <optgroup key={group} label={group}>
-                  {opts.map((opt) => (
+        {/* CNAEs selecionados (chips) */}
+        <div>
+          <label className="text-xs font-medium text-slate-700 mb-1 block">
+            Atividades (CNAE) <span className="text-red-500">*</span>
+          </label>
+          <div className="flex flex-wrap gap-2 mb-2 min-h-[28px]">
+            {cnaes.length === 0 && (
+              <span className="text-xs text-slate-400 italic">
+                Selecione ao menos uma atividade abaixo.
+              </span>
+            )}
+            {cnaes.map((code) => {
+              const opt = CNAE_OPTIONS.find((c) => c.code === code);
+              return (
+                <span
+                  key={code}
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium"
+                >
+                  {opt?.label ?? code}
+                  <button
+                    type="button"
+                    onClick={() => toggleCnae(code)}
+                    className="hover:text-emerald-900"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+          <select
+            value=""
+            onChange={(e) => {
+              if (e.target.value) toggleCnae(e.target.value);
+              e.target.value = "";
+            }}
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">+ Adicionar CNAE...</option>
+            {cnaeGroups.map(([group, opts]) => (
+              <optgroup key={group} label={group}>
+                {opts
+                  .filter((opt) => !cnaes.includes(opt.code))
+                  .map((opt) => (
                     <option key={opt.code} value={opt.code}>
                       {opt.label}
                     </option>
                   ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
+              </optgroup>
+            ))}
+          </select>
+        </div>
+
+        {/* Localização */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <label className="text-xs font-medium text-slate-700 mb-1 block">
               UF <span className="text-red-500">*</span>
@@ -249,27 +398,34 @@ export function CNPJProspector({ stages, attendants }: Props) {
             >
               {UF_OPTIONS.map((u) => (
                 <option key={u.code} value={u.code}>
-                  {u.code}
+                  {u.code} — {u.label}
                 </option>
               ))}
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-slate-700 mb-1 block">
-              Cidade (opcional)
-            </label>
+            <label className="text-xs font-medium text-slate-700 mb-1 block">Cidade</label>
+            <CitiesAutocomplete
+              uf={uf}
+              value={cityIbge}
+              onChange={setCityIbge}
+              placeholder="Digite para buscar..."
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-slate-700 mb-1 block">Bairro</label>
             <input
               type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="ex: São Paulo"
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              placeholder="opcional"
               className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Básicos */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div>
             <label className="text-xs font-medium text-slate-700 mb-1 block">Porte</label>
             <select
@@ -282,6 +438,16 @@ export function CNPJProspector({ stages, attendants }: Props) {
               <option value="EPP">EPP (pequeno)</option>
               <option value="DEMAIS">Médio/Grande</option>
             </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-slate-700 mb-1 block">DDD</label>
+            <input
+              type="text"
+              value={ddd}
+              onChange={(e) => setDdd(e.target.value.replace(/\D/g, "").slice(0, 2))}
+              placeholder="ex: 11"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            />
           </div>
           <div>
             <label className="text-xs font-medium text-slate-700 mb-1 block">Máx. resultados</label>
@@ -315,10 +481,115 @@ export function CNPJProspector({ stages, attendants }: Props) {
           </label>
         </div>
 
+        {/* Filtros avançados (collapse) */}
+        <div className="border-t border-slate-100 pt-3">
+          <button
+            type="button"
+            onClick={() => setAdvOpen((v) => !v)}
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1"
+          >
+            {advOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            Filtros avançados (capital, data de abertura, Simples, MEI, CEP, matriz)
+          </button>
+          {advOpen && (
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-xs font-medium text-slate-700 mb-1 block">
+                  Aberta a partir de
+                </label>
+                <input
+                  type="date"
+                  value={foundedFrom}
+                  onChange={(e) => setFoundedFrom(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 mb-1 block">Aberta até</label>
+                <input
+                  type="date"
+                  value={foundedTo}
+                  onChange={(e) => setFoundedTo(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 mb-1 block">
+                  Capital mín (R$)
+                </label>
+                <input
+                  type="text"
+                  value={equityMin}
+                  onChange={(e) => setEquityMin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="ex: 50000"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 mb-1 block">
+                  Capital máx (R$)
+                </label>
+                <input
+                  type="text"
+                  value={equityMax}
+                  onChange={(e) => setEquityMax(e.target.value.replace(/\D/g, ""))}
+                  placeholder="ex: 1000000"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 mb-1 block">
+                  CEP (início)
+                </label>
+                <input
+                  type="text"
+                  value={zipPrefix}
+                  onChange={(e) => setZipPrefix(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                  placeholder="ex: 01000"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 mb-1 block">Simples</label>
+                <select
+                  value={simples}
+                  onChange={(e) => setSimples(e.target.value as typeof simples)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                >
+                  <option value="any">Qualquer</option>
+                  <option value="yes">Só optantes</option>
+                  <option value="no">Só não-optantes</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 mb-1 block">MEI</label>
+                <select
+                  value={mei}
+                  onChange={(e) => setMei(e.target.value as typeof mei)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                >
+                  <option value="any">Qualquer</option>
+                  <option value="yes">Só MEIs</option>
+                  <option value="no">Excluir MEIs</option>
+                </select>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-slate-700 pt-5">
+                <input
+                  type="checkbox"
+                  checked={onlyHead}
+                  onChange={(e) => setOnlyHead(e.target.checked)}
+                  className="rounded"
+                />
+                Só matriz (sem filiais)
+              </label>
+            </div>
+          )}
+        </div>
+
         <div className="flex justify-end">
           <button
             onClick={handleSearch}
-            disabled={searching || !cnae || !uf}
+            disabled={searching || cnaes.length === 0 || !uf}
             className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
           >
             {searching ? (
@@ -379,6 +650,25 @@ export function CNPJProspector({ stages, attendants }: Props) {
                   ))}
               </select>
             </div>
+            {activeCadences.length > 0 && (
+              <div className="flex-1 min-w-[160px]">
+                <label className="text-xs font-medium text-slate-700 mb-1 block inline-flex items-center gap-1">
+                  <Zap className="h-3 w-3 text-amber-500" /> Cadência (opcional)
+                </label>
+                <select
+                  value={cadenceId}
+                  onChange={(e) => setCadenceId(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">— Sem cadência —</option>
+                  {activeCadences.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button
               onClick={handleImport}
               disabled={importing || selected.size === 0 || !stageId}
@@ -390,7 +680,8 @@ export function CNPJProspector({ stages, attendants }: Props) {
 
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-500">
-              {results.length} empresas · {selected.size} selecionadas
+              {results.length} empresas · {selected.size} selecionadas ·{" "}
+              <span className="text-slate-400">ordenadas por score</span>
             </p>
             <button
               onClick={toggleAll}
@@ -405,79 +696,161 @@ export function CNPJProspector({ stages, attendants }: Props) {
               const isSelected = selected.has(c.cnpj);
               const title = c.tradeName || c.corporateName;
               const subtitle = c.tradeName ? c.corporateName : null;
+              const qsaOpen = expandedQsa.has(c.cnpj);
+              const score = c.score ?? 0;
               return (
-                <label
+                <div
                   key={c.cnpj}
-                  className={`flex gap-3 p-3 border rounded-xl cursor-pointer transition-all ${
+                  className={`border rounded-xl p-3 transition-all ${
                     isSelected
                       ? "border-indigo-300 bg-indigo-50/30"
                       : "border-slate-100 hover:border-slate-300"
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelected(c.cnpj)}
-                    className="mt-1 rounded"
-                  />
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-semibold text-sm text-slate-900 truncate flex items-center gap-1.5">
-                          <Building2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          {title}
-                        </h4>
-                        {subtitle && (
-                          <p className="text-[11px] text-slate-400 truncate">{subtitle}</p>
-                        )}
-                        <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                          {formatCnpj(c.cnpj)}
-                        </p>
+                  <div className="flex gap-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelected(c.cnpj)}
+                      className="mt-1 rounded shrink-0"
+                    />
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-semibold text-sm text-slate-900 truncate flex items-center gap-1.5">
+                            <Building2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            {title}
+                          </h4>
+                          {subtitle && (
+                            <p className="text-[11px] text-slate-400 truncate">{subtitle}</p>
+                          )}
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                            {formatCnpj(c.cnpj)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded border ${scoreColor(score)}`}
+                            title="Score prévio de qualificação"
+                          >
+                            <Star className="h-2.5 w-2.5" />
+                            {score}
+                          </span>
+                          <a
+                            href={`https://www.google.com/maps/search/${encodeURIComponent(c.address || c.corporateName)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-slate-400 hover:text-indigo-600"
+                            title="Ver no Google Maps"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        </div>
                       </div>
-                      <a
-                        href={`https://www.google.com/maps/search/${encodeURIComponent(c.address || c.corporateName)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-slate-400 hover:text-indigo-600"
-                        onClick={(e) => e.stopPropagation()}
-                        title="Ver no Google Maps"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    </div>
-                    {c.address && (
-                      <p className="text-xs text-slate-500 flex items-start gap-1">
-                        <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
-                        <span className="truncate">{c.address}</span>
-                      </p>
-                    )}
-                    <div className="flex items-center flex-wrap gap-3 text-xs text-slate-600 pt-0.5">
-                      {c.phone ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Phone className="h-3 w-3 text-green-600" /> {formatPhone(c.phone)}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-red-500 inline-flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3" /> sem telefone
-                        </span>
+                      {c.address && (
+                        <p className="text-xs text-slate-500 flex items-start gap-1">
+                          <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+                          <span className="truncate">{c.address}</span>
+                        </p>
                       )}
-                      {c.email && (
-                        <span className="inline-flex items-center gap-1 text-slate-500 truncate">
-                          <Mail className="h-3 w-3 text-blue-500" />
-                          <span className="truncate max-w-[180px]">{c.email}</span>
-                        </span>
-                      )}
-                      {c.size && (
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                          {c.size}
-                        </span>
+                      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600 pt-0.5">
+                        {c.phone ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Phone className="h-3 w-3 text-green-600" /> {formatPhone(c.phone)}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-red-500 inline-flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" /> sem telefone
+                          </span>
+                        )}
+                        {c.email && (
+                          <span className="inline-flex items-center gap-1 text-slate-500 truncate">
+                            <Mail className="h-3 w-3 text-blue-500" />
+                            <span className="truncate max-w-[180px]">{c.email}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center flex-wrap gap-1.5 pt-1">
+                        {c.size && (
+                          <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                            {c.size}
+                          </span>
+                        )}
+                        {c.capital != null && (
+                          <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                            {formatCapital(c.capital)}
+                          </span>
+                        )}
+                        {c.openedAt && (
+                          <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                            desde {new Date(c.openedAt).getFullYear()}
+                          </span>
+                        )}
+                        {c.simples && (
+                          <span className="text-[10px] text-green-700 bg-green-50 px-1.5 py-0.5 rounded">
+                            Simples
+                          </span>
+                        )}
+                        {c.mei && (
+                          <span className="text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                            MEI
+                          </span>
+                        )}
+                        {c.isHead === false && (
+                          <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
+                            Filial
+                          </span>
+                        )}
+                      </div>
+                      {c.members && c.members.length > 0 && (
+                        <div className="pt-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleQsa(c.cnpj)}
+                            className="text-[11px] text-slate-500 hover:text-indigo-600 inline-flex items-center gap-1"
+                          >
+                            <Users className="h-3 w-3" />
+                            {qsaOpen ? "Ocultar" : "Ver"} sócios ({c.members.length})
+                          </button>
+                          {qsaOpen && (
+                            <ul className="mt-1 space-y-0.5 text-[11px] text-slate-500 pl-4 border-l border-slate-100">
+                              {c.members.slice(0, 8).map((m, i) => (
+                                <li key={i}>
+                                  <strong>{m.name}</strong>
+                                  {m.role && <span className="text-slate-400"> — {m.role}</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
-                </label>
+                </div>
               );
             })}
           </div>
+
+          {nextToken && (
+            <div className="flex justify-center pt-2">
+              <button
+                type="button"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" /> Carregar mais
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
