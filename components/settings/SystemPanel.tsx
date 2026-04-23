@@ -658,6 +658,79 @@ function DiagnosticTab() {
                 </li>
               )}
             </ul>
+
+            {aiHealth.lastLeadDiagnostic && (
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-[11px] font-semibold text-slate-700 mb-1">
+                  Último lead que enviou mensagem
+                </p>
+                <ul className="text-[11px] text-slate-600 space-y-0.5">
+                  <li>
+                    Nome: <b>{aiHealth.lastLeadDiagnostic.name}</b> ·{" "}
+                    <span className="font-mono">{aiHealth.lastLeadDiagnostic.phone}</span>
+                  </li>
+                  <li>
+                    aiEnabled:{" "}
+                    <b
+                      className={
+                        aiHealth.lastLeadDiagnostic.aiEnabled ? "text-emerald-700" : "text-rose-700"
+                      }
+                    >
+                      {aiHealth.lastLeadDiagnostic.aiEnabled ? "true" : "false"}
+                    </b>
+                  </li>
+                  <li>
+                    humanPaused:{" "}
+                    <b
+                      className={
+                        aiHealth.lastLeadDiagnostic.humanPaused ? "text-rose-700" : "text-slate-700"
+                      }
+                    >
+                      {aiHealth.lastLeadDiagnostic.humanPaused ? "sim" : "não"}
+                    </b>
+                    {aiHealth.lastLeadDiagnostic.humanPausedUntil && (
+                      <span className="text-slate-400">
+                        {" "}
+                        (até{" "}
+                        {new Date(aiHealth.lastLeadDiagnostic.humanPausedUntil).toLocaleString(
+                          "pt-BR"
+                        )}
+                        )
+                      </span>
+                    )}
+                  </li>
+                  <li>
+                    blacklist:{" "}
+                    <b
+                      className={
+                        aiHealth.lastLeadDiagnostic.onBlacklist ? "text-rose-700" : "text-slate-700"
+                      }
+                    >
+                      {aiHealth.lastLeadDiagnostic.onBlacklist ? "bloqueado" : "livre"}
+                    </b>
+                  </li>
+                  {aiHealth.whitelistSize > 0 && (
+                    <li>
+                      whitelist ({aiHealth.whitelistSize} nums):{" "}
+                      <b
+                        className={
+                          aiHealth.lastLeadDiagnostic.onWhitelist
+                            ? "text-emerald-700"
+                            : "text-rose-700"
+                        }
+                      >
+                        {aiHealth.lastLeadDiagnostic.onWhitelist ? "permitido" : "não está"}
+                      </b>
+                    </li>
+                  )}
+                  {aiHealth.lastLeadDiagnostic.inferredBlocker && (
+                    <li className="bg-rose-50 border border-rose-200 rounded px-2 py-1 mt-1 text-rose-800">
+                      <b>⚠ Bloqueador inferido:</b> {aiHealth.lastLeadDiagnostic.inferredBlocker}
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 

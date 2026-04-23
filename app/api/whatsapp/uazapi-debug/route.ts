@@ -171,6 +171,71 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
+  // Inspect the LAST lead that received a message — the most common cause of
+  // "webhook arrived but AI didn't reply" is a per-lead flag blocking it.
+  let lastLeadDiagnostic: {
+    leadId: string;
+    name: string;
+    phone: string;
+    aiEnabled: boolean;
+    humanPausedUntil: Date | null;
+    humanPaused: boolean;
+    onBlacklist: boolean;
+    onWhitelist: boolean | null;
+    lastMessageAt: Date | null;
+    lastMessageText: string | null;
+    inferredBlocker: string | null;
+  } | null = null;
+
+  if (lastIncoming?.leadId) {
+    const lead = await prisma.lead.findUnique({
+      where: { id: lastIncoming.leadId },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        aiEnabled: true,
+        humanPausedUntil: true,
+      },
+    });
+
+    if (lead) {
+      const normalizedPhone = lead.phone.replace(/\D/g, "");
+      const blacklist = (aiConfig?.blacklist ?? []) as string[];
+      const whitelist = (aiConfig?.whitelist ?? []) as string[];
+      const onBlacklist = blacklist.some((b) =>
+        b.replace(/\D/g, "").endsWith(normalizedPhone.slice(-8))
+      );
+      const onWhitelist =
+        whitelist.length > 0
+          ? whitelist.some((w) => w.replace(/\D/g, "").endsWith(normalizedPhone.slice(-8)))
+          : null; // no whitelist configured
+      const humanPaused = !!lead.humanPausedUntil && new Date(lead.humanPausedUntil) > new Date();
+
+      let inferredBlocker: string | null = null;
+      if (!lead.aiEnabled) inferredBlocker = "lead.aiEnabled = false";
+      else if (humanPaused) inferredBlocker = `humanPausedUntil (${lead.humanPausedUntil})`;
+      else if (onBlacklist) inferredBlocker = "phone na blacklist do AIConfig";
+      else if (onWhitelist === false)
+        inferredBlocker = "whitelist configurada mas phone não está nela";
+      else if (!aiConfig?.apiKey) inferredBlocker = "AIConfig.apiKey vazia";
+
+      lastLeadDiagnostic = {
+        leadId: lead.id,
+        name: lead.name,
+        phone: normalizedPhone.slice(0, 2) + "***" + normalizedPhone.slice(-4),
+        aiEnabled: lead.aiEnabled,
+        humanPausedUntil: lead.humanPausedUntil,
+        humanPaused,
+        onBlacklist,
+        onWhitelist,
+        lastMessageAt: lastIncoming.createdAt,
+        lastMessageText: lastIncoming.content.slice(0, 80),
+        inferredBlocker,
+      };
+    }
+  }
+
   const webhookProbe = probes.find((p) => p.path === "/webhook");
   const configuredWebhookUrl =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -193,6 +258,11 @@ export async function GET(req: NextRequest) {
     lastAssistantPreview: lastAssistant?.content?.slice(0, 80) ?? null,
     msgsReceivedLast24h: msgsLast24h,
     dlqEntriesLast24h: dlqRecent,
+    lastLeadDiagnostic,
+    // AIConfig-level filters that might block everyone
+    whitelistSize: (aiConfig?.whitelist ?? []).length,
+    blacklistSize: (aiConfig?.blacklist ?? []).length,
+    ignoreGroups: aiConfig?.ignoreGroups ?? null,
   };
 
   // Compare the 3 chatid filter variants to know which one upstream understands
@@ -238,6 +308,12 @@ export async function GET(req: NextRequest) {
   if (aiHealth.msgsReceivedLast24h === 0) {
     aiBlockers.push(
       "Nenhuma mensagem recebida via webhook nas últimas 24h — webhook não está chegando ou ninguém mandou nada"
+    );
+  }
+  // If messages ARE arriving but the AI isn't replying, surface the per-lead blocker
+  if (aiHealth.msgsReceivedLast24h > 0 && lastLeadDiagnostic?.inferredBlocker) {
+    aiBlockers.push(
+      `Último lead (${lastLeadDiagnostic.name}): ${lastLeadDiagnostic.inferredBlocker}`
     );
   }
 
