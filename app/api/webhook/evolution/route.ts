@@ -45,6 +45,23 @@ function extractPhoneFromChatId(chatId: string): string {
   return chatId.split("@")[0].replace(/\D/g, "");
 }
 
+// Uazapi sends `content` as a string for plain text, but as an object for
+// media messages (image/audio/video/location/document/contact/etc). Coerce
+// to a safe string so `.trim()` and downstream text handling don't blow up.
+function coerceMessageText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value == null) return "";
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    if (typeof obj.text === "string") return obj.text;
+    if (typeof obj.caption === "string") return obj.caption;
+    if (typeof obj.conversation === "string") return obj.conversation;
+    if (typeof obj.body === "string") return obj.body;
+    return "";
+  }
+  return String(value);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractMessageData(payload: any): {
   text: string;
@@ -60,8 +77,9 @@ function extractMessageData(payload: any): {
   if (payload.message && payload.chat) {
     const msg = payload.message;
     const chat = payload.chat;
+    const text = (coerceMessageText(msg.content) || coerceMessageText(msg.text)).trim();
     return {
-      text: (msg.content || msg.text || "").trim(),
+      text,
       fromMe: msg.fromMe === true,
       chatId: msg.chatId || chat.wa_chatid || "",
       senderName: msg.senderName || chat.wa_contactName || "",
@@ -75,7 +93,7 @@ function extractMessageData(payload: any): {
   // Format 2: Old Uazapi format (flat structure)
   if (payload.body && payload.chatid) {
     return {
-      text: (payload.body || "").trim(),
+      text: coerceMessageText(payload.body).trim(),
       fromMe: payload.fromMe === true,
       chatId: payload.chatid || "",
       senderName: payload.senderName || "",

@@ -15,8 +15,10 @@ const messageObjectSchema = z
   .object({
     id: z.string().optional(),
     messageId: z.string().optional(),
-    content: z.string().optional(),
-    text: z.string().optional(),
+    // `content` can be a string (plain text) OR an object (media: image/audio/video/location/contact/etc).
+    // `text` has similar polymorphism across Uazapi message types. Accept anything and coerce downstream.
+    content: z.unknown().optional(),
+    text: z.unknown().optional(),
     fromMe: z.boolean().optional(),
     chatId: z.string().optional(),
     messageTimestamp: z.number().optional(),
