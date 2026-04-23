@@ -70,6 +70,12 @@ export async function POST(req: NextRequest) {
     question,
     options,
     delay,
+    // Interactive messages
+    buttons,
+    listTitle,
+    listButtonText,
+    listSections,
+    footer,
   } = body;
 
   // Bulk send
@@ -142,6 +148,61 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "question e options obrigatorios" }, { status: 400 });
         endpoint = "/send/poll";
         payload = { number: phone, question, options };
+        break;
+      }
+
+      case "buttons": {
+        // Quick-reply buttons. Body shape:
+        //   { type: "buttons", number, text, buttons: [{ id, label }], footer? }
+        if (!text) return NextResponse.json({ error: "text obrigatorio" }, { status: 400 });
+        if (!Array.isArray(buttons) || buttons.length === 0 || buttons.length > 3)
+          return NextResponse.json(
+            { error: "buttons obrigatorio (1-3 itens com id e label)" },
+            { status: 400 }
+          );
+        endpoint = "/send/buttons";
+        payload = {
+          number: phone,
+          text,
+          buttons: buttons.map((b: { id: string; label: string }) => ({
+            id: String(b.id),
+            label: String(b.label).slice(0, 20),
+          })),
+        };
+        if (footer) payload.footer = String(footer).slice(0, 60);
+        break;
+      }
+
+      case "list": {
+        // Interactive selection list. Body shape:
+        //   { type: "list", number, text, listTitle?, listButtonText, footer?,
+        //     listSections: [{ title, rows: [{ id, title, description? }] }] }
+        if (!text) return NextResponse.json({ error: "text obrigatorio" }, { status: 400 });
+        if (!listButtonText)
+          return NextResponse.json({ error: "listButtonText obrigatorio" }, { status: 400 });
+        if (!Array.isArray(listSections) || listSections.length === 0)
+          return NextResponse.json({ error: "listSections obrigatorio" }, { status: 400 });
+        endpoint = "/send/list";
+        payload = {
+          number: phone,
+          text,
+          title: listTitle || "",
+          buttonText: String(listButtonText).slice(0, 20),
+          sections: listSections.map(
+            (s: {
+              title?: string;
+              rows: { id: string; title: string; description?: string }[];
+            }) => ({
+              title: s.title || "",
+              rows: s.rows.map((r) => ({
+                id: String(r.id),
+                title: String(r.title).slice(0, 24),
+                description: r.description ? String(r.description).slice(0, 72) : undefined,
+              })),
+            })
+          ),
+        };
+        if (footer) payload.footer = String(footer).slice(0, 60);
         break;
       }
 
