@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+import { canRequest, recordSuccess, recordFailure } from "@/lib/uazapi/circuitBreaker";
 
 /**
  * Proxy API for Uazapi — FULL integration (every feature)
@@ -105,6 +106,13 @@ async function uazapi(
   body?: unknown
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
+  // Circuit breaker keyed by serverUrl — fast-fail when Uazapi is degraded
+  const circuitKey = serverUrl;
+  if (!canRequest(circuitKey)) {
+    console.warn(JSON.stringify({ event: "uazapi_circuit_open_skip", path }));
+    return { __error: "Circuit breaker aberto — Uazapi em degradação", __status: 503 };
+  }
+
   const headers: Record<string, string> = { token: token.trim() };
   if (body) headers["Content-Type"] = "application/json";
   const url = `${serverUrl}${path}`;
@@ -134,6 +142,7 @@ async function uazapi(
             })
           );
         }
+        recordSuccess(circuitKey);
         return { ...data, __status: res.status };
       }
 
@@ -188,6 +197,7 @@ async function uazapi(
       error: lastError?.message,
     })
   );
+  recordFailure(circuitKey);
   return { __error: lastError?.message ?? "Uazapi unreachable", __status: lastError?.status };
 }
 

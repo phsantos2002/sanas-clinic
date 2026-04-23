@@ -4,7 +4,7 @@ import { sendFacebookEvent } from "@/services/facebookEvents";
 import { getAIConfigByUserId } from "@/app/actions/aiConfig";
 import { fireTrigger } from "@/services/workflowEngine";
 import { logger } from "@/lib/logger";
-import { normalizePhone, phonesMatch } from "@/lib/phone";
+import { normalizePhone, phonesMatch, maskPhone } from "@/lib/phone";
 import { createHash } from "crypto";
 
 // ── Postgres advisory lock helpers ─────────────────────────
@@ -90,7 +90,7 @@ export async function processIncomingMessage(params: {
     externalMessageId,
   } = params;
 
-  const log = logger.child({ userId, phone: phone.slice(-4), externalMessageId });
+  const log = logger.child({ userId, phone: maskPhone(phone), externalMessageId });
   log.debug("webhook_processing_start", { text: text.slice(0, 50) });
 
   // ── Load AI config ────────────────────────────────────────
@@ -102,14 +102,14 @@ export async function processIncomingMessage(params: {
     if (aiConfig.whitelist && aiConfig.whitelist.length > 0) {
       const inWhitelist = aiConfig.whitelist.some((w) => phonesMatch(cleanPhone, w));
       if (!inWhitelist) {
-        log.info("webhook_whitelist_skip", { phone: phone.slice(-4) });
+        log.info("webhook_whitelist_skip", { phone: maskPhone(phone) });
         return;
       }
     }
     if (aiConfig.blacklist && aiConfig.blacklist.length > 0) {
       const inBlacklist = aiConfig.blacklist.some((b) => phonesMatch(cleanPhone, b));
       if (inBlacklist) {
-        log.info("webhook_blacklist_skip", { phone: phone.slice(-4) });
+        log.info("webhook_blacklist_skip", { phone: maskPhone(phone) });
         return;
       }
     }
@@ -551,7 +551,7 @@ async function createLead(
     const isUnique =
       err instanceof Error && (err.message.includes("P2002") || err.message.includes("Unique"));
     if (isUnique) {
-      logger.info("webhook_lead_create_race_recovered", { phoneSuffix: normalized.slice(-4) });
+      logger.info("webhook_lead_create_race_recovered", { phone: maskPhone(normalized) });
     }
     const fallback = await prisma.lead.findFirst({
       where: { userId, phone: normalized },

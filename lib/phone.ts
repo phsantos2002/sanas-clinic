@@ -64,3 +64,26 @@ function formatLocalBR(digits: string, withCountry: boolean): string {
 
   return `${prefix}${digits}`;
 }
+
+/**
+ * Mascara um número de telefone para uso em logs (LGPD).
+ * Mantém DDD/DDI e os 4 últimos dígitos para correlação debug.
+ *
+ * Exemplos:
+ *   "5511987654321" → "55 11 *****-4321"
+ *   "11987654321"   → "11 *****-4321"
+ *   "abc"           → "***"
+ */
+export function maskPhone(phone: string | null | undefined): string {
+  if (!phone) return "***";
+  const digits = normalizePhone(phone);
+  if (digits.length < 4) return "***";
+  const last4 = digits.slice(-4);
+  if (digits.length >= 12 && digits.startsWith("55")) {
+    return `55 ${digits.slice(2, 4)} *****-${last4}`;
+  }
+  if (digits.length === 11 || digits.length === 10) {
+    return `${digits.slice(0, 2)} *****-${last4}`;
+  }
+  return `***${last4}`;
+}

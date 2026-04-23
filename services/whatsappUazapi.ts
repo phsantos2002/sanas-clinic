@@ -10,7 +10,9 @@ export type UazapiConfig = {
   instanceToken: string;
 };
 
-// ─── Helper (resilient: timeout + retry + logging) ───
+// ─── Helper (resilient: timeout + retry + logging + circuit breaker) ───
+
+import { canRequest, recordSuccess, recordFailure } from "@/lib/uazapi/circuitBreaker";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RETRIES = 2; // total attempts = 1 + retries
@@ -29,6 +31,17 @@ async function uazapiRequest(
 ) {
   const cleanUrl = serverUrl.trim().replace(/\/+$/, "");
   const cleanToken = token.trim();
+
+  // Circuit breaker: fast-fail when Uazapi is degraded
+  if (!canRequest(cleanUrl)) {
+    console.warn(JSON.stringify({ event: "uazapi_circuit_open_skip", path }));
+    return {
+      ok: false as const,
+      status: 503,
+      error: "Circuit breaker aberto — Uazapi em degradação",
+    };
+  }
+
   const headers: Record<string, string> = { token: cleanToken };
   if (body) headers["Content-Type"] = "application/json";
   const url = `${cleanUrl}${path}`;
@@ -58,6 +71,7 @@ async function uazapiRequest(
             })
           );
         }
+        recordSuccess(cleanUrl);
         return { ok: true as const, data };
       }
 
@@ -108,6 +122,7 @@ async function uazapiRequest(
       error: lastError.message,
     })
   );
+  recordFailure(cleanUrl);
   return { ok: false as const, status: lastError.status ?? 0, error: lastError.message };
 }
 
