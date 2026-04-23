@@ -619,12 +619,19 @@ export function ChatPageClient() {
     return () => clearInterval(interval);
   }, [selectedChat, checkNewMessages]);
 
-  // Trigger an immediate refresh whenever the tab regains focus / becomes visible
+  // Trigger an immediate refresh whenever the tab regains focus / becomes visible.
+  // If the initial fetch never completed (lastMsgTsRef still 0), checkNewMessages
+  // would short-circuit — fall back to a full fetchMessages so the conversation
+  // isn't stuck empty after navigating away and back.
   useEffect(() => {
     if (!selectedChat) return;
     const handler = () => {
       if (document.visibilityState === "visible") {
-        checkNewMessages();
+        if (lastMsgTsRef.current > 0) {
+          checkNewMessages();
+        } else {
+          fetchMessages(selectedChat.wa_chatid);
+        }
         fetchChats(true);
       }
     };
@@ -634,7 +641,7 @@ export function ChatPageClient() {
       window.removeEventListener("focus", handler);
       document.removeEventListener("visibilitychange", handler);
     };
-  }, [selectedChat, checkNewMessages, fetchChats]);
+  }, [selectedChat, checkNewMessages, fetchChats, fetchMessages]);
 
   useEffect(() => {
     if (!selectedChat) return;

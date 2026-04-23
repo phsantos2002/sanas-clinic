@@ -22,6 +22,17 @@ function isRetriableStatus(status: number): boolean {
   return status === 408 || status === 429 || status === 502 || status === 503 || status === 504;
 }
 
+// Paths that SEND a message or produce a WhatsApp-visible side effect — if
+// the request times out, the server may have already dispatched the message
+// even though our HTTP call aborted. Retrying causes double-sends. We still
+// retry on explicit 429/503 (server told us it rejected), just not on
+// ambiguous outcomes (network error / timeout / unknown).
+function isSideEffectPath(path: string): boolean {
+  return (
+    path.startsWith("/send/") || path.startsWith("/message/send") || path.startsWith("/chat/") // pin/unpin/archive/markRead also mutate state
+  );
+}
+
 async function uazapiRequest(
   serverUrl: string,
   token: string,
@@ -29,6 +40,7 @@ async function uazapiRequest(
   path: string,
   body?: unknown
 ) {
+  const sideEffect = method !== "GET" && isSideEffectPath(path);
   const cleanUrl = serverUrl.trim().replace(/\/+$/, "");
   const cleanToken = token.trim();
 
@@ -78,7 +90,14 @@ async function uazapiRequest(
       const errBody = await res.text().catch(() => "");
       lastError = { status: res.status, message: errBody || res.statusText };
 
-      if (!isRetriableStatus(res.status)) {
+      // For side-effect calls, only retry on statuses where the server
+      // explicitly refused the request (429/503). Others (408/502/504) are
+      // ambiguous — the upstream may have already executed the effect.
+      const retriable = sideEffect
+        ? res.status === 429 || res.status === 503
+        : isRetriableStatus(res.status);
+
+      if (!retriable) {
         console.error(
           JSON.stringify({
             event: "uazapi_error",
@@ -107,6 +126,15 @@ async function uazapiRequest(
       console.warn(
         JSON.stringify({ event: "uazapi_network_error", path, attempt, durationMs, error: message })
       );
+      // Side-effect calls: we can't know whether the server already processed
+      // the request before we timed out. Abort retries to avoid double-sends.
+      if (sideEffect) {
+        console.warn(
+          JSON.stringify({ event: "uazapi_no_retry_side_effect", path, attempt, durationMs })
+        );
+        recordFailure(cleanUrl);
+        return { ok: false as const, status: 0, error: lastError.message };
+      }
     }
 
     if (attempt < MAX_RETRIES) {
