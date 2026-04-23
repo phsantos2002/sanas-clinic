@@ -502,6 +502,26 @@ function DiagnosticTab() {
                     : "não"}
                 </b>
               </li>
+              {interpretation.filterDiagnostic && (
+                <>
+                  <li className="pt-1 border-t border-amber-200/40 mt-1">
+                    <b>Diagnóstico de filtro chatid:</b>
+                  </li>
+                  <li>
+                    String direta: <b>{interpretation.filterDiagnostic.directStringMatch}</b>{" "}
+                    mensagens
+                  </li>
+                  <li>
+                    $in: <b>{interpretation.filterDiagnostic.inOperatorMatch}</b> mensagens
+                  </li>
+                  <li>
+                    $regex: <b>{interpretation.filterDiagnostic.regexMatch}</b> mensagens
+                  </li>
+                  <li>
+                    Filtro funcional: <b>{interpretation.filterDiagnostic.workingFilter}</b>
+                  </li>
+                </>
+              )}
             </ul>
           </div>
         )}

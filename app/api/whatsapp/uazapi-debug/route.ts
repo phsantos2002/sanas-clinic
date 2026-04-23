@@ -91,37 +91,50 @@ export async function GET() {
   const serverUrl = config.uazapiServerUrl.trim().replace(/\/+$/, "");
   const token = config.uazapiInstanceToken.trim();
 
+  // First, fetch a real chatid we can use in subsequent probes
+  const sampleChats = await rawCall(serverUrl, token, "POST", "/chat/find", {
+    limit: 5,
+    sort: "-wa_lastMsgTimestamp",
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const firstChatId = (sampleChats.data as any)?.chats?.[0]?.wa_chatid as string | undefined;
+
   const probes = await Promise.all([
     // Connection state
     rawCall(serverUrl, token, "GET", "/instance/status"),
-    rawCall(serverUrl, token, "GET", "/instance/info"),
-    rawCall(serverUrl, token, "GET", "/instance"),
     rawCall(serverUrl, token, "GET", "/webhook"),
 
-    // Chats sample (first chat with all fields)
-    rawCall(serverUrl, token, "POST", "/chat/find", {
-      limit: 2,
-      sort: "-wa_lastMsgTimestamp",
-    }),
+    // Sample chat (already fetched above)
+    Promise.resolve(sampleChats),
 
-    // Messages WITHOUT chatid filter — proves whether history is persisted at all
+    // Messages WITHOUT chatid filter — proves whether history is persisted
     rawCall(serverUrl, token, "POST", "/message/find", { limit: 5 }),
 
-    // Messages with messageTimestamp range (alternative filter)
-    rawCall(serverUrl, token, "POST", "/message/find", {
-      limit: 5,
-      messageTimestamp: { $gt: 0 },
-    }),
+    // CRITICAL: try the SAME chatid in 3 different filter shapes so we know
+    // exactly which one Uazapi understands. Same chatid for all three so we can
+    // compare result counts directly.
+    ...(firstChatId
+      ? [
+          // 1. Direct string match
+          rawCall(serverUrl, token, "POST", "/message/find", {
+            chatid: firstChatId,
+            limit: 5,
+          }),
+          // 2. MongoDB-style $in (single value) — what we WERE using
+          rawCall(serverUrl, token, "POST", "/message/find", {
+            chatid: { $in: [firstChatId] },
+            limit: 5,
+          }),
+          // 3. Regex partial match
+          rawCall(serverUrl, token, "POST", "/message/find", {
+            chatid: { $regex: firstChatId.split("@")[0] },
+            limit: 5,
+          }),
+        ]
+      : []),
 
-    // Speculative resync endpoints (likely 404, but worth probing)
-    rawCall(serverUrl, token, "POST", "/instance/sync", {}),
-    rawCall(serverUrl, token, "POST", "/chat/sync", {}),
-    rawCall(serverUrl, token, "POST", "/message/sync", {}),
-    rawCall(serverUrl, token, "GET", "/instance/version"),
-
-    // Counts (if supported)
+    // Counts
     rawCall(serverUrl, token, "POST", "/chat/find", { limit: 1, count: true }),
-    rawCall(serverUrl, token, "POST", "/message/find", { limit: 1, count: true }),
   ]);
 
   // Build a high-level interpretation
@@ -131,14 +144,50 @@ export async function GET() {
   const messagesArr = (messagesUnfiltered?.data as { messages?: unknown[] } | undefined)?.messages;
   const totalMessagesAvailable = Array.isArray(messagesArr) ? messagesArr.length : 0;
 
+  // Compare the 3 chatid filter variants to know which one upstream understands
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const directMatch = probes.find((p) => typeof (p.body as any)?.chatid === "string");
+  const inMatch = probes.find(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (p) => Array.isArray((p.body as any)?.chatid?.$in)
+  );
+  const regexMatch = probes.find(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (p) => typeof (p.body as any)?.chatid?.$regex === "string"
+  );
+  const countMsgs = (p?: Probe) => {
+    const m = (p?.data as { messages?: unknown[] } | undefined)?.messages;
+    return Array.isArray(m) ? m.length : 0;
+  };
+
+  const filterDiagnostic = {
+    chatIdProbed: firstChatId ?? null,
+    directStringMatch: countMsgs(directMatch),
+    inOperatorMatch: countMsgs(inMatch),
+    regexMatch: countMsgs(regexMatch),
+    workingFilter:
+      countMsgs(directMatch) > 0
+        ? "string"
+        : countMsgs(inMatch) > 0
+          ? "$in"
+          : countMsgs(regexMatch) > 0
+            ? "$regex"
+            : "none",
+  };
+
   const interpretation = {
     instanceReachable: probes[0].ok === true,
     hasAnyMessageHistory: totalMessagesAvailable > 0,
     sampleMessageCount: totalMessagesAvailable,
+    filterDiagnostic,
     likelyConclusion:
       totalMessagesAvailable === 0
         ? "Uazapi não está persistindo histórico de mensagens. Solução: ler /message do nosso DB Postgres."
-        : "Uazapi tem mensagens armazenadas — investigar por que o filtro chatid não bate.",
+        : filterDiagnostic.workingFilter === "string"
+          ? "Filtro string direta funciona. Code já corrigido para usar este formato."
+          : filterDiagnostic.workingFilter === "none"
+            ? "Nenhum filtro chatid funcionou. Investigar formato esperado pelo Uazapi."
+            : `Filtro ${filterDiagnostic.workingFilter} funciona — code precisa ser ajustado.`,
   };
 
   return NextResponse.json({
