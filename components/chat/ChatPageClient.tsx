@@ -1618,6 +1618,9 @@ export function ChatPageClient() {
       {selectedChat && showPanel && (
         <LeadContextPanel
           leadPhone={selectedChat.wa_chatid?.split("@")[0] || selectedChat.phone || ""}
+          initialPinned={!!selectedChat.wa_pinned}
+          initialArchived={!!selectedChat.wa_archived}
+          initialMuted={!!selectedChat.wa_muted}
           onClose={() => setShowPanel(false)}
         />
       )}

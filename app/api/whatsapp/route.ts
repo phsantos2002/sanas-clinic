@@ -608,34 +608,57 @@ export async function POST(req: NextRequest) {
       }
 
       // ─── Chat management ───
+      // Uazapi schema uses wa_chatid; we send both keys for max compat.
       case "pin-chat": {
         const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/pin", {
           chatid: body.chatid,
+          wa_chatid: body.chatid,
           pin: body.pin ?? true,
         });
+        if (data?.__error) {
+          return NextResponse.json(
+            { success: false, error: data.__error, status: data.__status },
+            { status: data.__status ?? 502 }
+          );
+        }
         return NextResponse.json({ success: true, data });
       }
 
       case "archive-chat": {
         const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/archive", {
           chatid: body.chatid,
+          wa_chatid: body.chatid,
           archive: body.archive ?? true,
         });
+        if (data?.__error) {
+          return NextResponse.json(
+            { success: false, error: data.__error, status: data.__status },
+            { status: data.__status ?? 502 }
+          );
+        }
         return NextResponse.json({ success: true, data });
       }
 
       case "mute-chat": {
         const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/mute", {
           chatid: body.chatid,
+          wa_chatid: body.chatid,
           mute: body.mute ?? true,
           duration: body.duration ?? 28800,
         });
+        if (data?.__error) {
+          return NextResponse.json(
+            { success: false, error: data.__error, status: data.__status },
+            { status: data.__status ?? 502 }
+          );
+        }
         return NextResponse.json({ success: true, data });
       }
 
       case "clear-chat": {
         const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/clear", {
           chatid: body.chatid,
+          wa_chatid: body.chatid,
         });
         return NextResponse.json({ success: true, data });
       }
@@ -643,6 +666,7 @@ export async function POST(req: NextRequest) {
       case "delete-chat": {
         const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/delete", {
           chatid: body.chatid,
+          wa_chatid: body.chatid,
         });
         return NextResponse.json({ success: true, data });
       }

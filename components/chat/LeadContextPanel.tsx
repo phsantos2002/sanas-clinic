@@ -6,8 +6,6 @@ import {
   Bot,
   Phone,
   Mail,
-  Plus,
-  Trash2,
   Clock,
   Pin,
   Archive,
@@ -15,32 +13,64 @@ import {
   BellRing,
   ArchiveRestore,
   PinOff,
+  GitBranch,
+  ArrowRightLeft,
+  MessageCircle,
 } from "lucide-react";
-import { LeadScoreBadge } from "@/components/ui/LeadScoreBadge";
-import { updateLead, addLeadTag, removeLeadTag, moveLead } from "@/app/actions/leads";
+import { updateLead, moveLead } from "@/app/actions/leads";
 import { toggleAI } from "@/app/actions/messages";
 import { getStages } from "@/app/actions/stages";
+import { getFunnels, type FunnelData } from "@/app/actions/funnels";
+import { getAttendants, assignLeadToAttendant } from "@/app/actions/whatsappHub";
+import { toCanonicalRole, ATTENDANT_ROLES } from "@/lib/prospeccao";
 import type { Stage } from "@/types";
 import { toast } from "sonner";
 
 type Props = {
   leadPhone: string;
   onClose: () => void;
+  initialPinned?: boolean;
+  initialArchived?: boolean;
+  initialMuted?: boolean;
+};
+
+type Attendant = { id: string; name: string; role: string };
+
+const SOURCE_LABELS: Record<string, string> = {
+  meta: "Meta Ads",
+  google: "Google Ads",
+  whatsapp: "WhatsApp",
+  manual: "Manual",
+  outbound: "Outbound",
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function LeadContextPanel({ leadPhone, onClose }: Props) {
+export function LeadContextPanel({
+  leadPhone,
+  onClose,
+  initialPinned = false,
+  initialArchived = false,
+  initialMuted = false,
+}: Props) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [lead, setLead] = useState<any>(null);
   const [stages, setStages] = useState<Stage[]>([]);
+  const [funnels, setFunnels] = useState<FunnelData[]>([]);
+  const [attendants, setAttendants] = useState<Attendant[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newTag, setNewTag] = useState("");
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [movingStage, setMovingStage] = useState(false);
-  const [pinned, setPinned] = useState(false);
-  const [archived, setArchived] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+  const [pinned, setPinned] = useState(initialPinned);
+  const [archived, setArchived] = useState(initialArchived);
+  const [muted, setMuted] = useState(initialMuted);
   const [chatActionBusy, setChatActionBusy] = useState<string | null>(null);
+
+  // Sync pin/archive/mute when props change (parent updated chats list)
+  useEffect(() => setPinned(initialPinned), [initialPinned]);
+  useEffect(() => setArchived(initialArchived), [initialArchived]);
+  useEffect(() => setMuted(initialMuted), [initialMuted]);
 
   useEffect(() => {
     setLoading(true);
@@ -49,15 +79,37 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
         getLeadByPhone ? getLeadByPhone(leadPhone) : null
       ),
       getStages(),
-    ]).then(([leadData, stagesData]) => {
+      getFunnels(),
+      getAttendants(),
+    ]).then(([leadData, stagesData, funnelsData, attendantsData]) => {
       if (leadData) {
         setLead(leadData);
         setNotes(leadData.notes || "");
       }
       setStages(stagesData);
+      setFunnels(funnelsData);
+      setAttendants(attendantsData.map((a) => ({ id: a.id, name: a.name, role: a.role })));
       setLoading(false);
     });
   }, [leadPhone]);
+
+  // Derived: funnel of the current stage
+  const currentStage = lead ? stages.find((s) => s.id === lead.stageId) : null;
+  const currentFunnelId = currentStage?.funnelId ?? funnels[0]?.id ?? null;
+  const stagesOfCurrentFunnel = stages.filter((s) => s.funnelId === currentFunnelId);
+
+  const handleChangeFunnel = async (newFunnelId: string) => {
+    if (!lead || movingStage) return;
+    // Move lead to the FIRST stage of the new funnel
+    const firstStageOfNew = stages
+      .filter((s) => s.funnelId === newFunnelId)
+      .sort((a, b) => a.order - b.order)[0];
+    if (!firstStageOfNew) {
+      toast.error("Funil sem etapas configuradas");
+      return;
+    }
+    await handleChangeStage(firstStageOfNew.id);
+  };
 
   const handleChangeStage = async (newStageId: string) => {
     if (!lead || movingStage || lead.stageId === newStageId) return;
@@ -112,35 +164,38 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
 
   const handleTogglePin = async () => {
     if (!lead) return;
+    const next = !pinned;
     const ok = await callWhatsAppAction(
       "pin-chat",
-      { chatid: toChatId(lead.phone), pin: !pinned },
+      { chatid: toChatId(lead.phone), pin: next },
       "pin",
-      !pinned ? "Chat fixado" : "Chat desafixado"
+      next ? "Chat fixado" : "Chat desafixado"
     );
-    if (ok) setPinned(!pinned);
+    if (ok) setPinned(next);
   };
 
   const handleToggleArchive = async () => {
     if (!lead) return;
+    const next = !archived;
     const ok = await callWhatsAppAction(
       "archive-chat",
-      { chatid: toChatId(lead.phone), archive: !archived },
+      { chatid: toChatId(lead.phone), archive: next },
       "archive",
-      !archived ? "Conversa arquivada" : "Conversa desarquivada"
+      next ? "Conversa arquivada" : "Conversa desarquivada"
     );
-    if (ok) setArchived(!archived);
+    if (ok) setArchived(next);
   };
 
   const handleToggleMute = async () => {
     if (!lead) return;
+    const next = !muted;
     const ok = await callWhatsAppAction(
       "mute-chat",
-      { chatid: toChatId(lead.phone), mute: !muted, duration: 28800 },
+      { chatid: toChatId(lead.phone), mute: next, duration: 28800 },
       "mute",
-      !muted ? "Notificações silenciadas por 8h" : "Notificações reativadas"
+      next ? "Notificações silenciadas por 8h" : "Notificações reativadas"
     );
-    if (ok) setMuted(!muted);
+    if (ok) setMuted(next);
   };
 
   const handleToggleAI = async () => {
@@ -150,18 +205,18 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
     toast.success(lead.aiEnabled ? "IA pausada" : "IA ativada");
   };
 
-  const handleAddTag = async () => {
-    if (!lead || !newTag.trim()) return;
-    const tag = newTag.trim().toLowerCase();
-    await addLeadTag(lead.id, tag);
-    setLead({ ...lead, tags: [...lead.tags, tag] });
-    setNewTag("");
-  };
-
-  const handleRemoveTag = async (tag: string) => {
-    if (!lead) return;
-    await removeLeadTag(lead.id, tag);
-    setLead({ ...lead, tags: lead.tags.filter((t: string) => t !== tag) });
+  const handleTransfer = async (newAttendantId: string) => {
+    if (!lead || transferring) return;
+    setTransferring(true);
+    const result = await assignLeadToAttendant(lead.id, newAttendantId || null);
+    setTransferring(false);
+    if (result.success) {
+      setLead({ ...lead, assignedTo: newAttendantId || null });
+      const att = attendants.find((a) => a.id === newAttendantId);
+      toast.success(att ? `Lead transferido para ${att.name}` : "Atribuição removida");
+    } else {
+      toast.error(result.error ?? "Erro ao transferir");
+    }
   };
 
   const handleSaveNotes = async () => {
@@ -238,17 +293,7 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
         {/* Identity */}
         <div>
           <div className="flex items-center gap-3">
-            <div
-              className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white ${
-                lead.scoreLabel === "vip"
-                  ? "bg-violet-500"
-                  : lead.scoreLabel === "quente"
-                    ? "bg-rose-500"
-                    : lead.scoreLabel === "morno"
-                      ? "bg-amber-500"
-                      : "bg-slate-400"
-              }`}
-            >
+            <div className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white bg-indigo-400">
               {lead.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -265,12 +310,48 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
               {lead.email}
             </div>
           )}
-          <div className="mt-2">
-            <LeadScoreBadge score={lead.score} label={lead.scoreLabel} variant="full" />
+        </div>
+
+        {/* Origin */}
+        <div>
+          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
+            Origem
+          </p>
+          <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-sm">
+            <MessageCircle className="h-3.5 w-3.5 text-slate-400" />
+            <span className="text-slate-700">
+              {lead.source ? (SOURCE_LABELS[lead.source] ?? lead.source) : "Não rastreada"}
+            </span>
+            {lead.campaign && (
+              <span className="text-[10px] text-slate-400 ml-auto truncate" title={lead.campaign}>
+                {lead.campaign}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Stage selector (Pipeline change inline) */}
+        {/* Funnel selector */}
+        {funnels.length > 0 && (
+          <div>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+              <GitBranch className="h-3 w-3" /> Funil
+            </p>
+            <select
+              value={currentFunnelId ?? ""}
+              onChange={(e) => handleChangeFunnel(e.target.value)}
+              disabled={movingStage}
+              className="w-full text-sm px-3 py-2 bg-violet-50 text-violet-700 font-medium rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            >
+              {funnels.map((f) => (
+                <option key={f.id} value={f.id} className="bg-white text-slate-700">
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Stage selector — only stages of current funnel */}
         <div>
           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
             Etapa do Pipeline
@@ -278,11 +359,11 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
           <select
             value={lead.stageId ?? ""}
             onChange={(e) => handleChangeStage(e.target.value)}
-            disabled={movingStage || stages.length === 0}
-            className="w-full text-sm px-3 py-2 bg-blue-50 text-blue-700 font-medium rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50"
+            disabled={movingStage || stagesOfCurrentFunnel.length === 0}
+            className="w-full text-sm px-3 py-2 bg-blue-50 text-blue-700 font-medium rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
           >
-            {stages.length === 0 && <option value="">Nenhum estágio configurado</option>}
-            {stages.map((s) => (
+            {stagesOfCurrentFunnel.length === 0 && <option value="">Sem etapas neste funil</option>}
+            {stagesOfCurrentFunnel.map((s) => (
               <option key={s.id} value={s.id} className="bg-white text-slate-700">
                 {s.name}
               </option>
@@ -309,38 +390,32 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
           </button>
         </div>
 
-        {/* Tags */}
-        <div>
-          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
-            Tags
-          </p>
-          <div className="flex flex-wrap gap-1 mb-2">
-            {lead.tags.map((tag: string) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 text-violet-600 text-xs rounded"
-              >
-                {tag}
-                <button onClick={() => handleRemoveTag(tag)} className="hover:text-red-500">
-                  <Trash2 className="h-2.5 w-2.5" />
-                </button>
-              </span>
-            ))}
+        {/* Transfer to vendor */}
+        {attendants.length > 0 && (
+          <div>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+              <ArrowRightLeft className="h-3 w-3" /> Transferir para
+            </p>
+            <select
+              value={lead.assignedTo ?? ""}
+              onChange={(e) => handleTransfer(e.target.value)}
+              disabled={transferring}
+              className="w-full text-sm px-3 py-2 bg-slate-50 text-slate-700 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            >
+              <option value="">— Sem responsavel —</option>
+              {attendants.map((a) => {
+                const role = toCanonicalRole(a.role);
+                const label = ATTENDANT_ROLES.find((r) => r.value === role)?.label ?? role;
+                return (
+                  <option key={a.id} value={a.id} className="bg-white text-slate-700">
+                    {a.name} · {label}
+                  </option>
+                );
+              })}
+            </select>
+            {transferring && <p className="text-[10px] text-slate-400 mt-1">Transferindo...</p>}
           </div>
-          <div className="flex items-center gap-1">
-            <input
-              type="text"
-              value={newTag}
-              onChange={(e) => setNewTag(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
-              placeholder="Nova tag..."
-              className="flex-1 text-xs px-2 py-1 border border-slate-200 rounded outline-none focus:border-indigo-300"
-            />
-            <button onClick={handleAddTag} className="p-1 text-indigo-600 hover:text-indigo-800">
-              <Plus className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* Notes */}
         <div>
@@ -378,32 +453,6 @@ export function LeadContextPanel({ leadPhone, onClose }: Props) {
                     </span>
                   </div>
                 ))}
-            </div>
-          </div>
-        )}
-
-        {/* Attribution */}
-        {lead.campaign && (
-          <div>
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
-              Atribuicao
-            </p>
-            <div className="text-xs text-slate-500 space-y-0.5">
-              {lead.campaign && (
-                <p>
-                  Campanha: <span className="text-slate-700">{lead.campaign}</span>
-                </p>
-              )}
-              {lead.adSetName && (
-                <p>
-                  Conjunto: <span className="text-slate-700">{lead.adSetName}</span>
-                </p>
-              )}
-              {lead.adName && (
-                <p>
-                  Anuncio: <span className="text-slate-700">{lead.adName}</span>
-                </p>
-              )}
             </div>
           </div>
         )}
