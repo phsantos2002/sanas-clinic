@@ -320,6 +320,24 @@ model WebhookDLQ {
   @@index([userId, resolvedAt])
 }
 
+// Audit log for sensitive administrative actions.
+// Immutable history (never updated, only inserted).
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String // who performed the action
+  action     String // "lead.transfer" | "lead.delete" | "attendant.create" | "ai.config_changed" | "lgpd.export" | "lgpd.delete" | etc
+  entityType String? // "Lead" | "Attendant" | "Funnel" | "AIConfig" etc
+  entityId   String?
+  metadata   Json? // additional context (before/after diff, target ids, etc)
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
+}
+
 model PixelEvent {
   id        String   @id @default(cuid())
   leadId    String

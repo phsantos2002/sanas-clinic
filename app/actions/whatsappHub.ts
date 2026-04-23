@@ -82,10 +82,21 @@ export async function assignLeadToAttendant(
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Nao autenticado" };
 
-  await prisma.lead.updateMany({
+  const result = await prisma.lead.updateMany({
     where: { id: leadId, userId: user.id },
     data: { assignedTo: attendantId },
   });
+
+  if (result.count > 0) {
+    const { logAudit } = await import("@/lib/audit");
+    logAudit({
+      userId: user.id,
+      action: "lead.transfer",
+      entityType: "Lead",
+      entityId: leadId,
+      metadata: { attendantId },
+    }).catch(() => {});
+  }
 
   revalidatePath("/dashboard");
   return { success: true };
