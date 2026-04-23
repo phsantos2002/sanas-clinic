@@ -406,6 +406,7 @@ function LGPDTab() {
 
 function DiagnosticTab() {
   const [running, setRunning] = useState(false);
+  const [syncingWebhook, setSyncingWebhook] = useState(false);
   const [result, setResult] = useState<unknown>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -427,6 +428,24 @@ function DiagnosticTab() {
     setRunning(false);
   }
 
+  async function handleSyncWebhook() {
+    setSyncingWebhook(true);
+    try {
+      const res = await fetch("/api/whatsapp/sync-webhook", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(`Webhook atualizado: ${data.webhookUrl}`);
+        // Re-run diagnostic to confirm
+        handleRun();
+      } else {
+        toast.error(data.error ?? "Falha ao sincronizar");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+    setSyncingWebhook(false);
+  }
+
   function handleCopy() {
     if (!result) return;
     navigator.clipboard.writeText(JSON.stringify(result, null, 2));
@@ -435,6 +454,10 @@ function DiagnosticTab() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const interpretation = (result as any)?.interpretation;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiHealth = interpretation?.aiHealth;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiBlockers: string[] = interpretation?.aiBlockers ?? [];
 
   return (
     <div className="space-y-4 max-w-3xl">
@@ -477,6 +500,87 @@ function DiagnosticTab() {
         {error && (
           <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs text-rose-700">
             {error}
+          </div>
+        )}
+
+        {/* AI / webhook health card — appears first when there are blockers */}
+        {aiHealth && aiBlockers.length > 0 && (
+          <div className="rounded-xl p-4 border bg-rose-50 border-rose-200 space-y-2">
+            <p className="text-sm font-bold text-rose-900">⚠ IA não está respondendo</p>
+            <ul className="text-xs text-rose-800 space-y-1 list-disc list-inside">
+              {aiBlockers.map((b: string, i: number) => (
+                <li key={i}>{b}</li>
+              ))}
+            </ul>
+
+            {!aiHealth.webhookUrl.matches && (
+              <div className="bg-white rounded-lg p-2 mt-2 text-[11px] space-y-1 border border-rose-100">
+                <div>
+                  <span className="text-slate-500">Configurado no Uazapi:</span>{" "}
+                  <code className="break-all">{aiHealth.webhookUrl.configured ?? "(nenhum)"}</code>
+                </div>
+                <div>
+                  <span className="text-slate-500">Esperado:</span>{" "}
+                  <code className="break-all text-emerald-700">{aiHealth.webhookUrl.expected}</code>
+                </div>
+                <button
+                  onClick={handleSyncWebhook}
+                  disabled={syncingWebhook}
+                  className="mt-2 px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-medium hover:bg-rose-700 disabled:opacity-50"
+                >
+                  {syncingWebhook ? "Atualizando..." : "Atualizar URL no Uazapi"}
+                </button>
+              </div>
+            )}
+
+            {aiHealth.webhookUrl.matches && aiHealth.msgsReceivedLast24h === 0 && (
+              <p className="text-[11px] text-rose-800 bg-white rounded-lg p-2 mt-2 border border-rose-100">
+                Webhook URL está correto, mas nenhuma mensagem chegou nas últimas 24h. Tente: (1)
+                mandar uma mensagem teste pro WhatsApp; (2) checar logs do Vercel; (3) verificar se
+                Uazapi está reenviando webhooks.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* AI Health summary card */}
+        {aiHealth && (
+          <div className="rounded-xl p-3 border bg-slate-50 border-slate-200 space-y-1.5">
+            <p className="text-xs font-semibold text-slate-700">Saúde da IA</p>
+            <ul className="text-[11px] text-slate-600 space-y-0.5">
+              <li>
+                Config IA: <b>{aiHealth.aiConfigured ? "ok" : "não criada"}</b>
+                {aiHealth.aiKeyPresent ? " · chave OK" : " · sem chave"}
+                {aiHealth.aiProvider && ` · ${aiHealth.aiProvider}/${aiHealth.aiModel}`}
+              </li>
+              <li>
+                Webhook: <b>{aiHealth.webhookUrl.matches ? "✓ correto" : "✗ desatualizado"}</b>
+              </li>
+              <li>
+                Mensagens recebidas (24h): <b>{aiHealth.msgsReceivedLast24h}</b>
+                {aiHealth.dlqEntriesLast24h > 0 && (
+                  <span className="text-rose-600"> · {aiHealth.dlqEntriesLast24h} na DLQ</span>
+                )}
+              </li>
+              {aiHealth.lastIncomingAt && (
+                <li>
+                  Última msg recebida:{" "}
+                  <b>{new Date(aiHealth.lastIncomingAt).toLocaleString("pt-BR")}</b>
+                  {aiHealth.lastIncomingPreview && (
+                    <span className="text-slate-400">
+                      {" "}
+                      — &quot;{aiHealth.lastIncomingPreview}&quot;
+                    </span>
+                  )}
+                </li>
+              )}
+              {aiHealth.lastAssistantAt && (
+                <li>
+                  Última resposta IA:{" "}
+                  <b>{new Date(aiHealth.lastAssistantAt).toLocaleString("pt-BR")}</b>
+                </li>
+              )}
+            </ul>
           </div>
         )}
 

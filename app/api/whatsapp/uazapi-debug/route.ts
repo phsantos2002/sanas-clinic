@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
@@ -68,7 +68,7 @@ async function rawCall(
   return probe;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -90,6 +90,11 @@ export async function GET() {
 
   const serverUrl = config.uazapiServerUrl.trim().replace(/\/+$/, "");
   const token = config.uazapiInstanceToken.trim();
+
+  // Build expected webhook URL based on the current request origin
+  const reqUrl = new URL(req.url);
+  const currentOrigin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") || reqUrl.origin;
+  const expectedWebhookUrl = `${currentOrigin}/api/webhook/evolution`;
 
   // First, fetch a real chatid we can use in subsequent probes
   const sampleChats = await rawCall(serverUrl, token, "POST", "/chat/find", {
@@ -144,6 +149,52 @@ export async function GET() {
   const messagesArr = (messagesUnfiltered?.data as { messages?: unknown[] } | undefined)?.messages;
   const totalMessagesAvailable = Array.isArray(messagesArr) ? messagesArr.length : 0;
 
+  // ── AI / webhook health checks (DB side) ─────────────────
+  const aiConfig = await prisma.aIConfig.findUnique({ where: { userId: dbUser.id } });
+  const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [lastIncoming, lastAssistant, dlqRecent, msgsLast24h] = await Promise.all([
+    prisma.message.findFirst({
+      where: { lead: { userId: dbUser.id }, role: "user" },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true, content: true, leadId: true },
+    }),
+    prisma.message.findFirst({
+      where: { lead: { userId: dbUser.id }, role: "assistant" },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true, content: true, leadId: true },
+    }),
+    prisma.webhookDLQ.count({
+      where: { OR: [{ userId: dbUser.id }, { userId: null }], createdAt: { gte: last24h } },
+    }),
+    prisma.message.count({
+      where: { lead: { userId: dbUser.id }, role: "user", createdAt: { gte: last24h } },
+    }),
+  ]);
+
+  const webhookProbe = probes.find((p) => p.path === "/webhook");
+  const configuredWebhookUrl =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (webhookProbe?.data as any)?.[0]?.url ?? null;
+  const webhookUrlMatches = configuredWebhookUrl === expectedWebhookUrl;
+
+  const aiHealth = {
+    aiConfigured: !!aiConfig,
+    aiKeyPresent: !!aiConfig?.apiKey,
+    aiProvider: aiConfig?.provider ?? null,
+    aiModel: aiConfig?.model ?? null,
+    webhookUrl: {
+      expected: expectedWebhookUrl,
+      configured: configuredWebhookUrl,
+      matches: webhookUrlMatches,
+    },
+    lastIncomingAt: lastIncoming?.createdAt ?? null,
+    lastIncomingPreview: lastIncoming?.content?.slice(0, 80) ?? null,
+    lastAssistantAt: lastAssistant?.createdAt ?? null,
+    lastAssistantPreview: lastAssistant?.content?.slice(0, 80) ?? null,
+    msgsReceivedLast24h: msgsLast24h,
+    dlqEntriesLast24h: dlqRecent,
+  };
+
   // Compare the 3 chatid filter variants to know which one upstream understands
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const directMatch = probes.find((p) => typeof (p.body as any)?.chatid === "string");
@@ -175,19 +226,38 @@ export async function GET() {
             : "none",
   };
 
+  // Build a high-level diagnosis of why the AI may not be replying
+  const aiBlockers: string[] = [];
+  if (!aiHealth.aiConfigured) aiBlockers.push("AIConfig não existe");
+  else if (!aiHealth.aiKeyPresent) aiBlockers.push("Chave OpenAI vazia em Settings → IA Chat");
+  if (!aiHealth.webhookUrl.matches) {
+    aiBlockers.push(
+      `Webhook do Uazapi aponta para domínio errado (${aiHealth.webhookUrl.configured}) — atualize para ${aiHealth.webhookUrl.expected}`
+    );
+  }
+  if (aiHealth.msgsReceivedLast24h === 0) {
+    aiBlockers.push(
+      "Nenhuma mensagem recebida via webhook nas últimas 24h — webhook não está chegando ou ninguém mandou nada"
+    );
+  }
+
   const interpretation = {
     instanceReachable: probes[0].ok === true,
     hasAnyMessageHistory: totalMessagesAvailable > 0,
     sampleMessageCount: totalMessagesAvailable,
     filterDiagnostic,
+    aiHealth,
+    aiBlockers,
     likelyConclusion:
-      totalMessagesAvailable === 0
-        ? "Uazapi não está persistindo histórico de mensagens. Solução: ler /message do nosso DB Postgres."
-        : filterDiagnostic.workingFilter === "string"
-          ? "Filtro string direta funciona. Code já corrigido para usar este formato."
-          : filterDiagnostic.workingFilter === "none"
-            ? "Nenhum filtro chatid funcionou. Investigar formato esperado pelo Uazapi."
-            : `Filtro ${filterDiagnostic.workingFilter} funciona — code precisa ser ajustado.`,
+      aiBlockers.length > 0
+        ? `IA bloqueada: ${aiBlockers[0]}`
+        : totalMessagesAvailable === 0
+          ? "Uazapi não está persistindo histórico de mensagens. Solução: ler /message do nosso DB Postgres."
+          : filterDiagnostic.workingFilter === "string"
+            ? "Filtro string direta funciona. Code já corrigido para usar este formato."
+            : filterDiagnostic.workingFilter === "none"
+              ? "Nenhum filtro chatid funcionou. Investigar formato esperado pelo Uazapi."
+              : `Filtro ${filterDiagnostic.workingFilter} funciona — code precisa ser ajustado.`,
   };
 
   return NextResponse.json({
