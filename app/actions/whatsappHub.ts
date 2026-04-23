@@ -376,14 +376,32 @@ export async function executeBroadcast(
 
   const { sendMessage } = await import("@/services/whatsappService");
   const { getUazapiStatus } = await import("@/services/whatsappUazapi");
+  const { applyJitter, isQuietHours, getWarmUpRate, rateToDelayMs, CascadeDetector } =
+    await import("@/lib/broadcast/scheduler");
 
   let sent = 0;
   let failed = 0;
 
-  // Backpressure config: delay between sends + periodic instance health check.
-  // Default 3s avoids WhatsApp throttling on bulk runs (1s was too aggressive).
-  const DELAY_MS = 3000;
   const HEALTH_CHECK_EVERY = 50;
+  const cascade = new CascadeDetector(5);
+
+  // Quiet hours: refuse to send late at night/early morning to avoid bans
+  if (isQuietHours()) {
+    await prisma.broadcastCampaign.update({
+      where: { id: campaignId },
+      data: { status: "paused", sentCount: 0, failedCount: 0 },
+    });
+    revalidatePath("/dashboard");
+    return {
+      success: false,
+      error: "Horario noturno (22h-7h BR) — campanha agendada como pausada. Retome de manha.",
+    };
+  }
+
+  // Warm-up: derive max msgs/min based on instance age
+  const connectedSinceMs = waConfig.createdAt.getTime();
+  const ratePerMin = getWarmUpRate(connectedSinceMs);
+  const baseDelayMs = rateToDelayMs(ratePerMin);
 
   for (let i = 0; i < leads.length; i++) {
     const lead = leads[i];
@@ -400,11 +418,7 @@ export async function executeBroadcast(
       if (!status.connected) {
         await prisma.broadcastCampaign.update({
           where: { id: campaignId },
-          data: {
-            status: "paused",
-            sentCount: sent,
-            failedCount: failed,
-          },
+          data: { status: "paused", sentCount: sent, failedCount: failed },
         });
         revalidatePath("/dashboard");
         return {
@@ -412,6 +426,19 @@ export async function executeBroadcast(
           error: `Instance desconectada apos ${sent} envios — campanha pausada. Reconecte e retome.`,
         };
       }
+    }
+
+    // Re-check quiet hours every 50 sends — campaign may cross into night
+    if (i > 0 && i % HEALTH_CHECK_EVERY === 0 && isQuietHours()) {
+      await prisma.broadcastCampaign.update({
+        where: { id: campaignId },
+        data: { status: "paused", sentCount: sent, failedCount: failed },
+      });
+      revalidatePath("/dashboard");
+      return {
+        success: false,
+        error: `Entrou em horario noturno apos ${sent} envios — campanha pausada.`,
+      };
     }
 
     const text = campaign.message
@@ -426,15 +453,39 @@ export async function executeBroadcast(
           data: { leadId: lead.id, role: "assistant", content: text },
         });
         sent++;
+        cascade.recordSuccess();
       } else {
         failed++;
+        if (cascade.recordFailure()) {
+          await prisma.broadcastCampaign.update({
+            where: { id: campaignId },
+            data: { status: "paused", sentCount: sent, failedCount: failed },
+          });
+          revalidatePath("/dashboard");
+          return {
+            success: false,
+            error: `5 falhas consecutivas — campanha pausada para evitar bloqueio (sent=${sent}, failed=${failed}).`,
+          };
+        }
       }
     } catch {
       failed++;
+      if (cascade.recordFailure()) {
+        await prisma.broadcastCampaign.update({
+          where: { id: campaignId },
+          data: { status: "paused", sentCount: sent, failedCount: failed },
+        });
+        revalidatePath("/dashboard");
+        return {
+          success: false,
+          error: `5 falhas consecutivas (excecoes) — campanha pausada (sent=${sent}, failed=${failed}).`,
+        };
+      }
     }
 
     if (i < leads.length - 1) {
-      await new Promise((r) => setTimeout(r, DELAY_MS));
+      // Apply jitter to break robotic patterns
+      await new Promise((r) => setTimeout(r, applyJitter(baseDelayMs)));
     }
   }
 

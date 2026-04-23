@@ -7,6 +7,36 @@ import { logger } from "@/lib/logger";
 import { normalizePhone, phonesMatch, maskPhone } from "@/lib/phone";
 import { createHash } from "crypto";
 
+// ── Opt-out keywords ──────────────────────────────────────
+// Keywords that, if found alone in a message (or with simple wrapping), trigger
+// auto opt-out: AI is paused for the lead and phone is added to blacklist.
+const OPT_OUT_KEYWORDS = [
+  "sair",
+  "parar",
+  "cancelar",
+  "stop",
+  "remover",
+  "descadastrar",
+  "nao quero",
+  "não quero",
+];
+
+const OPT_OUT_CONFIRMATION =
+  "OK! Você não receberá mais mensagens nossas. Para voltar a receber, é só nos chamar de novo.";
+
+/** Returns true if the message text is a simple opt-out request. */
+function isOptOutMessage(text: string): boolean {
+  const normalized = text
+    .toLowerCase()
+    .trim()
+    .replace(/[!.?,;:]+$/, "")
+    .trim();
+  if (!normalized || normalized.length > 40) return false;
+  return OPT_OUT_KEYWORDS.some(
+    (kw) => normalized === kw || normalized === `quero ${kw}` || normalized === `me ${kw}`
+  );
+}
+
 // ── Postgres advisory lock helpers ─────────────────────────
 // Used to serialize parallel jobs touching the same lead — prevents duplicate
 // AI replies when the same chat receives multiple messages near-simultaneously.
@@ -197,6 +227,40 @@ export async function processIncomingMessage(params: {
         campaign: attribution.campaignName ?? lead.campaign,
       },
     });
+  }
+
+  // ── Opt-out: detectar palavras-chave e desativar IA + adicionar a blacklist ──
+  if (isOptOutMessage(text)) {
+    log.info("webhook_opt_out_detected", { leadId: lead.id });
+    const cleanPhone = normalizePhone(phone);
+    await prisma.$transaction([
+      prisma.message.create({
+        data: {
+          leadId: lead.id,
+          role: "user",
+          content: text,
+          externalId: externalMessageId ?? null,
+        },
+      }),
+      prisma.lead.update({
+        where: { id: lead.id },
+        data: { aiEnabled: false, lastInteractionAt: new Date() },
+      }),
+    ]);
+    if (aiConfig && !aiConfig.blacklist?.some((b) => phonesMatch(cleanPhone, b))) {
+      await prisma.aIConfig.update({
+        where: { userId },
+        data: { blacklist: { push: cleanPhone } },
+      });
+    }
+    // Confirmation reply (one-shot)
+    await sendReply(phone, OPT_OUT_CONFIRMATION).catch(() => {});
+    await prisma.message
+      .create({
+        data: { leadId: lead.id, role: "assistant", content: OPT_OUT_CONFIRMATION },
+      })
+      .catch(() => {});
+    return;
   }
 
   // ── Save incoming message + update lastInteractionAt ─────
