@@ -298,9 +298,18 @@ export async function GET(req: NextRequest) {
         // Only filter by archive state if explicitly requested
         if (archivedParam === "true") body.wa_archived = true;
         else if (archivedParam === "false") body.wa_archived = false;
-        if (search) body.wa_contactName = `~${search}`;
+        // Search across the 3 visible identifiers: saved contact name, group
+        // subject, and the raw chatid (covers phone numbers for 1:1 chats).
+        // Uazapi's /chat/find supports $or at the top level; if a given
+        // deployment doesn't, the client-side filter below (after fetch) catches
+        // the difference so the search still works.
+        if (search) {
+          const term = `~${search}`;
+          body.$or = [{ wa_contactName: term }, { wa_groupSubject: term }, { wa_chatid: term }];
+        }
         if (pinned) body.wa_pinned = true;
-        if (unread) body.wa_unreadCount = { $gt: 0 };
+        // NOTE: `wa_unreadCount: { $gt: 0 }` is not reliably honored by Uazapi's
+        // /chat/find. We apply the unread filter client-side after fetch instead.
 
         const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/find", body);
         if (data?.__error) {
@@ -314,9 +323,34 @@ export async function GET(req: NextRequest) {
             { status: 502 }
           );
         }
-        const chats = (
+        let chats = (
           Array.isArray(data?.chats) ? data.chats : Array.isArray(data) ? data : []
         ) as Record<string, unknown>[];
+
+        // Client-side unread filter — Uazapi's $gt operator on wa_unreadCount
+        // doesn't filter server-side reliably, so drop the read ones here.
+        if (unread) {
+          chats = chats.filter((c) => ((c.wa_unreadCount as number | undefined) ?? 0) > 0);
+        }
+
+        // Client-side search fallback: if Uazapi ignored the $or filter, match
+        // the term against the same three fields we asked for upstream, plus
+        // phone stripped of the WhatsApp suffix.
+        if (search) {
+          const needle = search.toLowerCase();
+          chats = chats.filter((c) => {
+            const contact = ((c.wa_contactName as string) || "").toLowerCase();
+            const subject = ((c.wa_groupSubject as string) || "").toLowerCase();
+            const chatid = ((c.wa_chatid as string) || "").toLowerCase();
+            const phone = chatid.split("@")[0];
+            return (
+              contact.includes(needle) ||
+              subject.includes(needle) ||
+              chatid.includes(needle) ||
+              phone.includes(needle)
+            );
+          });
+        }
 
         // Phones we may need avatars for
         const phonesToCheck: string[] = [];
@@ -383,7 +417,12 @@ export async function GET(req: NextRequest) {
           saveAvatarCache(config.userId, newlyFetched).catch(() => {});
         }
 
-        return NextResponse.json({ chats, total: data.pagination?.total ?? chats.length });
+        // When we applied a client-side filter (unread/search), pagination
+        // totals from Uazapi no longer match what we're returning. Report the
+        // filtered length so the front doesn't keep asking for phantom pages.
+        const clientFiltered = unread || !!search;
+        const total = clientFiltered ? chats.length : (data.pagination?.total ?? chats.length);
+        return NextResponse.json({ chats, total });
       }
 
       case "messages": {

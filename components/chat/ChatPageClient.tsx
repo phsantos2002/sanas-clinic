@@ -61,6 +61,11 @@ type Chat = {
   wa_chatid: string;
   wa_contactName: string;
   wa_groupSubject?: string;
+  // Uazapi occasionally ships the group name under different keys depending on
+  // the endpoint that populated the record. Accept any of these.
+  subject?: string;
+  name?: string;
+  wa_name?: string;
   wa_isGroup: boolean;
   wa_lastMsgTimestamp: number;
   wa_unreadCount: number;
@@ -224,20 +229,44 @@ function apiPost(action: string, body: Record<string, unknown>) {
   });
 }
 
+// A "LID-ish" value is something Uazapi sometimes emits as the contact/name:
+// either the raw chatid containing an @-suffix (e.g. 120363...@g.us) or a long
+// purely-numeric sequence. Never surface these as the display name — they're
+// opaque to the operator and leak internal IDs.
+function isLidLike(v: string | undefined | null): boolean {
+  if (!v) return true;
+  if (v.includes("@")) return true;
+  if (/^\d{14,}$/.test(v)) return true;
+  return false;
+}
+
+function pickReal(...candidates: Array<string | undefined | null>): string | undefined {
+  for (const c of candidates) {
+    if (c && c.trim() && !isLidLike(c)) return c.trim();
+  }
+  return undefined;
+}
+
 // Decide the display name of a chat, handling group quirks:
-// - For groups, wa_contactName often contains the bot/sender phone instead of
-//   being empty, so wa_groupSubject must take precedence.
-// - For personal chats, wa_contactName (the saved contact name) is best.
+// - Groups: subject/name fields vary across Uazapi endpoints; try all.
+// - Never fall back to the raw LID (e.g. 120363...@g.us) — show "Grupo" instead.
+// - Personal chats: wa_contactName (saved contact) is best; fallback to phone.
 function resolveChatName(chat: {
   wa_isGroup?: boolean;
   wa_contactName?: string;
   wa_groupSubject?: string;
+  subject?: string;
+  name?: string;
+  wa_name?: string;
   phone?: string;
 }): string {
   if (chat.wa_isGroup) {
-    return chat.wa_groupSubject || chat.wa_contactName || chat.phone || "Grupo";
+    return (
+      pickReal(chat.wa_groupSubject, chat.subject, chat.name, chat.wa_name, chat.wa_contactName) ||
+      "Grupo"
+    );
   }
-  return chat.wa_contactName || chat.phone || "Sem nome";
+  return pickReal(chat.wa_contactName, chat.wa_name, chat.name) || chat.phone || "Sem nome";
 }
 
 export function ChatPageClient() {
@@ -583,13 +612,22 @@ export function ChatPageClient() {
         }));
       if (newMsgs.length > 0) {
         newMsgs.sort((a: Message, b: Message) => a.messageTimestamp - b.messageTimestamp);
+
+        // ALWAYS advance the cursor to the highest TS received so the next poll
+        // moves past this window — otherwise duplicates keep re-arriving and
+        // afterTs freezes, ballooning memory and counter indefinitely.
+        const maxTs = newMsgs[newMsgs.length - 1].messageTimestamp;
+        if (maxTs > lastMsgTsRef.current) lastMsgTsRef.current = maxTs;
+
         setMessages((prev) => {
-          const existingIds = new Set(prev.map((m) => m.messageid || m.id));
+          const existingIds = new Set(
+            prev.flatMap((m) => [m.messageid, m.id].filter(Boolean) as string[])
+          );
           const truly = newMsgs.filter(
-            (m: Message) => !existingIds.has(m.messageid) && !existingIds.has(m.id)
+            (m: Message) =>
+              !(m.messageid && existingIds.has(m.messageid)) && !(m.id && existingIds.has(m.id))
           );
           if (truly.length === 0) return prev;
-          lastMsgTsRef.current = truly[truly.length - 1].messageTimestamp;
 
           const container = messagesContainerRef.current;
           const isAtBottom =
@@ -603,9 +641,11 @@ export function ChatPageClient() {
             setShowScrollDown(true);
           }
 
+          // Bump total only by the delta actually appended, so the header
+          // counter tracks real message count, not raw poll size.
+          setMsgTotal((t) => t + truly.length);
           return [...prev, ...truly];
         });
-        setMsgTotal((t) => t + newMsgs.length);
       }
     } catch {
       /* ignore */
@@ -643,16 +683,49 @@ export function ChatPageClient() {
     };
   }, [selectedChat, checkNewMessages, fetchChats, fetchMessages]);
 
+  // Deep-link: persist the selected chatid in the URL hash so navigating away
+  // to Settings and back (or sharing the URL) re-opens the same conversation.
   useEffect(() => {
-    if (!selectedChat) return;
+    if (typeof window === "undefined") return;
+    if (selectedChat?.wa_chatid) {
+      const expected = `#${selectedChat.wa_chatid}`;
+      if (window.location.hash !== expected) {
+        window.history.replaceState(null, "", expected);
+      }
+    }
+  }, [selectedChat]);
+
+  // On first chats load, try to rehydrate the selection from the hash.
+  const hashHydratedRef = useRef(false);
+  useEffect(() => {
+    if (hashHydratedRef.current) return;
+    if (typeof window === "undefined") return;
+    if (chats.length === 0) return;
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash) {
+      hashHydratedRef.current = true;
+      return;
+    }
+    const match = chats.find((c) => c.wa_chatid === hash);
+    if (match) setSelectedChat(match);
+    hashHydratedRef.current = true;
+  }, [chats]);
+
+  // Key off wa_chatid (stable string) instead of the chat object — otherwise
+  // any poll/refresh that replaces the object reference re-triggers a full
+  // refetch and wipes local state (e.g. when toggling the AI badge).
+  const selectedChatId = selectedChat?.wa_chatid;
+  useEffect(() => {
+    if (!selectedChatId) return;
     setMsgOffset(0);
     setUnreadBelowCount(0);
     setShowScrollDown(false);
     lastMsgTsRef.current = 0;
-    fetchMessages(selectedChat.wa_chatid);
+    fetchMessages(selectedChatId);
     // Mark as read
-    apiPost("mark-read", { chatid: selectedChat.wa_chatid }).catch(() => {});
-  }, [selectedChat, fetchMessages]);
+    apiPost("mark-read", { chatid: selectedChatId }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChatId]);
 
   // Infinite scroll: load more when scrolling to top
   const handleMessagesScroll = useCallback(() => {
@@ -1226,7 +1299,7 @@ export function ChatPageClient() {
                   <p className="text-sm text-slate-400 bg-white/80 px-4 py-2 rounded-lg shadow-sm">
                     Nenhuma mensagem encontrada
                   </p>
-                  {msgFetchInfo && (
+                  {msgFetchInfo && process.env.NEXT_PUBLIC_DEBUG_CHAT === "1" && (
                     <details className="bg-white/80 rounded-lg shadow-sm text-[11px] text-slate-500 max-w-xl">
                       <summary className="px-3 py-1.5 cursor-pointer">
                         Diagnóstico técnico (clique para ver)
