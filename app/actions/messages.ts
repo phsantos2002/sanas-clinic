@@ -28,9 +28,12 @@ export async function toggleAI(leadId: string): Promise<ActionResult> {
   });
   if (!lead) return { success: false, error: "Lead não encontrado" };
 
+  const nextEnabled = !lead.aiEnabled;
   await prisma.lead.update({
     where: { id: leadId },
-    data: { aiEnabled: !lead.aiEnabled },
+    // Re-enabling the AI also cancels any active humanPaused timer so the
+    // operator can immediately resume automation after replying manually.
+    data: nextEnabled ? { aiEnabled: true, humanPausedUntil: null } : { aiEnabled: false },
   });
 
   revalidatePath("/dashboard/chat");

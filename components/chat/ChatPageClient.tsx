@@ -273,6 +273,7 @@ export function ChatPageClient() {
   const [reconnecting, setReconnecting] = useState(false);
   const [chatLeadId, setChatLeadId] = useState<string | null>(null);
   const [chatLeadAi, setChatLeadAi] = useState<boolean | null>(null);
+  const [chatLeadPausedUntil, setChatLeadPausedUntil] = useState<Date | null>(null);
   const [togglingAi, setTogglingAi] = useState(false);
   // Interactive composer modal
   const [interactiveType, setInteractiveType] = useState<"buttons" | "list" | null>(null);
@@ -340,12 +341,14 @@ export function ChatPageClient() {
     if (!selectedChat) {
       setChatLeadId(null);
       setChatLeadAi(null);
+      setChatLeadPausedUntil(null);
       return;
     }
     const phone = selectedChat.wa_chatid?.split("@")[0] || selectedChat.phone || "";
     if (!phone) {
       setChatLeadId(null);
       setChatLeadAi(null);
+      setChatLeadPausedUntil(null);
       return;
     }
     let cancelled = false;
@@ -354,9 +357,11 @@ export function ChatPageClient() {
       if (lead) {
         setChatLeadId(lead.id);
         setChatLeadAi(lead.aiEnabled);
+        setChatLeadPausedUntil(lead.humanPausedUntil ? new Date(lead.humanPausedUntil) : null);
       } else {
         setChatLeadId(null);
         setChatLeadAi(null);
+        setChatLeadPausedUntil(null);
       }
     });
     return () => {
@@ -367,17 +372,29 @@ export function ChatPageClient() {
   const handleToggleChatAI = useCallback(async () => {
     if (!chatLeadId || togglingAi) return;
     setTogglingAi(true);
-    const prev = chatLeadAi ?? false;
-    setChatLeadAi(!prev);
+    const prevEnabled = chatLeadAi ?? false;
+    const prevPaused = chatLeadPausedUntil;
+    const isCurrentlyPaused = !!prevPaused && prevPaused.getTime() > Date.now();
+    // If currently paused, clicking "resume" should clear pause (server-side
+    // toggleAI clears it when enabling). Optimistic: force enabled + clear pause.
+    setChatLeadAi(isCurrentlyPaused ? true : !prevEnabled);
+    if (isCurrentlyPaused) setChatLeadPausedUntil(null);
     const result = await toggleAI(chatLeadId);
     setTogglingAi(false);
     if (!result.success) {
-      setChatLeadAi(prev);
+      setChatLeadAi(prevEnabled);
+      setChatLeadPausedUntil(prevPaused);
       toast.error(result.error ?? "Erro ao alternar IA");
       return;
     }
-    toast.success(prev ? "IA pausada — vendedor responde" : "IA ativada");
-  }, [chatLeadId, chatLeadAi, togglingAi]);
+    toast.success(
+      isCurrentlyPaused
+        ? "Pausa cancelada — IA retomou"
+        : prevEnabled
+          ? "IA pausada — vendedor responde"
+          : "IA ativada"
+    );
+  }, [chatLeadId, chatLeadAi, chatLeadPausedUntil, togglingAi]);
 
   // Track in-flight request so we can abort when filters change / unmount
   const fetchChatsAbortRef = useRef<AbortController | null>(null);
@@ -1103,7 +1120,11 @@ export function ChatPageClient() {
 
               <div className="flex items-center gap-0.5">
                 {chatLeadAi !== null && (
-                  <AIStatusBadge aiEnabled={chatLeadAi} onToggle={handleToggleChatAI} />
+                  <AIStatusBadge
+                    aiEnabled={chatLeadAi}
+                    pausedUntil={chatLeadPausedUntil}
+                    onToggle={handleToggleChatAI}
+                  />
                 )}
                 <button
                   onClick={() => setShowMsgSearch(!showMsgSearch)}

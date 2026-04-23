@@ -40,6 +40,7 @@ export type Lead = {
   platform: string | null;
   referrer: string | null;
   aiEnabled: boolean;
+  humanPausedUntil: Date | null;
   score: number;
   scoreLabel: string | null;
   tags: string[];
