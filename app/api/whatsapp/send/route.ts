@@ -38,6 +38,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Uazapi nao configurado" }, { status: 400 });
   }
 
+  // ── Idempotency-Key: dedup retries ──────────────────────────
+  const idempotencyKey = req.headers.get("idempotency-key")?.slice(0, 128);
+  if (idempotencyKey) {
+    const cached = await prisma.idempotencyKey.findUnique({
+      where: { userId_key: { userId: dbUser.id, key: idempotencyKey } },
+    });
+    if (cached && cached.expiresAt > new Date()) {
+      return NextResponse.json(cached.response as Record<string, unknown>, {
+        headers: { "Idempotency-Replayed": "true" },
+      });
+    }
+  }
+
   const body = await req.json();
   const {
     number,
@@ -170,7 +183,28 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, data });
+    const responseBody = { success: true, data };
+
+    // Cache response for idempotency (TTL 10 minutes)
+    if (idempotencyKey) {
+      await prisma.idempotencyKey
+        .upsert({
+          where: { userId_key: { userId: dbUser.id, key: idempotencyKey } },
+          create: {
+            userId: dbUser.id,
+            key: idempotencyKey,
+            response: responseBody,
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          },
+          update: {
+            response: responseBody,
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          },
+        })
+        .catch(() => {}); // non-fatal
+    }
+
+    return NextResponse.json(responseBody);
   } catch (err) {
     console.error("[whatsapp send]", err);
     return NextResponse.json({ error: "Erro ao enviar" }, { status: 500 });

@@ -287,6 +287,20 @@ model WhatsAppAvatarCache {
   @@index([userId])
 }
 
+// Idempotency-Key cache for /api/whatsapp/send.
+// Prevents duplicate sends if the client retries the same logical operation.
+model IdempotencyKey {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  response  Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+}
+
 model PixelEvent {
   id        String   @id @default(cuid())
   leadId    String

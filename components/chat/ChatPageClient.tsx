@@ -624,9 +624,13 @@ export function ChatPageClient() {
       const payload: Record<string, unknown> = { number: phone, text };
       if (replyTo?.messageid) payload.quotedMsgId = replyTo.messageid;
 
+      // Idempotency: same chat + same text + minute → same key.
+      // Prevents duplicate send if user double-clicks or browser retries.
+      const idemKey = `text-${phone}-${text.length}-${text.slice(0, 20)}-${Math.floor(Date.now() / 60000)}`;
+
       await fetch("/api/whatsapp/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idemKey },
         body: JSON.stringify(payload),
       });
     } catch {
@@ -743,9 +747,10 @@ export function ChatPageClient() {
       else if (file.type.startsWith("video/")) type = "video";
       else if (file.type.startsWith("audio/")) type = "audio";
 
+      const idemKey = `media-${phone}-${type}-${file.name}-${Math.floor(Date.now() / 60000)}`;
       await fetch("/api/whatsapp/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idemKey },
         body: JSON.stringify({
           number: phone,
           type,
@@ -1468,9 +1473,13 @@ export function ChatPageClient() {
                               navigator.geolocation?.getCurrentPosition(
                                 async (pos) => {
                                   const phone = selectedChat.wa_chatid.split("@")[0];
+                                  const idemKey = `loc-${phone}-${Math.floor(Date.now() / 60000)}`;
                                   await fetch("/api/whatsapp/send", {
                                     method: "POST",
-                                    headers: { "Content-Type": "application/json" },
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                      "Idempotency-Key": idemKey,
+                                    },
                                     body: JSON.stringify({
                                       number: phone,
                                       type: "location",
