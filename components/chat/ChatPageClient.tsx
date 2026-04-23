@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 import {
   Search,
   MessageCircle,
@@ -220,6 +221,233 @@ function MediaPreview({ msg }: { msg: Message }) {
   return null;
 }
 
+// ─── Memoized Message Row ───
+// Extracted + memoized so toggling emoji picker / context menu on ONE message
+// doesn't re-render the other 499 bubbles. Intrinsic props only in the
+// comparator: callback identity is ignored (parent recreates them each render,
+// but they close over stable setState refs and module-level helpers).
+type MessageRowCallbacks = {
+  onReply: (m: Message) => void;
+  onForward: (m: Message) => void;
+  onCopy: (m: Message) => void;
+  onTogglePicker: (messageid: string) => void;
+  onToggleMenu: (messageid: string) => void;
+  onReact: (m: Message, emoji: string) => void;
+  onStar: (m: Message) => void;
+  onEdit: (m: Message) => void;
+  onDeleteForMe: (m: Message) => void;
+  onDeleteForAll: (m: Message) => void;
+};
+
+type MessageRowProps = {
+  msg: Message;
+  showDateSeparator: boolean;
+  isGroup: boolean;
+  isPickerOpen: boolean;
+  isMenuOpen: boolean;
+} & MessageRowCallbacks;
+
+function MessageRowImpl({
+  msg,
+  showDateSeparator,
+  isGroup,
+  isPickerOpen,
+  isMenuOpen,
+  onReply,
+  onForward,
+  onCopy,
+  onTogglePicker,
+  onToggleMenu,
+  onReact,
+  onStar,
+  onEdit,
+  onDeleteForMe,
+  onDeleteForAll,
+}: MessageRowProps) {
+  return (
+    <div>
+      {showDateSeparator && (
+        <div className="flex justify-center my-3">
+          <span className="px-3 py-1 bg-white/90 rounded-lg shadow-sm text-[11px] font-medium text-slate-500">
+            {formatDateSeparator(msg.messageTimestamp)}
+          </span>
+        </div>
+      )}
+      <div className={`flex ${msg.fromMe ? "justify-end" : "justify-start"} group/msg`}>
+        <div
+          className={`relative max-w-[75%] px-3 py-1.5 rounded-lg shadow-sm ${
+            msg.isDeleted
+              ? "bg-slate-100 text-slate-400 italic"
+              : msg.fromMe
+                ? "bg-emerald-100 text-slate-900 rounded-tr-none"
+                : "bg-white text-slate-900 rounded-tl-none"
+          }`}
+        >
+          {isGroup && !msg.fromMe && msg.senderName && (
+            <p className="text-[10px] font-semibold text-emerald-700 mb-0.5">{msg.senderName}</p>
+          )}
+          {msg.quotedMsg && (
+            <div className="mb-1 px-2 py-1 border-l-2 border-emerald-400 bg-emerald-50/50 rounded text-xs text-slate-500">
+              <p className="font-medium text-emerald-700 text-[10px]">
+                {msg.quotedMsg.sender?.split("@")[0] || "Mensagem"}
+              </p>
+              <p className="truncate">{msg.quotedMsg.text || `[${msg.quotedMsg.messageType}]`}</p>
+            </div>
+          )}
+          {msg.isDeleted ? (
+            <p className="text-xs flex items-center gap-1">
+              <Trash2 className="h-3 w-3" /> Mensagem apagada
+            </p>
+          ) : (
+            <>
+              <MediaPreview msg={msg} />
+              {msg.text && !msg.mediaUrl && (
+                <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
+              )}
+              {msg.text &&
+                msg.mediaUrl &&
+                msg.messageType !== "image" &&
+                msg.messageType !== "video" && (
+                  <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
+                )}
+              {!msg.text && !msg.mediaUrl && msg.messageType !== "Conversation" && (
+                <p className="text-xs text-slate-400 italic">
+                  {msg.messageType === "image"
+                    ? "Foto"
+                    : msg.messageType === "video"
+                      ? "Video"
+                      : msg.messageType === "audio" || msg.messageType === "ptt"
+                        ? "Audio"
+                        : msg.messageType === "document"
+                          ? "Documento"
+                          : msg.messageType === "sticker"
+                            ? "Figurinha"
+                            : msg.messageType === "location"
+                              ? "Localizacao"
+                              : msg.messageType === "poll_creation"
+                                ? "Enquete"
+                                : msg.messageType}
+                </p>
+              )}
+            </>
+          )}
+          {msg.reactions && msg.reactions.length > 0 && (
+            <div className="flex flex-wrap gap-0.5 mt-1">
+              {msg.reactions.map((r, i) => (
+                <span key={i} className="text-xs bg-white/60 rounded-full px-1.5 py-0.5 shadow-sm">
+                  {r.emoji}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className={`flex items-center gap-1 mt-0.5 ${msg.fromMe ? "justify-end" : ""}`}>
+            {msg.isEdited && <span className="text-[9px] text-slate-400">editada</span>}
+            {msg.isStarred && <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />}
+            <span className={`text-[10px] ${msg.fromMe ? "text-emerald-600" : "text-slate-400"}`}>
+              {formatMsgTime(msg.messageTimestamp)}
+            </span>
+            {msg.fromMe && <AckIcon ack={msg.ack} />}
+          </div>
+          {!msg.isDeleted && (
+            <div className="absolute -top-3 right-0 hidden group-hover/msg:flex items-center gap-0.5 bg-white rounded-lg border border-slate-200 shadow-sm px-1 py-0.5 z-10">
+              <button
+                onClick={() => onReply(msg)}
+                className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
+                title="Responder"
+              >
+                <Reply className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => onTogglePicker(msg.messageid)}
+                className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
+                title="Reagir"
+              >
+                <Smile className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => onForward(msg)}
+                className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
+                title="Encaminhar"
+              >
+                <Forward className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => onCopy(msg)}
+                className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
+                title="Copiar"
+              >
+                <Copy className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => onToggleMenu(msg.messageid)}
+                className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
+                title="Mais"
+              >
+                <MoreVertical className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+          {isPickerOpen && (
+            <div className="absolute -top-10 right-0 flex items-center gap-0.5 bg-white rounded-xl border border-slate-200 shadow-xl px-2 py-1 z-20">
+              {EMOJI_REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => onReact(msg, emoji)}
+                  className="text-lg hover:scale-125 transition-transform p-0.5"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+          {isMenuOpen && (
+            <div className="absolute -top-2 right-8 bg-white rounded-xl border border-slate-200 shadow-xl py-1 z-20 min-w-[140px]">
+              <button
+                onClick={() => onStar(msg)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+              >
+                <Star className="h-3 w-3" /> {msg.isStarred ? "Desfavoritar" : "Favoritar"}
+              </button>
+              {msg.fromMe && msg.messageType === "Conversation" && (
+                <button
+                  onClick={() => onEdit(msg)}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                >
+                  <Edit3 className="h-3 w-3" /> Editar
+                </button>
+              )}
+              <button
+                onClick={() => onDeleteForMe(msg)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+              >
+                <Trash2 className="h-3 w-3" /> Apagar para mim
+              </button>
+              {msg.fromMe && (
+                <button
+                  onClick={() => onDeleteForAll(msg)}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="h-3 w-3" /> Apagar para todos
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const MessageRow = memo(MessageRowImpl, (prev, next) => {
+  return (
+    prev.msg === next.msg &&
+    prev.showDateSeparator === next.showDateSeparator &&
+    prev.isGroup === next.isGroup &&
+    prev.isPickerOpen === next.isPickerOpen &&
+    prev.isMenuOpen === next.isMenuOpen
+  );
+});
+
 // Chat context menu actions
 function apiPost(action: string, body: Record<string, unknown>) {
   return fetch(`/api/whatsapp?action=${action}`, {
@@ -273,10 +501,25 @@ export function ChatPageClient() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  // Debounce the upstream-facing value so every keystroke doesn't refire the
+  // /chat/find request (and doesn't re-create fetchChats' useCallback
+  // identity, which re-installs the poll interval). The input itself stays
+  // snappy because it binds to `search`.
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [chatFilter, setChatFilter] = useState<"all" | "unread">("all");
   const [msgSearch, setMsgSearch] = useState("");
+  const debouncedMsgSearch = useDebouncedValue(msgSearch, 300);
   const [showMsgSearch, setShowMsgSearch] = useState(false);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  // Stable string id — use in effect deps to decouple from selectedChat object
+  // identity (which can change when chats poll refreshes the array).
+  const selectedChatId = selectedChat?.wa_chatid ?? null;
+  // Ref mirror of the latest selectedChat so useCallback closures don't need
+  // to depend on it (keeps callbacks stable across polls).
+  const selectedChatRef = useRef<Chat | null>(null);
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [msgOffset, setMsgOffset] = useState(0);
@@ -294,6 +537,7 @@ export function ChatPageClient() {
   const [editText, setEditText] = useState("");
   const [forwardingMsg, setForwardingMsg] = useState<Message | null>(null);
   const [forwardSearch, setForwardSearch] = useState("");
+  const debouncedForwardSearch = useDebouncedValue(forwardSearch, 200);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [unreadBelowCount, setUnreadBelowCount] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState<
@@ -441,7 +685,7 @@ export function ChatPageClient() {
 
       if (!silent) setLoading(true);
       try {
-        const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+        const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : "";
         const unreadParam = chatFilter === "unread" ? "&unread=true" : "";
         const res = await fetch(
           `/api/whatsapp?action=chats&limit=${PAGE_SIZE}&offset=0${searchParam}${unreadParam}`,
@@ -469,7 +713,7 @@ export function ChatPageClient() {
         if (!controller.signal.aborted && !silent) setLoading(false);
       }
     },
-    [search, chatFilter]
+    [debouncedSearch, chatFilter]
   );
 
   // Lazy-load: fetch next page when user scrolls near the bottom of the list.
@@ -477,7 +721,7 @@ export function ChatPageClient() {
     if (loadingMoreChats || !hasMoreChats) return;
     setLoadingMoreChats(true);
     try {
-      const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+      const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : "";
       const unreadParam = chatFilter === "unread" ? "&unread=true" : "";
       const res = await fetch(
         `/api/whatsapp?action=chats&limit=${PAGE_SIZE}&offset=${chats.length}${searchParam}${unreadParam}`
@@ -497,7 +741,7 @@ export function ChatPageClient() {
     } finally {
       setLoadingMoreChats(false);
     }
-  }, [chats.length, hasMoreChats, loadingMoreChats, search, chatFilter]);
+  }, [chats.length, hasMoreChats, loadingMoreChats, debouncedSearch, chatFilter]);
 
   useEffect(() => {
     fetchChats();
@@ -522,7 +766,9 @@ export function ChatPageClient() {
       else setLoadingMore(true);
 
       try {
-        const searchParam = msgSearch ? `&search=${encodeURIComponent(msgSearch)}` : "";
+        const searchParam = debouncedMsgSearch
+          ? `&search=${encodeURIComponent(debouncedMsgSearch)}`
+          : "";
         const res = await fetch(
           `/api/whatsapp?action=messages&chatid=${encodeURIComponent(chatId)}&limit=${MSG_PAGE_SIZE}&offset=${offset}${searchParam}`,
           { signal: controller.signal }
@@ -584,20 +830,24 @@ export function ChatPageClient() {
         setLoadingMore(false);
       }
     },
-    [msgSearch]
+    [debouncedMsgSearch]
   );
 
   // Check for new messages in the selected chat (extracted so we can also call it on focus)
   const checkNewMessages = useCallback(async () => {
-    if (!selectedChat || !lastMsgTsRef.current) return;
-    const chatIdAtStart = selectedChat.wa_chatid;
+    // Reading the ref avoids coupling to the object identity of selectedChat;
+    // the polling effect stays stable when unrelated state updates refresh
+    // the selectedChat reference.
+    const current = selectedChatRef.current;
+    if (!current || !lastMsgTsRef.current) return;
+    const chatIdAtStart = current.wa_chatid;
     const phoneAtStart = chatIdAtStart.split("@")[0];
     try {
       const res = await fetch(
         `/api/whatsapp?action=messages&chatid=${encodeURIComponent(chatIdAtStart)}&limit=50&afterTs=${lastMsgTsRef.current}`
       );
       // Ignore result if user switched chats while we were fetching
-      if (selectedChat.wa_chatid !== chatIdAtStart) return;
+      if (selectedChatRef.current?.wa_chatid !== chatIdAtStart) return;
       const data = await res.json();
       const newMsgs = (data.messages ?? [])
         // Defensive client-side filter: drop msgs that don't belong to this chat
@@ -650,14 +900,14 @@ export function ChatPageClient() {
     } catch {
       /* ignore */
     }
-  }, [selectedChat]);
+  }, []);
 
   // Poll for new messages in selected chat (1s interval)
   useEffect(() => {
-    if (!selectedChat) return;
+    if (!selectedChatId) return;
     const interval = setInterval(checkNewMessages, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [selectedChat, checkNewMessages]);
+  }, [selectedChatId, checkNewMessages]);
 
   // Trigger an immediate refresh whenever the tab regains focus / becomes visible.
   // If the initial fetch never completed (lastMsgTsRef still 0), checkNewMessages
@@ -714,7 +964,6 @@ export function ChatPageClient() {
   // Key off wa_chatid (stable string) instead of the chat object — otherwise
   // any poll/refresh that replaces the object reference re-triggers a full
   // refetch and wipes local state (e.g. when toggling the AI badge).
-  const selectedChatId = selectedChat?.wa_chatid;
   useEffect(() => {
     if (!selectedChatId) return;
     setMsgOffset(0);
@@ -815,6 +1064,10 @@ export function ChatPageClient() {
         headers: { "Content-Type": "application/json", "Idempotency-Key": idemKey },
         body: JSON.stringify(payload),
       });
+      // Remove the optimistic bubble so the next poll can place the real one
+      // (persisted by /api/whatsapp/send) without duplicating the text on
+      // screen. Previously the optimistic stuck around forever.
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
     } catch {
       /* ignore */
     }
@@ -887,6 +1140,91 @@ export function ChatPageClient() {
     setShowMsgMenu(null);
   }
 
+  // Stable handlers for MessageRow — using useCallback so React.memo can
+  // skip re-renders across the 100s of messages when unrelated state
+  // (chats polling, UI transient state) changes in the parent.
+  const handleReplyMsg = useCallback((m: Message) => setReplyTo(m), []);
+  const handleForwardMsg = useCallback((m: Message) => {
+    setForwardingMsg(m);
+    setShowMsgMenu(null);
+  }, []);
+  const handleTogglePicker = useCallback(
+    (messageid: string) => setShowEmojiPicker((id) => (id === messageid ? null : messageid)),
+    []
+  );
+  const handleToggleMenu = useCallback(
+    (messageid: string) => setShowMsgMenu((id) => (id === messageid ? null : messageid)),
+    []
+  );
+  const handleReactMsg = useCallback(
+    (m: Message, emoji: string) => {
+      if (!selectedChat) return;
+      apiPost("reaction", {
+        chatid: selectedChat.wa_chatid,
+        messageid: m.messageid,
+        emoji,
+      });
+      setShowEmojiPicker(null);
+    },
+    [selectedChat]
+  );
+  const handleStarMsg = useCallback(
+    (m: Message) => {
+      if (!selectedChat) return;
+      apiPost("star-msg", {
+        chatid: selectedChat.wa_chatid,
+        messageid: m.messageid,
+        star: !m.isStarred,
+      });
+      setMessages((prev) =>
+        prev.map((x) => (x.messageid === m.messageid ? { ...x, isStarred: !x.isStarred } : x))
+      );
+      setShowMsgMenu(null);
+    },
+    [selectedChat]
+  );
+  const handleEditMsg = useCallback((m: Message) => {
+    setEditingMsg(m);
+    setEditText(m.text);
+    setShowMsgMenu(null);
+  }, []);
+  const handleDeleteForMe = useCallback(
+    async (m: Message) => {
+      if (!selectedChat) return;
+      try {
+        await apiPost("delete-msg", {
+          chatid: selectedChat.wa_chatid,
+          messageid: m.messageid,
+          forEveryone: false,
+        });
+        setMessages((prev) => prev.filter((x) => x.messageid !== m.messageid));
+        toast.success("Mensagem apagada");
+      } catch {
+        toast.error("Erro ao apagar");
+      }
+      setShowMsgMenu(null);
+    },
+    [selectedChat]
+  );
+  const handleDeleteForAll = useCallback(
+    async (m: Message) => {
+      if (!selectedChat) return;
+      try {
+        await apiPost("delete-msg", {
+          chatid: selectedChat.wa_chatid,
+          messageid: m.messageid,
+          forEveryone: true,
+        });
+        setMessages((prev) => prev.filter((x) => x.messageid !== m.messageid));
+        toast.success("Mensagem apagada");
+      } catch {
+        toast.error("Erro ao apagar");
+      }
+      setShowMsgMenu(null);
+    },
+    [selectedChat]
+  );
+
   // Chat actions
   async function handlePinChat(chat: Chat) {
     await apiPost("pin-chat", { chatid: chat.wa_chatid, pin: !chat.wa_pinned });
@@ -957,11 +1295,11 @@ export function ChatPageClient() {
   const forwardChats = useMemo(() => {
     if (!forwardingMsg) return [];
     return chats.filter((c) => {
-      if (!forwardSearch) return true;
+      if (!debouncedForwardSearch) return true;
       const name = resolveChatName(c);
-      return name.toLowerCase().includes(forwardSearch.toLowerCase());
+      return name.toLowerCase().includes(debouncedForwardSearch.toLowerCase());
     });
-  }, [chats, forwardingMsg, forwardSearch]);
+  }, [chats, forwardingMsg, debouncedForwardSearch]);
 
   // New conversation state
   const [showNewChat, setShowNewChat] = useState(false);
@@ -1326,247 +1664,24 @@ export function ChatPageClient() {
               )}
 
               {messages.map((msg, idx) => (
-                <div key={msg.id || msg.messageid}>
-                  {/* Date separator */}
-                  {shouldShowDateSeparator(messages, idx) && (
-                    <div className="flex justify-center my-3">
-                      <span className="px-3 py-1 bg-white/90 rounded-lg shadow-sm text-[11px] font-medium text-slate-500">
-                        {formatDateSeparator(msg.messageTimestamp)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Message bubble */}
-                  <div className={`flex ${msg.fromMe ? "justify-end" : "justify-start"} group/msg`}>
-                    <div
-                      className={`relative max-w-[75%] px-3 py-1.5 rounded-lg shadow-sm ${
-                        msg.isDeleted
-                          ? "bg-slate-100 text-slate-400 italic"
-                          : msg.fromMe
-                            ? "bg-emerald-100 text-slate-900 rounded-tr-none"
-                            : "bg-white text-slate-900 rounded-tl-none"
-                      }`}
-                    >
-                      {/* Group sender name */}
-                      {selectedChat.wa_isGroup && !msg.fromMe && msg.senderName && (
-                        <p className="text-[10px] font-semibold text-emerald-700 mb-0.5">
-                          {msg.senderName}
-                        </p>
-                      )}
-
-                      {/* Quoted message */}
-                      {msg.quotedMsg && (
-                        <div className="mb-1 px-2 py-1 border-l-2 border-emerald-400 bg-emerald-50/50 rounded text-xs text-slate-500">
-                          <p className="font-medium text-emerald-700 text-[10px]">
-                            {msg.quotedMsg.sender?.split("@")[0] || "Mensagem"}
-                          </p>
-                          <p className="truncate">
-                            {msg.quotedMsg.text || `[${msg.quotedMsg.messageType}]`}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Deleted message */}
-                      {msg.isDeleted ? (
-                        <p className="text-xs flex items-center gap-1">
-                          <Trash2 className="h-3 w-3" /> Mensagem apagada
-                        </p>
-                      ) : (
-                        <>
-                          {/* Media */}
-                          <MediaPreview msg={msg} />
-
-                          {/* Text */}
-                          {msg.text && !msg.mediaUrl && (
-                            <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
-                          )}
-                          {msg.text &&
-                            msg.mediaUrl &&
-                            msg.messageType !== "image" &&
-                            msg.messageType !== "video" && (
-                              <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
-                            )}
-
-                          {/* No content fallback */}
-                          {!msg.text && !msg.mediaUrl && msg.messageType !== "Conversation" && (
-                            <p className="text-xs text-slate-400 italic">
-                              {msg.messageType === "image"
-                                ? "Foto"
-                                : msg.messageType === "video"
-                                  ? "Video"
-                                  : msg.messageType === "audio" || msg.messageType === "ptt"
-                                    ? "Audio"
-                                    : msg.messageType === "document"
-                                      ? "Documento"
-                                      : msg.messageType === "sticker"
-                                        ? "Figurinha"
-                                        : msg.messageType === "location"
-                                          ? "Localizacao"
-                                          : msg.messageType === "poll_creation"
-                                            ? "Enquete"
-                                            : msg.messageType}
-                            </p>
-                          )}
-                        </>
-                      )}
-
-                      {/* Reactions */}
-                      {msg.reactions && msg.reactions.length > 0 && (
-                        <div className="flex flex-wrap gap-0.5 mt-1">
-                          {msg.reactions.map((r, i) => (
-                            <span
-                              key={i}
-                              className="text-xs bg-white/60 rounded-full px-1.5 py-0.5 shadow-sm"
-                            >
-                              {r.emoji}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Footer: time + ack + edited */}
-                      <div
-                        className={`flex items-center gap-1 mt-0.5 ${msg.fromMe ? "justify-end" : ""}`}
-                      >
-                        {msg.isEdited && <span className="text-[9px] text-slate-400">editada</span>}
-                        {msg.isStarred && (
-                          <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
-                        )}
-                        <span
-                          className={`text-[10px] ${msg.fromMe ? "text-emerald-600" : "text-slate-400"}`}
-                        >
-                          {formatMsgTime(msg.messageTimestamp)}
-                        </span>
-                        {msg.fromMe && <AckIcon ack={msg.ack} />}
-                      </div>
-
-                      {/* Hover actions */}
-                      {!msg.isDeleted && (
-                        <div className="absolute -top-3 right-0 hidden group-hover/msg:flex items-center gap-0.5 bg-white rounded-lg border border-slate-200 shadow-sm px-1 py-0.5 z-10">
-                          <button
-                            onClick={() => setReplyTo(msg)}
-                            className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
-                            title="Responder"
-                          >
-                            <Reply className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              setShowEmojiPicker(
-                                showEmojiPicker === msg.messageid ? null : msg.messageid
-                              )
-                            }
-                            className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
-                            title="Reagir"
-                          >
-                            <Smile className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setForwardingMsg(msg);
-                              setShowMsgMenu(null);
-                            }}
-                            className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
-                            title="Encaminhar"
-                          >
-                            <Forward className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => handleCopyMsg(msg)}
-                            className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
-                            title="Copiar"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              setShowMsgMenu(showMsgMenu === msg.messageid ? null : msg.messageid)
-                            }
-                            className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
-                            title="Mais"
-                          >
-                            <MoreVertical className="h-3 w-3" />
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Emoji reaction picker */}
-                      {showEmojiPicker === msg.messageid && (
-                        <div className="absolute -top-10 right-0 flex items-center gap-0.5 bg-white rounded-xl border border-slate-200 shadow-xl px-2 py-1 z-20">
-                          {EMOJI_REACTIONS.map((emoji) => (
-                            <button
-                              key={emoji}
-                              onClick={() => {
-                                apiPost("reaction", {
-                                  chatid: selectedChat.wa_chatid,
-                                  messageid: msg.messageid,
-                                  emoji,
-                                });
-                                setShowEmojiPicker(null);
-                              }}
-                              className="text-lg hover:scale-125 transition-transform p-0.5"
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Message context menu */}
-                      {showMsgMenu === msg.messageid && (
-                        <div className="absolute -top-2 right-8 bg-white rounded-xl border border-slate-200 shadow-xl py-1 z-20 min-w-[140px]">
-                          <button
-                            onClick={() => {
-                              apiPost("star-msg", {
-                                chatid: selectedChat.wa_chatid,
-                                messageid: msg.messageid,
-                                star: !msg.isStarred,
-                              });
-                              setMessages((prev) =>
-                                prev.map((m) =>
-                                  m.messageid === msg.messageid
-                                    ? { ...m, isStarred: !m.isStarred }
-                                    : m
-                                )
-                              );
-                              setShowMsgMenu(null);
-                            }}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
-                          >
-                            <Star className="h-3 w-3" />{" "}
-                            {msg.isStarred ? "Desfavoritar" : "Favoritar"}
-                          </button>
-                          {msg.fromMe && msg.messageType === "Conversation" && (
-                            <button
-                              onClick={() => {
-                                setEditingMsg(msg);
-                                setEditText(msg.text);
-                                setShowMsgMenu(null);
-                              }}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
-                            >
-                              <Edit3 className="h-3 w-3" /> Editar
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDeleteMsg(msg, false)}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
-                          >
-                            <Trash2 className="h-3 w-3" /> Apagar para mim
-                          </button>
-                          {msg.fromMe && (
-                            <button
-                              onClick={() => handleDeleteMsg(msg, true)}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-3 w-3" /> Apagar para todos
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <MessageRow
+                  key={msg.id || msg.messageid}
+                  msg={msg}
+                  showDateSeparator={shouldShowDateSeparator(messages, idx)}
+                  isGroup={!!selectedChat.wa_isGroup}
+                  isPickerOpen={showEmojiPicker === msg.messageid}
+                  isMenuOpen={showMsgMenu === msg.messageid}
+                  onReply={handleReplyMsg}
+                  onForward={handleForwardMsg}
+                  onCopy={handleCopyMsg}
+                  onTogglePicker={handleTogglePicker}
+                  onToggleMenu={handleToggleMenu}
+                  onReact={handleReactMsg}
+                  onStar={handleStarMsg}
+                  onEdit={handleEditMsg}
+                  onDeleteForMe={handleDeleteForMe}
+                  onDeleteForAll={handleDeleteForAll}
+                />
               ))}
               <div ref={messagesEndRef} />
             </div>
@@ -2165,6 +2280,51 @@ function ChatListSentinel({ onIntersect, loading }: { onIntersect: () => void; l
 
 // ─── Chat Item Component ───
 
+// Process-wide memo: phones we've already attempted to fetch an avatar for in
+// this session. Prevents a scroll-jitter from re-firing /action=avatar for the
+// same chat, and also dedupes across multiple ChatItem unmount/remounts.
+const avatarAttemptedPhones = new Set<string>();
+
+function useLazyAvatar(phone: string, hasPic: boolean) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [fetched, setFetched] = useState<{ imagePreview: string; image: string } | null>(null);
+
+  useEffect(() => {
+    if (hasPic || !phone) return;
+    if (avatarAttemptedPhones.has(phone)) return;
+    const node = containerRef.current;
+    if (!node) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          if (avatarAttemptedPhones.has(phone)) return;
+          avatarAttemptedPhones.add(phone);
+          fetch(`/api/whatsapp?action=avatar&phone=${encodeURIComponent(phone)}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              if (!data) return;
+              if (data.imagePreview || data.image) {
+                setFetched({ imagePreview: data.imagePreview, image: data.image });
+              }
+            })
+            .catch(() => {
+              // Leave the in-memory guard set — retrying in this session
+              // won't help (Uazapi likely returned nothing or 403-ing URL).
+            });
+          obs.disconnect();
+          return;
+        }
+      },
+      { rootMargin: "200px 0px" } // start fetching a bit before it scrolls into view
+    );
+    obs.observe(node);
+    return () => obs.disconnect();
+  }, [phone, hasPic]);
+
+  return { containerRef, fetched };
+}
+
 function ChatItemImpl({
   chat,
   isSelected,
@@ -2187,7 +2347,10 @@ function ChatItemImpl({
   const name = resolveChatName(chat);
   const lastMsg = chat.wa_lastMessageTextVote || "";
   const time = formatTime(chat.wa_lastMsgTimestamp);
-  const pic = chat.imagePreview || chat.image;
+  const serverPic = chat.imagePreview || chat.image;
+  const phoneForAvatar = (chat.wa_chatid || "").split("@")[0];
+  const { containerRef: avatarRef, fetched: lazyPic } = useLazyAvatar(phoneForAvatar, !!serverPic);
+  const pic = serverPic || lazyPic?.imagePreview || lazyPic?.image || "";
   const lastType = chat.wa_lastMessageType;
 
   return (
@@ -2198,7 +2361,10 @@ function ChatItemImpl({
           isSelected ? "bg-emerald-50" : "hover:bg-slate-50"
         }`}
       >
-        <div className="w-11 h-11 rounded-full flex-shrink-0 overflow-hidden bg-slate-200 flex items-center justify-center relative">
+        <div
+          ref={avatarRef}
+          className="w-11 h-11 rounded-full flex-shrink-0 overflow-hidden bg-slate-200 flex items-center justify-center relative"
+        >
           <span className="text-sm font-bold text-slate-500 absolute inset-0 flex items-center justify-center">
             {getInitials(name)}
           </span>

@@ -357,7 +357,10 @@ export async function processIncomingMessage(params: {
     }
 
     // ── Wait before reply (humanized delay) ───────────────────
-    const waitSeconds = aiConfig.waitBeforeReply ?? 7;
+    // Default cut from 7s → 1s. Previous value was dominating end-to-end
+    // latency (22s total for a typical reply). Operators who want the old
+    // feel can raise it in Config → IA Chat → Comportamento.
+    const waitSeconds = aiConfig.waitBeforeReply ?? 1;
     if (waitSeconds > 0) {
       // Check if new message arrived during wait (cancelOnNewMsg)
       await sleep(waitSeconds * 1000);
@@ -394,13 +397,28 @@ export async function processIncomingMessage(params: {
       calendarContext = await getCalendarContextForAI(userId);
     } catch {}
 
-    const history = [
-      ...lead.messages.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-      { role: "user" as const, content: text },
-    ];
+    // Refetch messages right before calling the LLM. The initial `lead` was
+    // loaded early in the pipeline (before the waitBeforeReply sleep), so any
+    // messages that arrived while we slept — and were saved by competing jobs
+    // that failed the lead lock — wouldn't be visible in `lead.messages`. This
+    // query is the difference between the AI replying to "oi" alone and
+    // replying to "oi / quanto custa?" correctly.
+    const freshMessages = await prisma.message.findMany({
+      where: { leadId: lead.id },
+      orderBy: { createdAt: "asc" },
+      take: 30,
+      select: { role: true, content: true },
+    });
+    // Guard against the case where `text` was already saved (e.g. by the same
+    // pipeline on line ~268) so we don't duplicate the final turn.
+    const lastSaved = freshMessages[freshMessages.length - 1];
+    const history: { role: "user" | "assistant"; content: string }[] = freshMessages.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
+    if (!lastSaved || lastSaved.role !== "user" || lastSaved.content !== text) {
+      history.push({ role: "user", content: text });
+    }
 
     // Append services context to system prompt
     let enrichedSystemPrompt = aiConfig.systemPrompt || "";
@@ -459,9 +477,13 @@ export async function processIncomingMessage(params: {
     });
 
     // ── Humanized delay before sending ────────────────────────
+    // Defaults cut: 120 → 40ms/char, cap 10s → 3s. Previous values
+    // compounded with waitBeforeReply to produce 15-20s total delays,
+    // which felt broken to the operator. 40ms/char ≈ 1500 chars/min,
+    // slightly faster than a fast human typer — still plausible.
     const charDelay = Math.min(
-      finalReply.length * (aiConfig.delayPerChar ?? 120),
-      aiConfig.delayMax ?? 10000
+      finalReply.length * (aiConfig.delayPerChar ?? 40),
+      aiConfig.delayMax ?? 3000
     );
     if (charDelay > 0) {
       await sleep(charDelay);

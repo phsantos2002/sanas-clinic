@@ -58,15 +58,29 @@ import { canRequest, recordSuccess, recordFailure } from "@/lib/uazapi/circuitBr
  *   ?action=status-video      { file, caption? }
  */
 
-async function getUazapiConfig() {
+// Process-local cache of Uazapi config by user email. The chat tab polls this
+// endpoint every 1-3s, and each poll used to cost two Prisma lookups (User +
+// WhatsAppConfig). 5-minute TTL is short enough that flipping the instance
+// token in Settings takes effect quickly for the operator.
+type CachedUazapiConfig = { userId: string; serverUrl: string; token: string };
+const uazapiConfigCache = new Map<string, { value: CachedUazapiConfig | null; expiry: number }>();
+const UAZAPI_CONFIG_TTL_MS = 5 * 60 * 1000;
+
+async function getUazapiConfig(): Promise<CachedUazapiConfig | null> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user || !user.email) return null;
 
-  const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
-  if (!dbUser) return null;
+  const cached = uazapiConfigCache.get(user.email);
+  if (cached && cached.expiry > Date.now()) return cached.value;
+
+  const dbUser = await prisma.user.findUnique({ where: { email: user.email } });
+  if (!dbUser) {
+    uazapiConfigCache.set(user.email, { value: null, expiry: Date.now() + UAZAPI_CONFIG_TTL_MS });
+    return null;
+  }
 
   const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
   if (
@@ -75,14 +89,17 @@ async function getUazapiConfig() {
     !config.uazapiServerUrl ||
     !config.uazapiInstanceToken
   ) {
+    uazapiConfigCache.set(user.email, { value: null, expiry: Date.now() + UAZAPI_CONFIG_TTL_MS });
     return null;
   }
 
-  return {
+  const resolved: CachedUazapiConfig = {
     userId: dbUser.id,
     serverUrl: config.uazapiServerUrl.trim().replace(/\/+$/, ""),
     token: config.uazapiInstanceToken.trim(),
   };
+  uazapiConfigCache.set(user.email, { value: resolved, expiry: Date.now() + UAZAPI_CONFIG_TTL_MS });
+  return resolved;
 }
 
 // ── Resilient Uazapi helper ──────────────────────────────────
@@ -352,7 +369,12 @@ export async function GET(req: NextRequest) {
           });
         }
 
-        // Phones we may need avatars for
+        // Hydrate avatars from DB cache ONLY. Upstream enrichment used to run
+        // synchronously inside this request — 25 parallel /chat/details calls,
+        // then 80 serialized UPSERTs — burning 10-14s and occasionally blowing
+        // the serverless timeout. We now return chats fast and let the client
+        // lazy-fetch avatars only for the items it actually renders (see
+        // action=avatar below).
         const phonesToCheck: string[] = [];
         for (const chat of chats) {
           if (!chat.wa_chatid) continue;
@@ -360,61 +382,19 @@ export async function GET(req: NextRequest) {
             phonesToCheck.push((chat.wa_chatid as string).split("@")[0]);
           }
         }
-
-        // Hydrate from DB cache first. The cache returns BOTH real avatars and
-        // recent "empty" markers — we use the marker to skip the upstream retry.
-        const cache = await loadAvatarCache(config.userId, phonesToCheck);
-        const cachedPhones = new Set<string>();
-        for (const chat of chats) {
-          if (!chat.wa_chatid) continue;
-          const phone = (chat.wa_chatid as string).split("@")[0];
-          if (!chat.imagePreview && !chat.image) {
-            const cached = cache.get(phone);
-            if (cached) {
-              chat.imagePreview = cached.imagePreview;
-              chat.image = cached.image;
-              cachedPhones.add(phone); // skip re-fetch even if cached value is empty
+        if (phonesToCheck.length > 0) {
+          const cache = await loadAvatarCache(config.userId, phonesToCheck);
+          for (const chat of chats) {
+            if (!chat.wa_chatid) continue;
+            const phone = (chat.wa_chatid as string).split("@")[0];
+            if (!chat.imagePreview && !chat.image) {
+              const cached = cache.get(phone);
+              if (cached) {
+                chat.imagePreview = cached.imagePreview;
+                chat.image = cached.image;
+              }
             }
           }
-        }
-
-        // Enrich only chats that have NO avatar AND were NOT in the cache (real or empty marker).
-        const toEnrich = chats.filter((c: Record<string, unknown>) => {
-          if (!c.wa_chatid) return false;
-          if (c.imagePreview || c.image) return false;
-          const phone = (c.wa_chatid as string).split("@")[0];
-          return !cachedPhones.has(phone);
-        });
-        const newlyFetched: { phone: string; imagePreview: string; image: string }[] = [];
-        const ENRICH_CONCURRENCY = 25;
-        for (let i = 0; i < toEnrich.length; i += ENRICH_CONCURRENCY) {
-          const batch = toEnrich.slice(i, i + ENRICH_CONCURRENCY);
-          await Promise.allSettled(
-            batch.map(async (chat: Record<string, unknown>) => {
-              const phone = (chat.wa_chatid as string).split("@")[0];
-              try {
-                const detail = await uazapi(
-                  config.serverUrl,
-                  config.token,
-                  "POST",
-                  "/chat/details",
-                  { number: phone, preview: true }
-                );
-                const imagePreview = detail.imagePreview || "";
-                const image = detail.image || "";
-                chat.imagePreview = imagePreview;
-                chat.image = image;
-                newlyFetched.push({ phone, imagePreview, image });
-              } catch {
-                /* skip */
-              }
-            })
-          );
-        }
-
-        // Persist newly fetched avatars (fire-and-forget — don't block response)
-        if (newlyFetched.length > 0) {
-          saveAvatarCache(config.userId, newlyFetched).catch(() => {});
         }
 
         // When we applied a client-side filter (unread/search), pagination
@@ -425,6 +405,33 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ chats, total });
       }
 
+      case "avatar": {
+        // Lazy avatar fetch for a single phone. Front calls this per visible
+        // chat that has no avatar yet, so we only hit Uazapi for what the
+        // operator actually sees — never for the full 200-chat page on load.
+        const phone = (searchParams.get("phone") ?? "").replace(/\D/g, "");
+        if (!phone) return NextResponse.json({ imagePreview: "", image: "" });
+        // Cache hit (even an "empty" marker from a recent probe) — short-circuit.
+        const cache = await loadAvatarCache(config.userId, [phone]);
+        const cached = cache.get(phone);
+        if (cached) {
+          return NextResponse.json({
+            imagePreview: cached.imagePreview,
+            image: cached.image,
+            cached: true,
+          });
+        }
+        const detail = await uazapi(config.serverUrl, config.token, "POST", "/chat/details", {
+          number: phone,
+          preview: true,
+        });
+        const imagePreview = (detail?.imagePreview as string) || "";
+        const image = (detail?.image as string) || "";
+        // Fire-and-forget persist — the response ships before this hits the DB.
+        saveAvatarCache(config.userId, [{ phone, imagePreview, image }]).catch(() => {});
+        return NextResponse.json({ imagePreview, image, cached: false });
+      }
+
       case "messages": {
         const chatid = searchParams.get("chatid") ?? "";
         const limit = parseInt(searchParams.get("limit") ?? "100");
@@ -433,13 +440,68 @@ export async function GET(req: NextRequest) {
         const starred = searchParams.get("starred") === "true";
         const afterTs = searchParams.get("afterTs");
 
-        // Uazapi /message/find: probe diagnostic confirmed that:
-        //   - chatid: "string" → 0 messages (filter is misinterpreted)
-        //   - chatid: { $in: ["..."] } → 5 messages ✓
-        // So we use $in even with a single value. Includes legacy "@c.us" alias
-        // for older messages that may have been stored before the schema migration.
         const phoneOnly = chatid.split("@")[0];
         const isGroup = chatid.includes("@g.us");
+
+        // ── Postgres-first source (1:1 chats only) ─────────────────
+        // Groups still read from Uazapi — we don't persist group histories
+        // locally (no Lead row, multiple senders). `starred` also bypasses
+        // the DB since we don't track that flag server-side.
+        if (!isGroup && !starred && phoneOnly) {
+          const lead = await prisma.lead.findFirst({
+            where: { userId: config.userId, phone: phoneOnly },
+            select: { id: true },
+          });
+          if (lead) {
+            const where: {
+              leadId: string;
+              createdAt?: { gt: Date };
+              content?: { contains: string; mode: "insensitive" };
+            } = { leadId: lead.id };
+            if (afterTs) where.createdAt = { gt: new Date(parseInt(afterTs)) };
+            if (search) where.content = { contains: search, mode: "insensitive" };
+
+            const [rows, total] = await Promise.all([
+              prisma.message.findMany({
+                where,
+                orderBy: { createdAt: "desc" },
+                skip: offset,
+                take: limit,
+                select: {
+                  id: true,
+                  role: true,
+                  content: true,
+                  externalId: true,
+                  createdAt: true,
+                },
+              }),
+              prisma.message.count({ where: { leadId: lead.id } }),
+            ]);
+
+            // Shape rows into the Uazapi envelope the front-end expects.
+            const chatidCanonical = `${phoneOnly}@s.whatsapp.net`;
+            const messages = rows
+              .slice()
+              .reverse() // return oldest-first so the list appends naturally
+              .map((m) => ({
+                id: m.id,
+                messageid: m.externalId ?? m.id,
+                text: m.content,
+                fromMe: m.role === "assistant",
+                messageTimestamp: m.createdAt.getTime(),
+                messageType: "Conversation",
+                sender: m.role === "assistant" ? "" : chatidCanonical,
+                senderName: "",
+                chatid: chatidCanonical,
+                ack: m.role === "assistant" ? 3 : undefined,
+              }));
+            return NextResponse.json({ messages, total, source: "db" });
+          }
+        }
+
+        // ── Fallback to Uazapi ─────────────────────────────────────
+        // Includes groups, starred queries, and any 1:1 chat that doesn't yet
+        // have a Lead row (e.g. historical conversation that predates pairing).
         const chatIdVariants = isGroup
           ? [chatid]
           : Array.from(new Set([`${phoneOnly}@s.whatsapp.net`, `${phoneOnly}@c.us`, chatid]));
@@ -460,19 +522,17 @@ export async function GET(req: NextRequest) {
             ? data
             : [];
 
-        // Defensive server-side filter: only return messages whose chatid matches
-        // one of our expected variants. Defends against Uazapi ignoring the
-        // filter and returning a broader result set.
         const expectedSet = new Set(chatIdVariants);
         const messages = rawMessages.filter((m: Record<string, unknown>) => {
           const mid = m?.chatid as string | undefined;
-          if (!mid) return false; // drop messages without chatid (cannot verify)
+          if (!mid) return false;
           return expectedSet.has(mid);
         });
 
         return NextResponse.json({
           messages,
           total: messages.length,
+          source: "uazapi",
           ...(data?.__error
             ? { upstreamError: String(data.__error), upstreamStatus: data.__status }
             : {}),

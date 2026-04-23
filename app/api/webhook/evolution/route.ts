@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendUazapiMessage } from "@/services/whatsappUazapi";
 import { processIncomingMessage } from "@/services/webhookProcessor";
@@ -236,42 +237,56 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Sprint 3: enqueue for async processing — returns 200 immediately
+    // Return 200 to Uazapi immediately; keep the serverless invocation alive
+    // with `after()` so the queued work (AI reply pipeline, which can take
+    // 5-10s with delays) actually runs to completion instead of being killed
+    // when the response is flushed. Without this, in-memory jobs vanish on
+    // Vercel cold-stops and messages are silently dropped.
     const capturedConfig = whatsappConfig;
-    webhookQueue
-      .enqueue(() =>
-        processIncomingMessage({
-          userId: capturedConfig.userId,
-          phone,
-          text: msgData!.text,
-          pushName: msgData!.senderName,
-          attribution,
-          externalMessageId: msgData!.messageId,
-          sendReply: async (replyPhone, replyText) => {
-            if (capturedConfig.uazapiServerUrl && capturedConfig.uazapiInstanceToken) {
-              const res = await sendUazapiMessage(
-                capturedConfig.uazapiServerUrl!,
-                capturedConfig.uazapiInstanceToken!,
-                replyPhone,
-                replyText
-              );
-              return { success: res.ok, error: res.ok ? undefined : res.error };
-            }
-            return { success: false, error: "Uazapi nao configurado" };
-          },
-        })
-      )
-      .catch((err) => {
+    after(async () => {
+      try {
+        const result = await webhookQueue.enqueue(() =>
+          processIncomingMessage({
+            userId: capturedConfig.userId,
+            phone,
+            text: msgData!.text,
+            pushName: msgData!.senderName,
+            attribution,
+            externalMessageId: msgData!.messageId,
+            sendReply: async (replyPhone, replyText) => {
+              if (capturedConfig.uazapiServerUrl && capturedConfig.uazapiInstanceToken) {
+                const res = await sendUazapiMessage(
+                  capturedConfig.uazapiServerUrl!,
+                  capturedConfig.uazapiInstanceToken!,
+                  replyPhone,
+                  replyText
+                );
+                return { success: res.ok, error: res.ok ? undefined : res.error };
+              }
+              return { success: false, error: "Uazapi nao configurado" };
+            },
+          })
+        );
+        if (!result.success) {
+          await enqueueWebhookDLQ({
+            source: "uazapi",
+            rawPayload: payload,
+            error: result.error,
+            userId: capturedConfig.userId,
+            phone: maskPhone(phone),
+          });
+        }
+      } catch (err) {
         log.error("uazapi_queue_error", { err });
-        // Send to DLQ for replay
-        enqueueWebhookDLQ({
+        await enqueueWebhookDLQ({
           source: "uazapi",
           rawPayload: payload,
           error: err,
           userId: capturedConfig.userId,
           phone: maskPhone(phone),
         }).catch(() => {});
-      });
+      }
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
