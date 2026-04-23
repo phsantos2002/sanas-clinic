@@ -394,28 +394,25 @@ export async function GET(req: NextRequest) {
         const starred = searchParams.get("starred") === "true";
         const afterTs = searchParams.get("afterTs");
 
-        // Uazapi /message/find expects an EXACT string match for chatid.
-        // The $in operator we tried earlier was being silently ignored, so the
-        // upstream returned the entire mailbox (or empty depending on path).
-        // Modern WhatsApp uses "@s.whatsapp.net" suffix; groups use "@g.us".
+        // Uazapi /message/find: probe diagnostic confirmed that:
+        //   - chatid: "string" → 0 messages (filter is misinterpreted)
+        //   - chatid: { $in: ["..."] } → 5 messages ✓
+        // So we use $in even with a single value. Includes legacy "@c.us" alias
+        // for older messages that may have been stored before the schema migration.
         const phoneOnly = chatid.split("@")[0];
         const isGroup = chatid.includes("@g.us");
-        const primaryChatId = isGroup ? chatid : `${phoneOnly}@s.whatsapp.net`;
+        const chatIdVariants = isGroup
+          ? [chatid]
+          : Array.from(new Set([`${phoneOnly}@s.whatsapp.net`, `${phoneOnly}@c.us`, chatid]));
 
         const body: Record<string, unknown> = {
-          chatid: primaryChatId,
+          chatid: { $in: chatIdVariants },
           limit,
           offset,
         };
         if (search) body.text = `~${search}`;
         if (starred) body.isStarred = true;
         if (afterTs) body.messageTimestamp = { $gt: parseInt(afterTs) };
-
-        // Variants used only by the defensive client-side filter below — keeps
-        // legacy "@c.us" values out of the result set if upstream ever returns them.
-        const chatIdVariants = isGroup
-          ? [chatid]
-          : Array.from(new Set([`${phoneOnly}@s.whatsapp.net`, `${phoneOnly}@c.us`, chatid]));
 
         const data = await uazapi(config.serverUrl, config.token, "POST", "/message/find", body);
         const rawMessages = Array.isArray(data?.messages)
@@ -451,7 +448,11 @@ export async function GET(req: NextRequest) {
         if (chatid) {
           const phoneOnly = chatid.split("@")[0];
           const isGroup = chatid.includes("@g.us");
-          body.chatid = isGroup ? chatid : `${phoneOnly}@s.whatsapp.net`;
+          body.chatid = {
+            $in: isGroup
+              ? [chatid]
+              : Array.from(new Set([`${phoneOnly}@s.whatsapp.net`, `${phoneOnly}@c.us`, chatid])),
+          };
         }
         const data = await uazapi(config.serverUrl, config.token, "POST", "/message/find", body);
         return NextResponse.json({ messages: data.messages ?? data ?? [] });
@@ -464,7 +465,11 @@ export async function GET(req: NextRequest) {
         const phoneOnly = chatid.split("@")[0];
         const isGroup = chatid.includes("@g.us");
         const body: Record<string, unknown> = {
-          chatid: isGroup ? chatid : `${phoneOnly}@s.whatsapp.net`,
+          chatid: {
+            $in: isGroup
+              ? [chatid]
+              : Array.from(new Set([`${phoneOnly}@s.whatsapp.net`, `${phoneOnly}@c.us`, chatid])),
+          },
           limit,
         };
         if (mediaType) {

@@ -534,11 +534,24 @@ function DiagnosticTab() {
             )}
 
             {aiHealth.webhookUrl.matches && aiHealth.msgsReceivedLast24h === 0 && (
-              <p className="text-[11px] text-rose-800 bg-white rounded-lg p-2 mt-2 border border-rose-100">
-                Webhook URL está correto, mas nenhuma mensagem chegou nas últimas 24h. Tente: (1)
-                mandar uma mensagem teste pro WhatsApp; (2) checar logs do Vercel; (3) verificar se
-                Uazapi está reenviando webhooks.
-              </p>
+              <div className="bg-white rounded-lg p-2 mt-2 border border-rose-100 space-y-2">
+                <p className="text-[11px] text-rose-800">
+                  Webhook URL está correto, mas nenhuma mensagem chegou nas últimas 24h. O Uazapi
+                  pode ter parado de disparar eventos — re-registre o webhook para forçar o upstream
+                  a voltar a enviar.
+                </p>
+                <button
+                  onClick={handleSyncWebhook}
+                  disabled={syncingWebhook}
+                  className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-medium hover:bg-rose-700 disabled:opacity-50"
+                >
+                  {syncingWebhook ? "Re-registrando..." : "Re-registrar webhook no Uazapi"}
+                </button>
+                <p className="text-[10px] text-slate-500">
+                  Após re-registrar, mande uma mensagem teste pro WhatsApp e rode o diagnóstico
+                  novamente — &quot;Mensagens recebidas (24h)&quot; deve subir pra 1+.
+                </p>
+              </div>
             )}
           </div>
         )}
