@@ -407,6 +407,9 @@ function LGPDTab() {
 function DiagnosticTab() {
   const [running, setRunning] = useState(false);
   const [syncingWebhook, setSyncingWebhook] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [webhookTestResult, setWebhookTestResult] = useState<any>(null);
   const [result, setResult] = useState<unknown>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -444,6 +447,24 @@ function DiagnosticTab() {
       toast.error(err instanceof Error ? err.message : String(err));
     }
     setSyncingWebhook(false);
+  }
+
+  async function handleTestWebhook() {
+    setTestingWebhook(true);
+    setWebhookTestResult(null);
+    try {
+      const res = await fetch("/api/whatsapp/test-webhook", { method: "POST" });
+      const data = await res.json();
+      setWebhookTestResult(data);
+      if (data.messagePersisted) {
+        toast.success("Webhook local OK — problema é o Uazapi não enviar");
+      } else {
+        toast.error(data.interpretation ?? "Falha no teste");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+    setTestingWebhook(false);
   }
 
   function handleCopy() {
@@ -536,21 +557,64 @@ function DiagnosticTab() {
             {aiHealth.webhookUrl.matches && aiHealth.msgsReceivedLast24h === 0 && (
               <div className="bg-white rounded-lg p-2 mt-2 border border-rose-100 space-y-2">
                 <p className="text-[11px] text-rose-800">
-                  Webhook URL está correto, mas nenhuma mensagem chegou nas últimas 24h. O Uazapi
-                  pode ter parado de disparar eventos — re-registre o webhook para forçar o upstream
-                  a voltar a enviar.
+                  Webhook URL está correto, mas nenhuma mensagem chegou nas últimas 24h. Pode ser o
+                  Uazapi parado de enviar OU o Vercel rejeitando POSTs externos.
                 </p>
-                <button
-                  onClick={handleSyncWebhook}
-                  disabled={syncingWebhook}
-                  className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-medium hover:bg-rose-700 disabled:opacity-50"
-                >
-                  {syncingWebhook ? "Re-registrando..." : "Re-registrar webhook no Uazapi"}
-                </button>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={handleSyncWebhook}
+                    disabled={syncingWebhook}
+                    className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-medium hover:bg-rose-700 disabled:opacity-50"
+                  >
+                    {syncingWebhook ? "Re-registrando..." : "Re-registrar webhook no Uazapi"}
+                  </button>
+                  <button
+                    onClick={handleTestWebhook}
+                    disabled={testingWebhook}
+                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {testingWebhook ? "Testando..." : "Testar webhook local (simulação)"}
+                  </button>
+                </div>
                 <p className="text-[10px] text-slate-500">
-                  Após re-registrar, mande uma mensagem teste pro WhatsApp e rode o diagnóstico
-                  novamente — &quot;Mensagens recebidas (24h)&quot; deve subir pra 1+.
+                  &quot;Testar webhook local&quot; faz POST simulado no nosso
+                  /api/webhook/evolution. Se passar, o problema é externo (Uazapi não envia). Se
+                  falhar, é nosso lado (provavelmente proteção de deployment Vercel).
                 </p>
+
+                {webhookTestResult && (
+                  <div
+                    className={`rounded-lg p-2 mt-2 text-[11px] border ${
+                      webhookTestResult.messagePersisted
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                        : "bg-amber-50 border-amber-200 text-amber-800"
+                    }`}
+                  >
+                    <div className="font-semibold">{webhookTestResult.interpretation}</div>
+                    <ul className="mt-1 space-y-0.5 text-[10px]">
+                      <li>
+                        HTTP: <b>{webhookTestResult.httpStatus ?? "(falha de rede)"}</b>
+                      </li>
+                      <li>
+                        Duração: <b>{webhookTestResult.durationMs}ms</b>
+                      </li>
+                      <li>
+                        Mensagem persistida:{" "}
+                        <b>{webhookTestResult.messagePersisted ? "sim" : "não"}</b>
+                      </li>
+                      {webhookTestResult.networkError && (
+                        <li className="text-rose-700">
+                          Erro de rede: {webhookTestResult.networkError}
+                        </li>
+                      )}
+                      {webhookTestResult.httpBody && (
+                        <li className="break-all">
+                          Resposta: <code>{webhookTestResult.httpBody.slice(0, 200)}</code>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </div>
