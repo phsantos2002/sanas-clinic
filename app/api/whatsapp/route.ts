@@ -359,24 +359,44 @@ export async function GET(req: NextRequest) {
         const starred = searchParams.get("starred") === "true";
         const afterTs = searchParams.get("afterTs");
 
-        // Uazapi schema uses `wa_*` field names. Some endpoints accept both, but
-        // /message/find filters strictly on the schema field — use wa_chatid.
-        const body: Record<string, unknown> = { wa_chatid: chatid, limit, offset };
+        // Message.chatid in Uazapi can be stored as "@s.whatsapp.net" OR legacy
+        // "@c.us" depending on history age. Match both via $in. Group ids use
+        // "@g.us" with no aliases.
+        const phoneOnly = chatid.split("@")[0];
+        const isGroup = chatid.includes("@g.us");
+        const chatIdVariants = isGroup
+          ? [chatid]
+          : Array.from(new Set([`${phoneOnly}@s.whatsapp.net`, `${phoneOnly}@c.us`, chatid]));
+
+        const body: Record<string, unknown> = {
+          chatid: { $in: chatIdVariants },
+          limit,
+          offset,
+        };
         if (search) body.text = `~${search}`;
         if (starred) body.isStarred = true;
         if (afterTs) body.messageTimestamp = { $gt: parseInt(afterTs) };
 
         const data = await uazapi(config.serverUrl, config.token, "POST", "/message/find", body);
-        const messages = Array.isArray(data?.messages)
+        const rawMessages = Array.isArray(data?.messages)
           ? data.messages
           : Array.isArray(data)
             ? data
             : [];
 
+        // Defensive server-side filter: only return messages whose chatid matches
+        // one of our expected variants. Defends against Uazapi ignoring the
+        // filter and returning a broader result set.
+        const expectedSet = new Set(chatIdVariants);
+        const messages = rawMessages.filter((m: Record<string, unknown>) => {
+          const mid = m?.chatid as string | undefined;
+          if (!mid) return false; // drop messages without chatid (cannot verify)
+          return expectedSet.has(mid);
+        });
+
         return NextResponse.json({
           messages,
-          total: data?.pagination?.total ?? messages.length,
-          // Surface upstream errors to the client for diagnosis
+          total: messages.length,
           ...(data?.__error
             ? { upstreamError: String(data.__error), upstreamStatus: data.__status }
             : {}),
@@ -388,7 +408,15 @@ export async function GET(req: NextRequest) {
         const chatid = searchParams.get("chatid");
         const limit = parseInt(searchParams.get("limit") ?? "100");
         const body: Record<string, unknown> = { isStarred: true, limit };
-        if (chatid) body.wa_chatid = chatid;
+        if (chatid) {
+          const phoneOnly = chatid.split("@")[0];
+          const isGroup = chatid.includes("@g.us");
+          body.chatid = {
+            $in: isGroup
+              ? [chatid]
+              : Array.from(new Set([`${phoneOnly}@s.whatsapp.net`, `${phoneOnly}@c.us`, chatid])),
+          };
+        }
         const data = await uazapi(config.serverUrl, config.token, "POST", "/message/find", body);
         return NextResponse.json({ messages: data.messages ?? data ?? [] });
       }
@@ -397,7 +425,16 @@ export async function GET(req: NextRequest) {
         const chatid = searchParams.get("chatid") ?? "";
         const mediaType = searchParams.get("mediaType");
         const limit = parseInt(searchParams.get("limit") ?? "50");
-        const body: Record<string, unknown> = { wa_chatid: chatid, limit };
+        const phoneOnly = chatid.split("@")[0];
+        const isGroup = chatid.includes("@g.us");
+        const body: Record<string, unknown> = {
+          chatid: {
+            $in: isGroup
+              ? [chatid]
+              : Array.from(new Set([`${phoneOnly}@s.whatsapp.net`, `${phoneOnly}@c.us`, chatid])),
+          },
+          limit,
+        };
         if (mediaType) {
           body.messageType = mediaType;
         } else {

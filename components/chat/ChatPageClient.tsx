@@ -468,10 +468,19 @@ export function ChatPageClient() {
           if (!append) toast.error(`Uazapi: ${data.upstreamError}`);
         }
 
-        const msgs = (data.messages ?? []).map((m: Record<string, unknown>) => ({
-          ...m,
-          text: (m.text as string) || (m.caption as string) || "",
-        }));
+        // Defensive filter: drop any message whose chatid doesn't match the
+        // requested conversation (defends against Uazapi cross-chat leakage).
+        const expectedPhone = chatId.split("@")[0];
+        const msgs = (data.messages ?? [])
+          .filter((m: Record<string, unknown>) => {
+            const mid = m?.chatid as string | undefined;
+            if (!mid) return false;
+            return mid.split("@")[0] === expectedPhone;
+          })
+          .map((m: Record<string, unknown>) => ({
+            ...m,
+            text: (m.text as string) || (m.caption as string) || "",
+          }));
         msgs.sort((a: Message, b: Message) => a.messageTimestamp - b.messageTimestamp);
 
         if (append) {
@@ -503,6 +512,7 @@ export function ChatPageClient() {
   const checkNewMessages = useCallback(async () => {
     if (!selectedChat || !lastMsgTsRef.current) return;
     const chatIdAtStart = selectedChat.wa_chatid;
+    const phoneAtStart = chatIdAtStart.split("@")[0];
     try {
       const res = await fetch(
         `/api/whatsapp?action=messages&chatid=${encodeURIComponent(chatIdAtStart)}&limit=50&afterTs=${lastMsgTsRef.current}`
@@ -510,10 +520,17 @@ export function ChatPageClient() {
       // Ignore result if user switched chats while we were fetching
       if (selectedChat.wa_chatid !== chatIdAtStart) return;
       const data = await res.json();
-      const newMsgs = (data.messages ?? []).map((m: Record<string, unknown>) => ({
-        ...m,
-        text: (m.text as string) || (m.caption as string) || "",
-      }));
+      const newMsgs = (data.messages ?? [])
+        // Defensive client-side filter: drop msgs that don't belong to this chat
+        .filter((m: Record<string, unknown>) => {
+          const mid = m?.chatid as string | undefined;
+          if (!mid) return false;
+          return mid.split("@")[0] === phoneAtStart;
+        })
+        .map((m: Record<string, unknown>) => ({
+          ...m,
+          text: (m.text as string) || (m.caption as string) || "",
+        }));
       if (newMsgs.length > 0) {
         newMsgs.sort((a: Message, b: Message) => a.messageTimestamp - b.messageTimestamp);
         setMessages((prev) => {
