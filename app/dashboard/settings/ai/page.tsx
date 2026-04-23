@@ -1,10 +1,16 @@
 import { getAIResponseConfig, saveAIResponseConfig } from "@/app/actions/aiResponseConfig";
 import { getAIConfig } from "@/app/actions/aiConfig";
+import { listFlows } from "@/app/actions/chatbot";
 import { AIResponseConfigForm } from "@/components/settings/AIResponseConfigForm";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
+import { ChatbotFlowsSection } from "@/components/settings/ChatbotFlowsSection";
 
 export default async function AISettingsPage() {
-  const [responseConfig, aiConfig] = await Promise.all([getAIResponseConfig(), getAIConfig()]);
+  const [responseConfig, aiConfig, flows] = await Promise.all([
+    getAIResponseConfig(),
+    getAIConfig(),
+    listFlows(),
+  ]);
 
   return (
     <div className="space-y-4 max-w-2xl">
@@ -44,6 +50,9 @@ export default async function AISettingsPage() {
         </div>
         <AIResponseConfigForm initial={responseConfig} onSave={saveAIResponseConfig} />
       </div>
+
+      {/* Chatbot flows */}
+      <ChatbotFlowsSection flows={flows} />
     </div>
   );
 }
