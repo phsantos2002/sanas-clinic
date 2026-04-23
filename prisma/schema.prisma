@@ -185,8 +185,8 @@ model Lead {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
+  @@unique([userId, phone])
   @@index([userId])
-  @@index([userId, phone])
   @@index([stageId])
   @@index([userId, createdAt])
   @@index([userId, score])
