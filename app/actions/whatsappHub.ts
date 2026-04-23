@@ -364,11 +364,45 @@ export async function executeBroadcast(
   });
 
   const { sendMessage } = await import("@/services/whatsappService");
+  const { getUazapiStatus } = await import("@/services/whatsappUazapi");
 
   let sent = 0;
   let failed = 0;
 
-  for (const lead of leads) {
+  // Backpressure config: delay between sends + periodic instance health check.
+  // Default 3s avoids WhatsApp throttling on bulk runs (1s was too aggressive).
+  const DELAY_MS = 3000;
+  const HEALTH_CHECK_EVERY = 50;
+
+  for (let i = 0; i < leads.length; i++) {
+    const lead = leads[i];
+
+    // Periodically check instance health; pause if disconnected.
+    if (
+      i > 0 &&
+      i % HEALTH_CHECK_EVERY === 0 &&
+      waConfig.provider === "uazapi" &&
+      waConfig.uazapiServerUrl &&
+      waConfig.uazapiInstanceToken
+    ) {
+      const status = await getUazapiStatus(waConfig.uazapiServerUrl, waConfig.uazapiInstanceToken);
+      if (!status.connected) {
+        await prisma.broadcastCampaign.update({
+          where: { id: campaignId },
+          data: {
+            status: "paused",
+            sentCount: sent,
+            failedCount: failed,
+          },
+        });
+        revalidatePath("/dashboard");
+        return {
+          success: false,
+          error: `Instance desconectada apos ${sent} envios — campanha pausada. Reconecte e retome.`,
+        };
+      }
+    }
+
     const text = campaign.message
       .replace(/\{\{nome\}\}/gi, lead.name.split(" ")[0])
       .replace(/\{\{nome_completo\}\}/gi, lead.name)
@@ -388,8 +422,9 @@ export async function executeBroadcast(
       failed++;
     }
 
-    // Rate limit: 1 message per second to avoid WhatsApp blocks
-    await new Promise((r) => setTimeout(r, 1000));
+    if (i < leads.length - 1) {
+      await new Promise((r) => setTimeout(r, DELAY_MS));
+    }
   }
 
   await prisma.broadcastCampaign.update({
