@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import {
   Search,
   MessageCircle,
@@ -326,36 +326,61 @@ export function ChatPageClient() {
     toast.success(prev ? "IA pausada — vendedor responde" : "IA ativada");
   }, [chatLeadId, chatLeadAi, togglingAi]);
 
-  // Fetch chats — paginates through ALL chats (personal + groups + archived)
+  // Track in-flight request so we can abort when filters change / unmount
+  const fetchChatsAbortRef = useRef<AbortController | null>(null);
+
+  // Fetch chats — paginates in parallel chunks of 5 pages until exhausted.
+  // Aborts any previous in-flight fetch when called again.
   const fetchChats = useCallback(
     async (silent = false) => {
+      // Cancel previous in-flight request to avoid stale results overwriting new state
+      fetchChatsAbortRef.current?.abort();
+      const controller = new AbortController();
+      fetchChatsAbortRef.current = controller;
+
       if (!silent) setLoading(true);
       try {
         const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
         const unreadParam = chatFilter === "unread" ? "&unread=true" : "";
 
         const PAGE = 200;
-        const MAX_PAGES = 25; // safety cap: up to 5000 chats
-        let offset = 0;
+        const MAX_PAGES = 25; // up to 5000 chats
+        const PARALLEL = 5; // fetch 5 pages at a time
         const all: Chat[] = [];
 
-        for (let i = 0; i < MAX_PAGES; i++) {
-          const res = await fetch(
-            `/api/whatsapp?action=chats&limit=${PAGE}&offset=${offset}${searchParam}${unreadParam}`
+        for (let wave = 0; wave < MAX_PAGES; wave += PARALLEL) {
+          const offsets = Array.from({ length: PARALLEL }, (_, k) => (wave + k) * PAGE).filter(
+            (o) => o / PAGE < MAX_PAGES
           );
-          const data = await res.json();
-          const page: Chat[] = data.chats ?? [];
-          all.push(...page);
+          const responses = await Promise.all(
+            offsets.map((offset) =>
+              fetch(
+                `/api/whatsapp?action=chats&limit=${PAGE}&offset=${offset}${searchParam}${unreadParam}`,
+                { signal: controller.signal }
+              )
+                .then((r) => r.json())
+                .catch(() => ({ chats: [] }))
+            )
+          );
+          if (controller.signal.aborted) return; // bail out — newer fetch in progress
+
+          let exhausted = false;
+          for (const data of responses) {
+            const page: Chat[] = data.chats ?? [];
+            all.push(...page);
+            if (page.length < PAGE) exhausted = true;
+          }
           if (!silent && all.length > 0) setChats([...all]);
-          if (page.length < PAGE) break;
-          offset += PAGE;
+          if (exhausted) break;
         }
 
-        setChats(all);
-      } catch {
+        if (!controller.signal.aborted) setChats(all);
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
         if (!silent) setChats([]);
+      } finally {
+        if (!controller.signal.aborted && !silent) setLoading(false);
       }
-      if (!silent) setLoading(false);
     },
     [search, chatFilter]
   );
@@ -370,17 +395,25 @@ export function ChatPageClient() {
     return () => clearInterval(interval);
   }, [fetchChats]);
 
-  // Fetch messages
+  // Fetch messages — aborts on chat switch
+  const fetchMessagesAbortRef = useRef<AbortController | null>(null);
   const fetchMessages = useCallback(
     async (chatId: string, offset = 0, append = false) => {
+      // Cancel any previous in-flight messages fetch
+      fetchMessagesAbortRef.current?.abort();
+      const controller = new AbortController();
+      fetchMessagesAbortRef.current = controller;
+
       if (!append) setLoadingMsgs(true);
       else setLoadingMore(true);
 
       try {
         const searchParam = msgSearch ? `&search=${encodeURIComponent(msgSearch)}` : "";
         const res = await fetch(
-          `/api/whatsapp?action=messages&chatid=${encodeURIComponent(chatId)}&limit=${MSG_PAGE_SIZE}&offset=${offset}${searchParam}`
+          `/api/whatsapp?action=messages&chatid=${encodeURIComponent(chatId)}&limit=${MSG_PAGE_SIZE}&offset=${offset}${searchParam}`,
+          { signal: controller.signal }
         );
+        if (controller.signal.aborted) return;
         const data = await res.json();
 
         if (!append) {
@@ -418,12 +451,15 @@ export function ChatPageClient() {
         setMsgTotal(data.total ?? msgs.length);
         setMsgOffset(offset + msgs.length);
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
         console.error("[chat] fetchMessages exception", err);
         if (!append) toast.error("Falha ao carregar mensagens");
       }
 
-      setLoadingMsgs(false);
-      setLoadingMore(false);
+      if (!controller.signal.aborted) {
+        setLoadingMsgs(false);
+        setLoadingMore(false);
+      }
     },
     [msgSearch]
   );
@@ -431,10 +467,13 @@ export function ChatPageClient() {
   // Check for new messages in the selected chat (extracted so we can also call it on focus)
   const checkNewMessages = useCallback(async () => {
     if (!selectedChat || !lastMsgTsRef.current) return;
+    const chatIdAtStart = selectedChat.wa_chatid;
     try {
       const res = await fetch(
-        `/api/whatsapp?action=messages&chatid=${encodeURIComponent(selectedChat.wa_chatid)}&limit=50&afterTs=${lastMsgTsRef.current}`
+        `/api/whatsapp?action=messages&chatid=${encodeURIComponent(chatIdAtStart)}&limit=50&afterTs=${lastMsgTsRef.current}`
       );
+      // Ignore result if user switched chats while we were fetching
+      if (selectedChat.wa_chatid !== chatIdAtStart) return;
       const data = await res.json();
       const newMsgs = (data.messages ?? []).map((m: Record<string, unknown>) => ({
         ...m,
@@ -1590,7 +1629,7 @@ export function ChatPageClient() {
 
 // ─── Chat Item Component ───
 
-function ChatItem({
+function ChatItemImpl({
   chat,
   isSelected,
   onSelect,
@@ -1750,3 +1789,12 @@ function ChatItem({
     </div>
   );
 }
+
+// Memoized to prevent re-rendering all 5000 chat rows on every poll tick.
+const ChatItem = memo(ChatItemImpl, (prev, next) => {
+  return (
+    prev.chat === next.chat &&
+    prev.isSelected === next.isSelected &&
+    prev.showMenu === next.showMenu
+  );
+});
