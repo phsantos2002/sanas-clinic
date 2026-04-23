@@ -5,6 +5,9 @@ import { processIncomingMessage } from "@/services/webhookProcessor";
 import { logWebhook } from "@/app/api/debug/webhook-log/route";
 import { logger } from "@/lib/logger";
 import { webhookQueue } from "@/lib/queue";
+import { uazapiPayloadSchema } from "@/lib/uazapi/schemas";
+import { enqueueWebhookDLQ } from "@/lib/uazapi/dlq";
+import { maskPhone } from "@/lib/phone";
 
 /**
  * Uazapi Webhook Handler
@@ -100,13 +103,37 @@ export async function POST(req: NextRequest) {
     } catch {
       log.error("uazapi_json_parse_error");
       logWebhook({ error: "JSON parse error", raw: raw.slice(0, 500) });
+      // Bad JSON: still 200 (Uazapi will not retry) but DLQ for inspection
+      await enqueueWebhookDLQ({
+        source: "uazapi",
+        rawPayload: { raw: raw.slice(0, 2000) },
+        error: "JSON parse error",
+      });
       return NextResponse.json({ ok: true });
+    }
+
+    // Validate payload shape via Zod (lenient: passthrough unknown fields)
+    const parsed = uazapiPayloadSchema.safeParse(payload);
+    if (!parsed.success) {
+      log.warn("uazapi_payload_invalid_shape", {
+        issues: parsed.error.issues.slice(0, 3),
+      });
+      // Don't DLQ shape errors yet — fall through to extractMessageData which is more lenient.
+      // Only DLQ if we can't even extract message data below.
     }
 
     const msgData = extractMessageData(payload);
 
     if (!msgData) {
       log.debug("uazapi_unrecognized_payload", { eventType: payload.EventType });
+      // If we couldn't extract AND the shape was invalid, DLQ for review
+      if (!parsed.success) {
+        await enqueueWebhookDLQ({
+          source: "uazapi",
+          rawPayload: payload,
+          error: `Invalid payload shape: ${parsed.error.issues[0]?.message ?? "unknown"}`,
+        });
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -216,11 +243,27 @@ export async function POST(req: NextRequest) {
           },
         })
       )
-      .catch((err) => log.error("uazapi_queue_error", { err }));
+      .catch((err) => {
+        log.error("uazapi_queue_error", { err });
+        // Send to DLQ for replay
+        enqueueWebhookDLQ({
+          source: "uazapi",
+          rawPayload: payload,
+          error: err,
+          userId: capturedConfig.userId,
+          phone: maskPhone(phone),
+        }).catch(() => {});
+      });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     log.error("uazapi_general_error", { err });
+    // General handler error — DLQ raw text for postmortem
+    enqueueWebhookDLQ({
+      source: "uazapi",
+      rawPayload: { error: "general_handler_error" },
+      error: err,
+    }).catch(() => {});
     return NextResponse.json({ ok: true });
   }
 }

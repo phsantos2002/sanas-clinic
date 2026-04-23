@@ -301,6 +301,25 @@ model IdempotencyKey {
   @@index([expiresAt])
 }
 
+// Dead-letter queue for webhooks that failed processing after all retries.
+// Allows manual inspection and replay.
+model WebhookDLQ {
+  id           String    @id @default(cuid())
+  source       String // "uazapi" | "meta_cloud" | "meta_lead_ads"
+  rawPayload   Json
+  errorMessage String
+  errorStack   String?
+  attempts     Int       @default(1)
+  // Optional: parsed correlation fields for filtering in admin UI
+  userId       String?
+  phone        String?
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime? // set when admin marks as handled / replayed
+
+  @@index([source, createdAt])
+  @@index([userId, resolvedAt])
+}
+
 model PixelEvent {
   id        String   @id @default(cuid())
   leadId    String
