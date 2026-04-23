@@ -203,21 +203,42 @@ async function uazapi(
 
 // ── Avatar cache (DB-backed, persists across cold starts) ─────
 // Avoids re-querying Uazapi /chat/details for every chat on each poll.
-const AVATAR_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+//
+// TTL strategy:
+//   - Real avatar (imagePreview or image present): 7 days — change is rare
+//   - Empty avatar (both blank): 6 hours — re-tries periodically in case the
+//     contact later becomes visible (privacy unlocked, or Uazapi sync caught up)
+const AVATAR_TTL_REAL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+const AVATAR_TTL_EMPTY_MS = 1000 * 60 * 60 * 6; // 6 hours
 
 async function loadAvatarCache(
   userId: string,
   phones: string[]
 ): Promise<Map<string, { imagePreview: string; image: string }>> {
   if (phones.length === 0) return new Map();
-  const minFetchedAt = new Date(Date.now() - AVATAR_TTL_MS);
+  // Pull both real and empty entries; we use empty entries as "skip retry"
+  // signals (within the 6h window). Real entries are returned; empty ones
+  // are present in the DB but excluded from the result map.
+  const realCutoff = new Date(Date.now() - AVATAR_TTL_REAL_MS);
+  const emptyCutoff = new Date(Date.now() - AVATAR_TTL_EMPTY_MS);
   const rows = await prisma.whatsAppAvatarCache.findMany({
     where: {
       userId,
       phone: { in: phones },
-      fetchedAt: { gte: minFetchedAt },
-      // Only return entries that actually have an avatar; empties are not cached.
-      OR: [{ imagePreview: { not: "" } }, { image: { not: "" } }],
+      OR: [
+        // Real avatars within 7d
+        {
+          fetchedAt: { gte: realCutoff },
+          OR: [{ imagePreview: { not: "" } }, { image: { not: "" } }],
+        },
+        // Empty marker within 6h — used to skip the retry; we don't return them
+        // as resolved avatars so the chat shows initials, but we suppress refetch.
+        {
+          fetchedAt: { gte: emptyCutoff },
+          imagePreview: "",
+          image: "",
+        },
+      ],
     },
     select: { phone: true, imagePreview: true, image: true },
   });
@@ -229,12 +250,10 @@ async function saveAvatarCache(
   entries: { phone: string; imagePreview: string; image: string }[]
 ) {
   if (entries.length === 0) return;
-  // Skip empty avatars — we want to retry these on the next request rather than
-  // permanently treating "no avatar yet" as a final answer.
-  const real = entries.filter((e) => e.imagePreview || e.image);
-  if (real.length === 0) return;
+  // Persist BOTH real and empty entries now. Real entries serve avatars; empty
+  // entries serve as a "don't retry for 6h" marker (loadAvatarCache filters by TTL).
   await Promise.allSettled(
-    real.map((e) =>
+    entries.map((e) =>
       prisma.whatsAppAvatarCache.upsert({
         where: { userId_phone: { userId, phone: e.phone } },
         update: { imagePreview: e.imagePreview, image: e.image, fetchedAt: new Date() },
@@ -308,8 +327,10 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        // Hydrate from DB cache first
+        // Hydrate from DB cache first. The cache returns BOTH real avatars and
+        // recent "empty" markers — we use the marker to skip the upstream retry.
         const cache = await loadAvatarCache(config.userId, phonesToCheck);
+        const cachedPhones = new Set<string>();
         for (const chat of chats) {
           if (!chat.wa_chatid) continue;
           const phone = (chat.wa_chatid as string).split("@")[0];
@@ -318,14 +339,18 @@ export async function GET(req: NextRequest) {
             if (cached) {
               chat.imagePreview = cached.imagePreview;
               chat.image = cached.image;
+              cachedPhones.add(phone); // skip re-fetch even if cached value is empty
             }
           }
         }
 
-        // Enrich any remaining (cache miss) chats with profile pics, batched.
-        const toEnrich = chats.filter(
-          (c: Record<string, unknown>) => !c.imagePreview && !c.image && c.wa_chatid
-        );
+        // Enrich only chats that have NO avatar AND were NOT in the cache (real or empty marker).
+        const toEnrich = chats.filter((c: Record<string, unknown>) => {
+          if (!c.wa_chatid) return false;
+          if (c.imagePreview || c.image) return false;
+          const phone = (c.wa_chatid as string).split("@")[0];
+          return !cachedPhones.has(phone);
+        });
         const newlyFetched: { phone: string; imagePreview: string; image: string }[] = [];
         const ENRICH_CONCURRENCY = 25;
         for (let i = 0; i < toEnrich.length; i += ENRICH_CONCURRENCY) {

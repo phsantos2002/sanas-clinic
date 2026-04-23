@@ -224,6 +224,22 @@ function apiPost(action: string, body: Record<string, unknown>) {
   });
 }
 
+// Decide the display name of a chat, handling group quirks:
+// - For groups, wa_contactName often contains the bot/sender phone instead of
+//   being empty, so wa_groupSubject must take precedence.
+// - For personal chats, wa_contactName (the saved contact name) is best.
+function resolveChatName(chat: {
+  wa_isGroup?: boolean;
+  wa_contactName?: string;
+  wa_groupSubject?: string;
+  phone?: string;
+}): string {
+  if (chat.wa_isGroup) {
+    return chat.wa_groupSubject || chat.wa_contactName || chat.phone || "Grupo";
+  }
+  return chat.wa_contactName || chat.phone || "Sem nome";
+}
+
 export function ChatPageClient() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -365,12 +381,14 @@ export function ChatPageClient() {
 
   // Track in-flight request so we can abort when filters change / unmount
   const fetchChatsAbortRef = useRef<AbortController | null>(null);
+  const PAGE_SIZE = 200;
+  const [hasMoreChats, setHasMoreChats] = useState(true);
+  const [loadingMoreChats, setLoadingMoreChats] = useState(false);
 
-  // Fetch chats — paginates in parallel chunks of 5 pages until exhausted.
-  // Aborts any previous in-flight fetch when called again.
+  // Fetch FIRST page only on mount/filter change. Polling reuses this and
+  // only refreshes the top — deeper pages stay cached. Aborts previous request.
   const fetchChats = useCallback(
     async (silent = false) => {
-      // Cancel previous in-flight request to avoid stale results overwriting new state
       fetchChatsAbortRef.current?.abort();
       const controller = new AbortController();
       fetchChatsAbortRef.current = controller;
@@ -379,39 +397,25 @@ export function ChatPageClient() {
       try {
         const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
         const unreadParam = chatFilter === "unread" ? "&unread=true" : "";
-
-        const PAGE = 200;
-        const MAX_PAGES = 25; // up to 5000 chats
-        const PARALLEL = 5; // fetch 5 pages at a time
-        const all: Chat[] = [];
-
-        for (let wave = 0; wave < MAX_PAGES; wave += PARALLEL) {
-          const offsets = Array.from({ length: PARALLEL }, (_, k) => (wave + k) * PAGE).filter(
-            (o) => o / PAGE < MAX_PAGES
-          );
-          const responses = await Promise.all(
-            offsets.map((offset) =>
-              fetch(
-                `/api/whatsapp?action=chats&limit=${PAGE}&offset=${offset}${searchParam}${unreadParam}`,
-                { signal: controller.signal }
-              )
-                .then((r) => r.json())
-                .catch(() => ({ chats: [] }))
-            )
-          );
-          if (controller.signal.aborted) return; // bail out — newer fetch in progress
-
-          let exhausted = false;
-          for (const data of responses) {
-            const page: Chat[] = data.chats ?? [];
-            all.push(...page);
-            if (page.length < PAGE) exhausted = true;
-          }
-          if (!silent && all.length > 0) setChats([...all]);
-          if (exhausted) break;
+        const res = await fetch(
+          `/api/whatsapp?action=chats&limit=${PAGE_SIZE}&offset=0${searchParam}${unreadParam}`,
+          { signal: controller.signal }
+        );
+        if (controller.signal.aborted) return;
+        const data = await res.json();
+        const page: Chat[] = data.chats ?? [];
+        if (silent) {
+          // Merge: top page replaced; keep any deeper-loaded pages below
+          setChats((prev) => {
+            if (prev.length <= PAGE_SIZE) return page;
+            const topIds = new Set(page.map((c) => c.id || c.wa_chatid));
+            const deeper = prev.slice(PAGE_SIZE).filter((c) => !topIds.has(c.id || c.wa_chatid));
+            return [...page, ...deeper];
+          });
+        } else {
+          setChats(page);
+          setHasMoreChats(page.length >= PAGE_SIZE);
         }
-
-        if (!controller.signal.aborted) setChats(all);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         if (!silent) setChats([]);
@@ -421,6 +425,33 @@ export function ChatPageClient() {
     },
     [search, chatFilter]
   );
+
+  // Lazy-load: fetch next page when user scrolls near the bottom of the list.
+  const loadMoreChats = useCallback(async () => {
+    if (loadingMoreChats || !hasMoreChats) return;
+    setLoadingMoreChats(true);
+    try {
+      const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+      const unreadParam = chatFilter === "unread" ? "&unread=true" : "";
+      const res = await fetch(
+        `/api/whatsapp?action=chats&limit=${PAGE_SIZE}&offset=${chats.length}${searchParam}${unreadParam}`
+      );
+      const data = await res.json();
+      const page: Chat[] = data.chats ?? [];
+      if (page.length > 0) {
+        setChats((prev) => {
+          const seen = new Set(prev.map((c) => c.id || c.wa_chatid));
+          const fresh = page.filter((c) => !seen.has(c.id || c.wa_chatid));
+          return [...prev, ...fresh];
+        });
+      }
+      if (page.length < PAGE_SIZE) setHasMoreChats(false);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingMoreChats(false);
+    }
+  }, [chats.length, hasMoreChats, loadingMoreChats, search, chatFilter]);
 
   useEffect(() => {
     fetchChats();
@@ -830,7 +861,7 @@ export function ChatPageClient() {
     if (!forwardingMsg) return [];
     return chats.filter((c) => {
       if (!forwardSearch) return true;
-      const name = c.wa_contactName || c.wa_groupSubject || c.phone || "";
+      const name = resolveChatName(c);
       return name.toLowerCase().includes(forwardSearch.toLowerCase());
     });
   }, [chats, forwardingMsg, forwardSearch]);
@@ -1018,6 +1049,11 @@ export function ChatPageClient() {
               onMute={handleMuteChat}
             />
           ))}
+
+          {/* Lazy-load sentinel: triggers next page when visible */}
+          {hasMoreChats && chats.length > 0 && (
+            <ChatListSentinel onIntersect={loadMoreChats} loading={loadingMoreChats} />
+          )}
         </div>
       </div>
 
@@ -1035,12 +1071,7 @@ export function ChatPageClient() {
 
               <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center flex-shrink-0 relative">
                 <span className="text-sm font-bold text-slate-500 absolute inset-0 flex items-center justify-center">
-                  {getInitials(
-                    selectedChat.wa_contactName ||
-                      selectedChat.wa_groupSubject ||
-                      selectedChat.phone ||
-                      "?"
-                  )}
+                  {getInitials(resolveChatName(selectedChat) || "?")}
                 </span>
                 {(selectedChat.imagePreview || selectedChat.image) && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -1057,9 +1088,7 @@ export function ChatPageClient() {
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-900 truncate">
-                  {selectedChat.wa_contactName ||
-                    selectedChat.wa_groupSubject ||
-                    selectedChat.phone}
+                  {resolveChatName(selectedChat)}
                 </p>
                 <p className="text-[10px] text-slate-400 flex items-center gap-1">
                   {selectedChat.wa_chatid?.split("@")[0]}
@@ -1683,8 +1712,7 @@ export function ChatPageClient() {
             </div>
             <div className="flex-1 overflow-y-auto">
               {forwardChats.slice(0, 30).map((chat) => {
-                const name =
-                  chat.wa_contactName || chat.wa_groupSubject || chat.phone || "Sem nome";
+                const name = resolveChatName(chat);
                 return (
                   <button
                     key={chat.id || chat.wa_chatid}
@@ -2011,6 +2039,29 @@ function InteractiveComposer({
   );
 }
 
+// ─── Chat list sentinel — fires onIntersect when scrolled into view ───
+function ChatListSentinel({ onIntersect, loading }: { onIntersect: () => void; loading: boolean }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) onIntersect();
+      },
+      { rootMargin: "200px" }
+    );
+    obs.observe(node);
+    return () => obs.disconnect();
+  }, [onIntersect]);
+
+  return (
+    <div ref={ref} className="px-4 py-4 text-center text-xs text-slate-400">
+      {loading ? "Carregando mais conversas..." : "Role para carregar mais"}
+    </div>
+  );
+}
+
 // ─── Chat Item Component ───
 
 function ChatItemImpl({
@@ -2032,7 +2083,7 @@ function ChatItemImpl({
   onArchive: (chat: Chat) => void;
   onMute: (chat: Chat) => void;
 }) {
-  const name = chat.wa_contactName || chat.wa_groupSubject || chat.phone || "Sem nome";
+  const name = resolveChatName(chat);
   const lastMsg = chat.wa_lastMessageTextVote || "";
   const time = formatTime(chat.wa_lastMsgTimestamp);
   const pic = chat.imagePreview || chat.image;

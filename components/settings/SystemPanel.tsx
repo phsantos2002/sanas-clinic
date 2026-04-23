@@ -14,6 +14,8 @@ import {
   Search,
   Loader2,
   Info,
+  Stethoscope,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -24,7 +26,7 @@ import {
   type AuditEntry,
 } from "@/app/actions/system";
 
-type Tab = "dlq" | "audit" | "lgpd";
+type Tab = "dlq" | "audit" | "lgpd" | "diag";
 
 type Props = {
   dlq: DLQEntry[];
@@ -71,11 +73,16 @@ export function SystemPanel({ dlq, audit }: Props) {
           <ShieldX className="h-3.5 w-3.5" />
           LGPD
         </TabButton>
+        <TabButton active={tab === "diag"} onClick={() => setTab("diag")}>
+          <Stethoscope className="h-3.5 w-3.5" />
+          Diagnóstico WhatsApp
+        </TabButton>
       </div>
 
       {tab === "dlq" && <DLQTab entries={dlq} />}
       {tab === "audit" && <AuditTab entries={audit} />}
       {tab === "lgpd" && <LGPDTab />}
+      {tab === "diag" && <DiagnosticTab />}
     </div>
   );
 }
@@ -389,6 +396,125 @@ function LGPDTab() {
               </p>
             )}
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Diagnostic ──────────────────────────────────────────────
+
+function DiagnosticTab() {
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<unknown>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleRun() {
+    setRunning(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await fetch("/api/whatsapp/uazapi-debug");
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? `HTTP ${res.status}`);
+      } else {
+        setResult(data);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+    setRunning(false);
+  }
+
+  function handleCopy() {
+    if (!result) return;
+    navigator.clipboard.writeText(JSON.stringify(result, null, 2));
+    toast.success("JSON copiado");
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const interpretation = (result as any)?.interpretation;
+
+  return (
+    <div className="space-y-4 max-w-3xl">
+      <div className="bg-white border border-slate-100 rounded-2xl p-5 space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Diagnóstico Uazapi</h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Roda chamadas exploratórias contra sua instância Uazapi para investigar problemas de
+            carregamento de mensagens, status e endpoints disponíveis. Use o JSON para enviar ao
+            suporte da Uazapi se necessário.
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={handleRun}
+            disabled={running}
+            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {running ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Diagnosticando...
+              </>
+            ) : (
+              <>
+                <Stethoscope className="h-3.5 w-3.5" /> Rodar diagnóstico
+              </>
+            )}
+          </button>
+          {result != null && (
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm hover:bg-slate-50"
+            >
+              <Copy className="h-3.5 w-3.5" /> Copiar JSON
+            </button>
+          )}
+        </div>
+
+        {error && (
+          <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs text-rose-700">
+            {error}
+          </div>
+        )}
+
+        {interpretation && (
+          <div
+            className={`rounded-xl p-3 border ${
+              interpretation.hasAnyMessageHistory
+                ? "bg-emerald-50 border-emerald-200"
+                : "bg-amber-50 border-amber-200"
+            }`}
+          >
+            <p className="text-sm font-semibold text-slate-900 mb-1">Conclusão automática</p>
+            <p className="text-xs text-slate-700">{interpretation.likelyConclusion}</p>
+            <ul className="text-[11px] text-slate-600 mt-2 space-y-0.5">
+              <li>
+                Instância acessível: <b>{interpretation.instanceReachable ? "sim" : "não"}</b>
+              </li>
+              <li>
+                Histórico encontrado:{" "}
+                <b>
+                  {interpretation.hasAnyMessageHistory
+                    ? `sim (${interpretation.sampleMessageCount} mensagens no probe)`
+                    : "não"}
+                </b>
+              </li>
+            </ul>
+          </div>
+        )}
+
+        {result != null && (
+          <details className="text-xs">
+            <summary className="cursor-pointer text-slate-600 font-medium">
+              JSON completo (todos os probes)
+            </summary>
+            <pre className="mt-2 p-3 bg-slate-900 text-slate-100 rounded-xl text-[10px] overflow-auto max-h-[500px]">
+              {JSON.stringify(result, null, 2)}
+            </pre>
+          </details>
         )}
       </div>
     </div>
