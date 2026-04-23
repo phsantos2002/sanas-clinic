@@ -320,6 +320,49 @@ model WebhookDLQ {
   @@index([userId, resolvedAt])
 }
 
+// Chatbot engine: simple state-machine flows defined per user.
+// A flow is a graph of nodes; each node has a message + transitions to next nodes.
+// nodes JSON shape:
+//   {
+//     "start": "welcome",
+//     "nodes": {
+//       "welcome": { "message": "Oi! Como posso ajudar?", "buttons": [{"label":"Agendar","next":"schedule"}, {"label":"Falar com humano","next":"handoff"}] },
+//       "schedule": { "message": "Qual servico?", "next": "ask_date" },
+//       "handoff": { "message": "Vou te passar para um humano!", "action": "pause_ai" }
+//     }
+//   }
+model ChatbotFlow {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  trigger   String // "new_lead" | "keyword:agendar" | "manual" | "stage:novo"
+  isActive  Boolean  @default(true)
+  nodes     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  states ChatbotState[]
+
+  @@index([userId, trigger])
+}
+
+// Per-lead state for active chatbot conversations.
+// One state per (lead, flow). Cleared when flow finishes or handoff occurs.
+model ChatbotState {
+  id           String      @id @default(cuid())
+  leadId       String
+  flowId       String
+  flow         ChatbotFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  currentNode  String
+  context      Json? // accumulated answers across nodes
+  lastActivity DateTime    @default(now())
+  createdAt    DateTime    @default(now())
+
+  @@unique([leadId, flowId])
+  @@index([leadId])
+  @@index([lastActivity])
+}
+
 // Audit log for sensitive administrative actions.
 // Immutable history (never updated, only inserted).
 model AuditLog {

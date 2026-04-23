@@ -320,6 +320,42 @@ export async function processIncomingMessage(params: {
   }
 
   try {
+    // ── Chatbot engine: if a flow is active for this lead, advance it ──
+    // (Bypass AI when a flow is in progress — flow yields back to AI on terminate.)
+    const activeState = await prisma.chatbotState.findFirst({
+      where: { leadId: lead.id },
+      include: { flow: true },
+    });
+    if (activeState && activeState.flow.isActive) {
+      const { flowDefinitionSchema, advanceFlow } = await import("@/lib/chatbot/engine");
+      const flowDef = flowDefinitionSchema.safeParse(activeState.flow.nodes);
+      if (flowDef.success) {
+        const result = await advanceFlow({
+          state: {
+            id: activeState.id,
+            currentNode: activeState.currentNode,
+            context: activeState.context,
+          },
+          flow: flowDef.data,
+          userInput: text,
+          leadId: lead.id,
+          userId,
+        });
+        if (result) {
+          await sendReply(phone, result.message).catch(() => {});
+          await prisma.message
+            .create({
+              data: { leadId: lead.id, role: "assistant", content: result.message },
+            })
+            .catch(() => {});
+          log.info("chatbot_advanced", { leadId: lead.id, action: result.node.action });
+          return; // skip AI pipeline this turn
+        }
+        // Flow ended — fall through to AI
+        log.info("chatbot_flow_ended", { leadId: lead.id });
+      }
+    }
+
     // ── Wait before reply (humanized delay) ───────────────────
     const waitSeconds = aiConfig.waitBeforeReply ?? 7;
     if (waitSeconds > 0) {
