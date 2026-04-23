@@ -33,7 +33,11 @@ async function loadUazapiConfig() {
   };
 }
 
-export async function GET() {
+// Track per-instance auto-reconnect attempts to avoid hammering Uazapi
+const autoReconnectCooldown = new Map<string, number>();
+const AUTO_RECONNECT_COOLDOWN_MS = 60_000; // 1 minute between attempts
+
+export async function GET(req: Request) {
   const config = await loadUazapiConfig();
   if (!config) {
     return NextResponse.json(
@@ -43,12 +47,35 @@ export async function GET() {
   }
 
   const result = await getUazapiStatus(config.serverUrl, config.token);
-  // Normalize states: connected | connecting | disconnected | error
   const rawStatus = (result.status || "").toLowerCase();
   let state: "connected" | "connecting" | "disconnected" | "error" = "error";
   if (result.connected) state = "connected";
   else if (rawStatus === "connecting" || rawStatus === "qr") state = "connecting";
   else if (rawStatus === "disconnected" || rawStatus === "logged_out") state = "disconnected";
+
+  // Continuous auto-reconnect: when disconnected, fire one /connect attempt
+  // (rate-limited to once per minute per instance) before reporting back.
+  // Caller can opt out with ?noAutoReconnect=true.
+  const url = new URL(req.url);
+  const noAuto = url.searchParams.get("noAutoReconnect") === "true";
+  if (state === "disconnected" && !noAuto) {
+    const lastAttempt = autoReconnectCooldown.get(config.serverUrl) ?? 0;
+    if (Date.now() - lastAttempt > AUTO_RECONNECT_COOLDOWN_MS) {
+      autoReconnectCooldown.set(config.serverUrl, Date.now());
+      const reconnectResult = await connectUazapiInstance(config.serverUrl, config.token);
+      if (reconnectResult.success) {
+        state = "connecting";
+        return NextResponse.json({
+          state,
+          connected: false,
+          rawStatus: reconnectResult.status ?? "connecting",
+          phone: result.phone,
+          name: result.name,
+          autoReconnectTriggered: true,
+        });
+      }
+    }
+  }
 
   return NextResponse.json({
     state,
