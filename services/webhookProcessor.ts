@@ -5,6 +5,33 @@ import { getAIConfigByUserId } from "@/app/actions/aiConfig";
 import { fireTrigger } from "@/services/workflowEngine";
 import { logger } from "@/lib/logger";
 import { normalizePhone, phonesMatch } from "@/lib/phone";
+import { createHash } from "crypto";
+
+// ── Postgres advisory lock helpers ─────────────────────────
+// Used to serialize parallel jobs touching the same lead — prevents duplicate
+// AI replies when the same chat receives multiple messages near-simultaneously.
+
+function leadLockId(leadId: string): string {
+  // Take 8 bytes of sha256 → fits in BIGINT (signed range OK for advisory lock).
+  // Returned as decimal string to be inlined safely in raw SQL.
+  const hash = createHash("sha256").update(`ai_reply:${leadId}`).digest();
+  const lo = hash.readUInt32BE(0) & 0x7fffffff; // mask MSB to keep positive
+  const hi = hash.readUInt32BE(4);
+  return (BigInt(lo) * BigInt(0x100000000) + BigInt(hi)).toString();
+}
+
+async function tryAcquireLeadLock(leadId: string): Promise<boolean> {
+  const id = leadLockId(leadId);
+  const rows = await prisma.$queryRawUnsafe<{ acquired: boolean }[]>(
+    `SELECT pg_try_advisory_lock(${id}::bigint) AS acquired`
+  );
+  return rows[0]?.acquired === true;
+}
+
+async function releaseLeadLock(leadId: string): Promise<void> {
+  const id = leadLockId(leadId);
+  await prisma.$queryRawUnsafe(`SELECT pg_advisory_unlock(${id}::bigint)`).catch(() => {});
+}
 
 type AdAttribution = {
   adId?: string | null;
@@ -219,178 +246,192 @@ export async function processIncomingMessage(params: {
     return;
   }
 
-  // ── Wait before reply (humanized delay) ───────────────────
-  const waitSeconds = aiConfig.waitBeforeReply ?? 7;
-  if (waitSeconds > 0) {
-    // Check if new message arrived during wait (cancelOnNewMsg)
-    await sleep(waitSeconds * 1000);
-
-    if (aiConfig.cancelOnNewMsg) {
-      const newerMsg = await prisma.message.findFirst({
-        where: {
-          lead: { userId, phone },
-          role: "user",
-          createdAt: { gt: new Date(Date.now() - waitSeconds * 1000) },
-          content: { not: text },
-        },
-      });
-      if (newerMsg) {
-        log.info("webhook_cancelled_newer_msg");
-        return;
-      }
-    }
+  // ── Acquire per-lead lock (prevents duplicate AI replies in parallel) ──
+  // If another job is already replying to this lead, exit early — that job
+  // will have the latest message in its history when it queries the DB.
+  const lockAcquired = await tryAcquireLeadLock(lead.id);
+  if (!lockAcquired) {
+    log.info("webhook_ai_lock_busy_skip", { leadId: lead.id });
+    return;
   }
 
-  log.info("webhook_ai_generating", {
-    provider: aiConfig.provider,
-    model: aiConfig.model,
-    leadId: lead.id,
-  });
-
-  // ── Build context with services ───────────────────────────
-  const servicesContext = await getServicesContext(userId);
-
-  // ── Build context with calendar ───────────────────────────
-  let calendarContext: string | null = null;
   try {
-    const { getCalendarContextForAI } = await import("@/services/googleCalendar");
-    calendarContext = await getCalendarContextForAI(userId);
-  } catch {}
+    // ── Wait before reply (humanized delay) ───────────────────
+    const waitSeconds = aiConfig.waitBeforeReply ?? 7;
+    if (waitSeconds > 0) {
+      // Check if new message arrived during wait (cancelOnNewMsg)
+      await sleep(waitSeconds * 1000);
 
-  const history = [
-    ...lead.messages.map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    })),
-    { role: "user" as const, content: text },
-  ];
-
-  // Append services context to system prompt
-  let enrichedSystemPrompt = aiConfig.systemPrompt || "";
-  if (servicesContext) {
-    enrichedSystemPrompt += `\n\n${servicesContext}`;
-  }
-  if (calendarContext) {
-    enrichedSystemPrompt += `\n\n${calendarContext}`;
-  }
-
-  const { reply, newStageEventName } = await generateAIReply(history, lead.name || pushName, {
-    provider: aiConfig.provider,
-    model: aiConfig.model,
-    apiKey: aiConfig.apiKey,
-    clinicName: aiConfig.clinicName,
-    systemPrompt: enrichedSystemPrompt || null,
-  });
-
-  // ── Personalize reply ─────────────────────────────────────
-  let finalReply = reply;
-  if (aiConfig.includeContactName && lead.name && !reply.includes(lead.name)) {
-    finalReply = reply;
-  }
-
-  // ── Process calendar booking commands ─────────────────────
-  const bookingMatch = finalReply.match(
-    /\[AGENDAR:\s*(.+?)\s*\|\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*\|\s*(.+?)\s*\|\s*(\d+)\s*\]/
-  );
-  if (bookingMatch) {
-    try {
-      const { createCalendarEvent } = await import("@/services/googleCalendar");
-      const [, serviceName, dateTime, clientName, durationStr] = bookingMatch;
-      const result = await createCalendarEvent(userId, {
-        summary: `${serviceName} — ${clientName}`,
-        description: `Agendamento via WhatsApp\nCliente: ${clientName}\nTelefone: ${phone}`,
-        startDateTime: new Date(dateTime.replace(" ", "T") + ":00-03:00").toISOString(),
-        durationMinutes: parseInt(durationStr) || 60,
-      });
-      if (result.success) {
-        log.info("webhook_calendar_event_created", { eventId: result.eventId });
-      } else {
-        log.error("webhook_calendar_event_failed", { error: result.error });
+      if (aiConfig.cancelOnNewMsg) {
+        const newerMsg = await prisma.message.findFirst({
+          where: {
+            lead: { userId, phone },
+            role: "user",
+            createdAt: { gt: new Date(Date.now() - waitSeconds * 1000) },
+            content: { not: text },
+          },
+        });
+        if (newerMsg) {
+          log.info("webhook_cancelled_newer_msg");
+          return;
+        }
       }
-    } catch (err) {
-      log.error("webhook_calendar_error", { err });
     }
-    // Remove the booking tag from the reply sent to user
-    finalReply = finalReply.replace(/\[AGENDAR:.*?\]/g, "").trim();
-  }
 
-  log.info("webhook_ai_reply_generated", { replyLength: finalReply.length, newStageEventName });
-
-  // ── Save AI reply ─────────────────────────────────────────
-  await prisma.message.create({
-    data: { leadId: lead.id, role: "assistant", content: finalReply },
-  });
-
-  // ── Humanized delay before sending ────────────────────────
-  const charDelay = Math.min(
-    finalReply.length * (aiConfig.delayPerChar ?? 120),
-    aiConfig.delayMax ?? 10000
-  );
-  if (charDelay > 0) {
-    await sleep(charDelay);
-  }
-
-  // ── Send reply (text and/or audio) ────────────────────────
-  const sendResult = await sendReply(phone, finalReply);
-  if (!sendResult.success) {
-    log.error("webhook_send_failed", { error: sendResult.error });
-  } else {
-    log.info("webhook_send_success");
-  }
-
-  // ── Send audio if configured ──────────────────────────────
-  if (aiConfig.sendAudio && sendAudio && finalReply.length >= (aiConfig.audioMinChars ?? 50)) {
-    try {
-      const { generateAudio } = await import("@/services/textToSpeech");
-      const audioBuffer = await generateAudio(
-        finalReply,
-        aiConfig.openaiKey || aiConfig.apiKey || ""
-      );
-      // For now, skip audio sending if we only have buffer (need URL for Uazapi)
-      const audioUrl = audioBuffer ? null : null; // TODO: upload buffer to get URL
-      if (audioUrl) {
-        await sendAudio(phone, audioUrl);
-        log.info("webhook_audio_sent");
-      }
-    } catch (err) {
-      log.error("webhook_audio_error", { err });
-    }
-  }
-
-  // ── Keep unread if configured ─────────────────────────────
-  if (aiConfig.keepUnread && markUnread && chatId) {
-    try {
-      await markUnread(chatId);
-    } catch {}
-  }
-
-  // ── Update stage if AI determined a new one ───────────────
-  if (newStageEventName && newStageEventName !== lead.stage?.eventName) {
-    const newStage = await prisma.stage.findFirst({
-      where: { userId, eventName: newStageEventName },
+    log.info("webhook_ai_generating", {
+      provider: aiConfig.provider,
+      model: aiConfig.model,
+      leadId: lead.id,
     });
 
-    if (newStage) {
-      await prisma.$transaction(async (tx) => {
-        await tx.lead.update({
-          where: { id: lead!.id },
-          data: { stageId: newStage.id },
+    // ── Build context with services ───────────────────────────
+    const servicesContext = await getServicesContext(userId);
+
+    // ── Build context with calendar ───────────────────────────
+    let calendarContext: string | null = null;
+    try {
+      const { getCalendarContextForAI } = await import("@/services/googleCalendar");
+      calendarContext = await getCalendarContextForAI(userId);
+    } catch {}
+
+    const history = [
+      ...lead.messages.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+      { role: "user" as const, content: text },
+    ];
+
+    // Append services context to system prompt
+    let enrichedSystemPrompt = aiConfig.systemPrompt || "";
+    if (servicesContext) {
+      enrichedSystemPrompt += `\n\n${servicesContext}`;
+    }
+    if (calendarContext) {
+      enrichedSystemPrompt += `\n\n${calendarContext}`;
+    }
+
+    const { reply, newStageEventName } = await generateAIReply(history, lead.name || pushName, {
+      provider: aiConfig.provider,
+      model: aiConfig.model,
+      apiKey: aiConfig.apiKey,
+      clinicName: aiConfig.clinicName,
+      systemPrompt: enrichedSystemPrompt || null,
+    });
+
+    // ── Personalize reply ─────────────────────────────────────
+    let finalReply = reply;
+    if (aiConfig.includeContactName && lead.name && !reply.includes(lead.name)) {
+      finalReply = reply;
+    }
+
+    // ── Process calendar booking commands ─────────────────────
+    const bookingMatch = finalReply.match(
+      /\[AGENDAR:\s*(.+?)\s*\|\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*\|\s*(.+?)\s*\|\s*(\d+)\s*\]/
+    );
+    if (bookingMatch) {
+      try {
+        const { createCalendarEvent } = await import("@/services/googleCalendar");
+        const [, serviceName, dateTime, clientName, durationStr] = bookingMatch;
+        const result = await createCalendarEvent(userId, {
+          summary: `${serviceName} — ${clientName}`,
+          description: `Agendamento via WhatsApp\nCliente: ${clientName}\nTelefone: ${phone}`,
+          startDateTime: new Date(dateTime.replace(" ", "T") + ":00-03:00").toISOString(),
+          durationMinutes: parseInt(durationStr) || 60,
         });
-        await tx.leadStageHistory.create({
-          data: { leadId: lead!.id, stageId: newStage.id },
-        });
+        if (result.success) {
+          log.info("webhook_calendar_event_created", { eventId: result.eventId });
+        } else {
+          log.error("webhook_calendar_event_failed", { error: result.error });
+        }
+      } catch (err) {
+        log.error("webhook_calendar_error", { err });
+      }
+      // Remove the booking tag from the reply sent to user
+      finalReply = finalReply.replace(/\[AGENDAR:.*?\]/g, "").trim();
+    }
+
+    log.info("webhook_ai_reply_generated", { replyLength: finalReply.length, newStageEventName });
+
+    // ── Save AI reply ─────────────────────────────────────────
+    await prisma.message.create({
+      data: { leadId: lead.id, role: "assistant", content: finalReply },
+    });
+
+    // ── Humanized delay before sending ────────────────────────
+    const charDelay = Math.min(
+      finalReply.length * (aiConfig.delayPerChar ?? 120),
+      aiConfig.delayMax ?? 10000
+    );
+    if (charDelay > 0) {
+      await sleep(charDelay);
+    }
+
+    // ── Send reply (text and/or audio) ────────────────────────
+    const sendResult = await sendReply(phone, finalReply);
+    if (!sendResult.success) {
+      log.error("webhook_send_failed", { error: sendResult.error });
+    } else {
+      log.info("webhook_send_success");
+    }
+
+    // ── Send audio if configured ──────────────────────────────
+    if (aiConfig.sendAudio && sendAudio && finalReply.length >= (aiConfig.audioMinChars ?? 50)) {
+      try {
+        const { generateAudio } = await import("@/services/textToSpeech");
+        const audioBuffer = await generateAudio(
+          finalReply,
+          aiConfig.openaiKey || aiConfig.apiKey || ""
+        );
+        // For now, skip audio sending if we only have buffer (need URL for Uazapi)
+        const audioUrl = audioBuffer ? null : null; // TODO: upload buffer to get URL
+        if (audioUrl) {
+          await sendAudio(phone, audioUrl);
+          log.info("webhook_audio_sent");
+        }
+      } catch (err) {
+        log.error("webhook_audio_error", { err });
+      }
+    }
+
+    // ── Keep unread if configured ─────────────────────────────
+    if (aiConfig.keepUnread && markUnread && chatId) {
+      try {
+        await markUnread(chatId);
+      } catch {}
+    }
+
+    // ── Update stage if AI determined a new one ───────────────
+    if (newStageEventName && newStageEventName !== lead.stage?.eventName) {
+      const newStage = await prisma.stage.findFirst({
+        where: { userId, eventName: newStageEventName },
       });
 
-      sendFacebookEvent({
-        userId,
-        phone: lead.phone,
-        eventName: newStage.eventName,
-        leadId: lead.id,
-        stageName: newStage.name,
-      }).catch(() => {});
+      if (newStage) {
+        await prisma.$transaction(async (tx) => {
+          await tx.lead.update({
+            where: { id: lead!.id },
+            data: { stageId: newStage.id },
+          });
+          await tx.leadStageHistory.create({
+            data: { leadId: lead!.id, stageId: newStage.id },
+          });
+        });
 
-      fireTrigger(userId, "stage_change", lead.id, { stageId: newStage.id }).catch(() => {});
+        sendFacebookEvent({
+          userId,
+          phone: lead.phone,
+          eventName: newStage.eventName,
+          leadId: lead.id,
+          stageName: newStage.name,
+        }).catch(() => {});
+
+        fireTrigger(userId, "stage_change", lead.id, { stageId: newStage.id }).catch(() => {});
+      }
     }
+  } finally {
+    // Always release the lead lock so subsequent messages can be processed.
+    await releaseLeadLock(lead.id);
   }
 }
 
@@ -464,6 +505,7 @@ async function createLead(
   pushName: string,
   attribution?: AdAttribution
 ) {
+  const normalized = normalizePhone(phone);
   const firstStage = await prisma.stage.findFirst({
     where: { userId },
     orderBy: { order: "asc" },
@@ -475,8 +517,8 @@ async function createLead(
     return await prisma.$transaction(async (tx) => {
       const created = await tx.lead.create({
         data: {
-          name: pushName || phone,
-          phone,
+          name: pushName || normalized,
+          phone: normalized,
           userId,
           stageId: firstStage?.id ?? null,
           source: isFromAd ? "meta" : "whatsapp",
@@ -503,9 +545,16 @@ async function createLead(
 
       return created;
     });
-  } catch {
+  } catch (err) {
+    // Race: another concurrent webhook just created this lead. Postgres now
+    // enforces UNIQUE(userId, phone), so we get P2002. Re-fetch and reuse.
+    const isUnique =
+      err instanceof Error && (err.message.includes("P2002") || err.message.includes("Unique"));
+    if (isUnique) {
+      logger.info("webhook_lead_create_race_recovered", { phoneSuffix: normalized.slice(-4) });
+    }
     const fallback = await prisma.lead.findFirst({
-      where: { userId, phone },
+      where: { userId, phone: normalized },
       include: {
         messages: { orderBy: { createdAt: "asc" }, take: 30 },
         stage: true,
