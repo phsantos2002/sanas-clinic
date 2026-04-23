@@ -10,7 +10,15 @@ export type UazapiConfig = {
   instanceToken: string;
 };
 
-// ─── Helper ───
+// ─── Helper (resilient: timeout + retry + logging) ───
+
+const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_RETRIES = 2; // total attempts = 1 + retries
+const RETRY_BASE_MS = 500;
+
+function isRetriableStatus(status: number): boolean {
+  return status === 408 || status === 429 || status === 502 || status === 503 || status === 504;
+}
 
 async function uazapiRequest(
   serverUrl: string,
@@ -19,25 +27,88 @@ async function uazapiRequest(
   path: string,
   body?: unknown
 ) {
-  // Clean serverUrl — remove trailing whitespace/newlines
   const cleanUrl = serverUrl.trim().replace(/\/+$/, "");
   const cleanToken = token.trim();
   const headers: Record<string, string> = { token: cleanToken };
   if (body) headers["Content-Type"] = "application/json";
+  const url = `${cleanUrl}${path}`;
+  const payload = body ? JSON.stringify(body) : undefined;
 
-  const res = await fetch(`${cleanUrl}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let lastError: { status?: number; message: string } = { message: "unknown" };
 
-  if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    return { ok: false as const, status: res.status, error: err };
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const started = Date.now();
+    try {
+      const res = await fetch(url, { method, headers, body: payload, signal: controller.signal });
+      clearTimeout(timer);
+      const durationMs = Date.now() - started;
+
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (attempt > 0) {
+          console.log(
+            JSON.stringify({
+              event: "uazapi_retry_ok",
+              path,
+              status: res.status,
+              attempt,
+              durationMs,
+            })
+          );
+        }
+        return { ok: true as const, data };
+      }
+
+      const errBody = await res.text().catch(() => "");
+      lastError = { status: res.status, message: errBody || res.statusText };
+
+      if (!isRetriableStatus(res.status)) {
+        console.error(
+          JSON.stringify({
+            event: "uazapi_error",
+            path,
+            status: res.status,
+            attempt,
+            durationMs,
+            error: errBody.slice(0, 300),
+          })
+        );
+        return { ok: false as const, status: res.status, error: lastError.message };
+      }
+      console.warn(
+        JSON.stringify({ event: "uazapi_retry", path, status: res.status, attempt, durationMs })
+      );
+    } catch (err) {
+      clearTimeout(timer);
+      const durationMs = Date.now() - started;
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      const message = isAbort
+        ? `timeout after ${REQUEST_TIMEOUT_MS}ms`
+        : err instanceof Error
+          ? err.message
+          : String(err);
+      lastError = { message };
+      console.warn(
+        JSON.stringify({ event: "uazapi_network_error", path, attempt, durationMs, error: message })
+      );
+    }
+
+    if (attempt < MAX_RETRIES) {
+      await new Promise((r) => setTimeout(r, RETRY_BASE_MS * 2 ** attempt));
+    }
   }
 
-  const data = await res.json().catch(() => ({}));
-  return { ok: true as const, data };
+  console.error(
+    JSON.stringify({
+      event: "uazapi_exhausted",
+      path,
+      attempts: MAX_RETRIES + 1,
+      error: lastError.message,
+    })
+  );
+  return { ok: false as const, status: lastError.status ?? 0, error: lastError.message };
 }
 
 // ─── Instance management ───

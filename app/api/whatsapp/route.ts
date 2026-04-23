@@ -84,23 +84,111 @@ async function getUazapiConfig() {
   };
 }
 
+// ── Resilient Uazapi helper ──────────────────────────────────
+// Adds timeout, retry with exponential backoff and structured logging.
+// All call sites get the parsed body for compat; check `__error` field for failures.
+
+const UAZAPI_TIMEOUT_MS = 15_000;
+const UAZAPI_MAX_RETRIES = 2; // total attempts = 1 + retries
+const UAZAPI_RETRY_BASE_MS = 500;
+
+function isRetriableStatus(status: number): boolean {
+  return status === 408 || status === 429 || status === 502 || status === 503 || status === 504;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function uazapi(
   serverUrl: string,
   token: string,
   method: string,
   path: string,
   body?: unknown
-) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
   const headers: Record<string, string> = { token: token.trim() };
   if (body) headers["Content-Type"] = "application/json";
+  const url = `${serverUrl}${path}`;
+  const payload = body ? JSON.stringify(body) : undefined;
 
-  const res = await fetch(`${serverUrl}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let lastError: { message: string; status?: number } | null = null;
 
-  return res.json().catch(() => ({}));
+  for (let attempt = 0; attempt <= UAZAPI_MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), UAZAPI_TIMEOUT_MS);
+    const started = Date.now();
+    try {
+      const res = await fetch(url, { method, headers, body: payload, signal: controller.signal });
+      clearTimeout(timer);
+      const durationMs = Date.now() - started;
+
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}) as Record<string, unknown>);
+        if (attempt > 0) {
+          console.log(
+            JSON.stringify({
+              event: "uazapi_retry_ok",
+              path,
+              status: res.status,
+              attempt,
+              durationMs,
+            })
+          );
+        }
+        return { ...data, __status: res.status };
+      }
+
+      // Read error body once (for surfacing/logging)
+      const errBody = await res.text().catch(() => "");
+      lastError = { message: errBody || res.statusText, status: res.status };
+
+      // Non-retriable: return immediately with error info surfaced
+      if (!isRetriableStatus(res.status)) {
+        console.error(
+          JSON.stringify({
+            event: "uazapi_error",
+            path,
+            status: res.status,
+            attempt,
+            durationMs,
+            error: errBody.slice(0, 300),
+          })
+        );
+        return { __error: errBody || res.statusText, __status: res.status };
+      }
+      // Retriable — fall through to backoff
+      console.warn(
+        JSON.stringify({ event: "uazapi_retry", path, status: res.status, attempt, durationMs })
+      );
+    } catch (err) {
+      clearTimeout(timer);
+      const durationMs = Date.now() - started;
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      const message = isAbort
+        ? `timeout after ${UAZAPI_TIMEOUT_MS}ms`
+        : err instanceof Error
+          ? err.message
+          : String(err);
+      lastError = { message };
+      console.warn(
+        JSON.stringify({ event: "uazapi_network_error", path, attempt, durationMs, error: message })
+      );
+    }
+
+    if (attempt < UAZAPI_MAX_RETRIES) {
+      const delay = UAZAPI_RETRY_BASE_MS * 2 ** attempt;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+
+  console.error(
+    JSON.stringify({
+      event: "uazapi_exhausted",
+      path,
+      attempts: UAZAPI_MAX_RETRIES + 1,
+      error: lastError?.message,
+    })
+  );
+  return { __error: lastError?.message ?? "Uazapi unreachable", __status: lastError?.status };
 }
 
 // ── Avatar cache (DB-backed, persists across cold starts) ─────
@@ -186,7 +274,20 @@ export async function GET(req: NextRequest) {
         if (unread) body.wa_unreadCount = { $gt: 0 };
 
         const data = await uazapi(config.serverUrl, config.token, "POST", "/chat/find", body);
-        const chats = data.chats ?? data ?? [];
+        if (data?.__error) {
+          return NextResponse.json(
+            {
+              chats: [],
+              total: 0,
+              upstreamError: String(data.__error),
+              upstreamStatus: data.__status,
+            },
+            { status: 502 }
+          );
+        }
+        const chats = (
+          Array.isArray(data?.chats) ? data.chats : Array.isArray(data) ? data : []
+        ) as Record<string, unknown>[];
 
         // Phones we may need avatars for
         const phonesToCheck: string[] = [];
@@ -276,6 +377,9 @@ export async function GET(req: NextRequest) {
           messages,
           total: data?.pagination?.total ?? messages.length,
           // Surface upstream errors to the client for diagnosis
+          ...(data?.__error
+            ? { upstreamError: String(data.__error), upstreamStatus: data.__status }
+            : {}),
           ...(data?.error ? { upstreamError: String(data.error) } : {}),
         });
       }
