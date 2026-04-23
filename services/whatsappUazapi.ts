@@ -197,12 +197,17 @@ export async function setUazapiWebhook(
   token: string,
   webhookUrl: string
 ): Promise<{ success: boolean; error?: string }> {
+  // IMPORTANT: addUrlEvents=true makes Uazapi append the event name to the URL
+  // (e.g. /api/webhook/evolution/messages), which Next.js treats as a distinct
+  // route (404). Keeping addUrlEvents=false forces Uazapi to always POST to the
+  // exact `url` regardless of event type — our handler detects the event from
+  // the payload itself (EventType field).
   const r = await uazapiRequest(serverUrl, token, "POST", "/webhook", {
     enabled: true,
     url: webhookUrl,
     events: ["messages", "connection", "message_ack", "group_update", "call"],
     excludeMessages: ["wasSentByApi"],
-    addUrlEvents: true,
+    addUrlEvents: false,
   });
   return { success: r.ok, error: r.ok ? undefined : r.error };
 }
