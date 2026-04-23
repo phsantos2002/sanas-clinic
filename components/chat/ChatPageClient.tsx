@@ -252,8 +252,9 @@ export function ChatPageClient() {
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [unreadBelowCount, setUnreadBelowCount] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState<
-    "connected" | "disconnected" | "loading"
+    "connected" | "connecting" | "disconnected" | "loading"
   >("loading");
+  const [reconnecting, setReconnecting] = useState(false);
   const [chatLeadId, setChatLeadId] = useState<string | null>(null);
   const [chatLeadAi, setChatLeadAi] = useState<boolean | null>(null);
   const [togglingAi, setTogglingAi] = useState(false);
@@ -271,16 +272,50 @@ export function ChatPageClient() {
   const [fileType, setFileType] = useState<string>("");
   const lastMsgTsRef = useRef<number>(0);
 
-  // Check connection status
-  useEffect(() => {
-    fetch("/api/whatsapp?action=status")
-      .then((r) => r.json())
-      .then((d) => {
-        const inst = d.instance ?? d;
-        setConnectionStatus(inst?.status === "connected" ? "connected" : "disconnected");
-      })
-      .catch(() => setConnectionStatus("disconnected"));
+  // Check connection status (uses normalized /health endpoint)
+  const checkHealth = useCallback(async () => {
+    try {
+      const r = await fetch("/api/whatsapp/health");
+      const d = await r.json();
+      const state = d.state as
+        | "connected"
+        | "connecting"
+        | "disconnected"
+        | "error"
+        | "not_configured";
+      if (state === "connected") setConnectionStatus("connected");
+      else if (state === "connecting") setConnectionStatus("connecting");
+      else setConnectionStatus("disconnected");
+    } catch {
+      setConnectionStatus("disconnected");
+    }
   }, []);
+
+  useEffect(() => {
+    checkHealth();
+    // Re-check every 30s to catch instance going down without user action
+    const interval = setInterval(checkHealth, 30_000);
+    return () => clearInterval(interval);
+  }, [checkHealth]);
+
+  const handleReconnect = useCallback(async () => {
+    setReconnecting(true);
+    try {
+      const r = await fetch("/api/whatsapp/health?action=reconnect", { method: "POST" });
+      const d = await r.json();
+      if (d.success) {
+        toast.success("Reconectando...");
+        setConnectionStatus("connecting");
+        setTimeout(checkHealth, 3000);
+      } else {
+        toast.error(d.error ?? "Falha ao reconectar");
+      }
+    } catch {
+      toast.error("Erro ao reconectar");
+    } finally {
+      setReconnecting(false);
+    }
+  }, [checkHealth]);
 
   // Load aiEnabled for the currently selected chat's linked lead
   useEffect(() => {
@@ -822,8 +857,16 @@ export function ChatPageClient() {
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-slate-900">Conversas</h2>
               <span
-                className={`w-2 h-2 rounded-full ${connectionStatus === "connected" ? "bg-emerald-500" : connectionStatus === "disconnected" ? "bg-red-500" : "bg-amber-500"}`}
-                title={connectionStatus === "connected" ? "Conectado" : "Desconectado"}
+                className={`w-2 h-2 rounded-full ${connectionStatus === "connected" ? "bg-emerald-500" : connectionStatus === "disconnected" ? "bg-red-500" : "bg-amber-500"} ${connectionStatus === "connecting" ? "animate-pulse" : ""}`}
+                title={
+                  connectionStatus === "connected"
+                    ? "WhatsApp conectado"
+                    : connectionStatus === "connecting"
+                      ? "Reconectando..."
+                      : connectionStatus === "disconnected"
+                        ? "WhatsApp desconectado"
+                        : "Verificando..."
+                }
               />
             </div>
             <div className="flex items-center gap-1">
@@ -852,6 +895,20 @@ export function ChatPageClient() {
               </Button>
             </div>
           </div>
+
+          {/* Disconnected banner */}
+          {connectionStatus === "disconnected" && (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 bg-rose-50 border border-rose-200 rounded-lg">
+              <span className="text-xs text-rose-700 font-medium">WhatsApp desconectado</span>
+              <button
+                onClick={handleReconnect}
+                disabled={reconnecting}
+                className="text-xs px-2 py-1 rounded-md bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50"
+              >
+                {reconnecting ? "Reconectando..." : "Reconectar"}
+              </button>
+            </div>
+          )}
 
           {/* New Chat Input */}
           {showNewChat && (
