@@ -258,6 +258,8 @@ export function ChatPageClient() {
   const [chatLeadId, setChatLeadId] = useState<string | null>(null);
   const [chatLeadAi, setChatLeadAi] = useState<boolean | null>(null);
   const [togglingAi, setTogglingAi] = useState(false);
+  // Interactive composer modal
+  const [interactiveType, setInteractiveType] = useState<"buttons" | "list" | null>(null);
   // Diagnostic info from the last messages fetch
   const [msgFetchInfo, setMsgFetchInfo] = useState<{
     status: number;
@@ -1537,11 +1539,18 @@ export function ChatPageClient() {
                         { label: "Documento", icon: FileText, type: "document", accept: "*/*" },
                         { label: "Audio", icon: Mic, type: "audio", accept: "audio/*" },
                         { label: "Localizacao", icon: MapPin, type: "location", accept: "" },
+                        { label: "Botoes", icon: Hash, type: "buttons", accept: "" },
+                        { label: "Lista", icon: Filter, type: "list", accept: "" },
                       ].map((item) => (
                         <button
                           key={item.type}
                           type="button"
                           onClick={() => {
+                            if (item.type === "buttons" || item.type === "list") {
+                              setInteractiveType(item.type as "buttons" | "list");
+                              setShowAttachMenu(false);
+                              return;
+                            }
                             if (item.type === "location") {
                               // Location sharing - get current position
                               navigator.geolocation?.getCurrentPosition(
@@ -1709,6 +1718,295 @@ export function ChatPageClient() {
           }}
         />
       )}
+
+      {/* ─── Interactive composer (buttons / list) ─── */}
+      {interactiveType && selectedChat && (
+        <InteractiveComposer
+          type={interactiveType}
+          phone={selectedChat.wa_chatid.split("@")[0]}
+          onClose={() => setInteractiveType(null)}
+          onSent={() => {
+            setInteractiveType(null);
+            setTimeout(() => fetchMessages(selectedChat.wa_chatid), 1000);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Interactive Composer (buttons / list) ───
+function InteractiveComposer({
+  type,
+  phone,
+  onClose,
+  onSent,
+}: {
+  type: "buttons" | "list";
+  phone: string;
+  onClose: () => void;
+  onSent: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [footer, setFooter] = useState("");
+  // Buttons
+  const [buttons, setButtons] = useState<{ id: string; label: string }[]>([{ id: "1", label: "" }]);
+  // List
+  const [listButtonText, setListButtonText] = useState("Ver opções");
+  const [listTitle, setListTitle] = useState("");
+  const [listRows, setListRows] = useState<{ id: string; title: string; description: string }[]>([
+    { id: "opt1", title: "", description: "" },
+  ]);
+  const [sending, setSending] = useState(false);
+
+  async function handleSend() {
+    if (!text.trim()) {
+      toast.error("Texto principal obrigatório");
+      return;
+    }
+
+    setSending(true);
+    const idemKey = `interactive-${type}-${phone}-${Math.floor(Date.now() / 60000)}`;
+    let body: Record<string, unknown>;
+
+    if (type === "buttons") {
+      const valid = buttons.filter((b) => b.label.trim());
+      if (valid.length === 0) {
+        toast.error("Adicione pelo menos 1 botão com texto");
+        setSending(false);
+        return;
+      }
+      body = {
+        number: phone,
+        type: "buttons",
+        text,
+        buttons: valid.slice(0, 3).map((b, i) => ({
+          id: b.id || `btn_${i}`,
+          label: b.label.trim(),
+        })),
+        ...(footer ? { footer } : {}),
+      };
+    } else {
+      const valid = listRows.filter((r) => r.title.trim());
+      if (valid.length === 0) {
+        toast.error("Adicione pelo menos 1 opção");
+        setSending(false);
+        return;
+      }
+      body = {
+        number: phone,
+        type: "list",
+        text,
+        listButtonText,
+        listSections: [
+          {
+            title: listTitle || "Opções",
+            rows: valid.map((r, i) => ({
+              id: r.id || `row_${i}`,
+              title: r.title.trim(),
+              ...(r.description ? { description: r.description.trim() } : {}),
+            })),
+          },
+        ],
+        ...(footer ? { footer } : {}),
+      };
+    }
+
+    try {
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idemKey },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        toast.success(type === "buttons" ? "Botões enviados" : "Lista enviada");
+        onSent();
+      } else {
+        toast.error(data.error ?? "Falha ao enviar");
+      }
+    } catch {
+      toast.error("Erro de conexão");
+    }
+    setSending(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-3 flex items-center justify-between">
+          <h3 className="font-semibold text-slate-900 text-sm">
+            {type === "buttons" ? "Mensagem com botões" : "Mensagem com lista"}
+          </h3>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-3">
+          <div>
+            <label className="text-xs font-medium text-slate-600 block mb-1">Texto principal</label>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Mensagem que aparecerá acima dos botões/lista"
+              rows={3}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            />
+          </div>
+
+          {type === "buttons" && (
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-1">
+                Botões (até 3, máx 20 chars cada)
+              </label>
+              {buttons.map((b, i) => (
+                <div key={i} className="flex gap-2 mb-1.5">
+                  <input
+                    value={b.label}
+                    onChange={(e) =>
+                      setButtons(
+                        buttons.map((x, j) => (i === j ? { ...x, label: e.target.value } : x))
+                      )
+                    }
+                    placeholder={`Botão ${i + 1}`}
+                    maxLength={20}
+                    className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  {buttons.length > 1 && (
+                    <button
+                      onClick={() => setButtons(buttons.filter((_, j) => j !== i))}
+                      className="text-slate-400 hover:text-rose-600 px-2"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {buttons.length < 3 && (
+                <button
+                  onClick={() =>
+                    setButtons([...buttons, { id: `${buttons.length + 1}`, label: "" }])
+                  }
+                  className="text-xs text-indigo-600 hover:text-indigo-800"
+                >
+                  + Adicionar botão
+                </button>
+              )}
+            </div>
+          )}
+
+          {type === "list" && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">
+                    Texto do botão
+                  </label>
+                  <input
+                    value={listButtonText}
+                    onChange={(e) => setListButtonText(e.target.value)}
+                    maxLength={20}
+                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">
+                    Título da seção (opcional)
+                  </label>
+                  <input
+                    value={listTitle}
+                    onChange={(e) => setListTitle(e.target.value)}
+                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">
+                  Opções da lista
+                </label>
+                {listRows.map((r, i) => (
+                  <div key={i} className="border border-slate-200 rounded-lg p-2 mb-1.5 space-y-1">
+                    <div className="flex gap-2">
+                      <input
+                        value={r.title}
+                        onChange={(e) =>
+                          setListRows(
+                            listRows.map((x, j) => (i === j ? { ...x, title: e.target.value } : x))
+                          )
+                        }
+                        placeholder="Título"
+                        maxLength={24}
+                        className="flex-1 text-sm border border-slate-200 rounded px-2 py-1"
+                      />
+                      {listRows.length > 1 && (
+                        <button
+                          onClick={() => setListRows(listRows.filter((_, j) => j !== i))}
+                          className="text-slate-400 hover:text-rose-600"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      value={r.description}
+                      onChange={(e) =>
+                        setListRows(
+                          listRows.map((x, j) =>
+                            i === j ? { ...x, description: e.target.value } : x
+                          )
+                        )
+                      }
+                      placeholder="Descrição (opcional)"
+                      maxLength={72}
+                      className="w-full text-xs border border-slate-200 rounded px-2 py-1"
+                    />
+                  </div>
+                ))}
+                <button
+                  onClick={() =>
+                    setListRows([
+                      ...listRows,
+                      { id: `opt${listRows.length + 1}`, title: "", description: "" },
+                    ])
+                  }
+                  className="text-xs text-indigo-600 hover:text-indigo-800"
+                >
+                  + Adicionar opção
+                </button>
+              </div>
+            </>
+          )}
+
+          <div>
+            <label className="text-xs font-medium text-slate-600 block mb-1">
+              Rodapé (opcional)
+            </label>
+            <input
+              value={footer}
+              onChange={(e) => setFooter(e.target.value)}
+              maxLength={60}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5"
+            />
+          </div>
+        </div>
+
+        <div className="sticky bottom-0 bg-white border-t border-slate-100 px-5 py-3 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={sending}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {sending ? "Enviando..." : "Enviar"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
