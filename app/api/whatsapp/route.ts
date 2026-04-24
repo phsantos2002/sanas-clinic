@@ -481,24 +481,35 @@ export async function GET(req: NextRequest) {
               prisma.message.count({ where: { leadId: lead.id } }),
             ]);
 
-            // Shape rows into the Uazapi envelope the front-end expects.
-            const chatidCanonical = `${phoneOnly}@s.whatsapp.net`;
-            const messages = rows
-              .slice()
-              .reverse() // return oldest-first so the list appends naturally
-              .map((m) => ({
-                id: m.id,
-                messageid: m.externalId ?? m.id,
-                text: m.content,
-                fromMe: m.role === "assistant",
-                messageTimestamp: m.createdAt.getTime(),
-                messageType: "Conversation",
-                sender: m.role === "assistant" ? "" : chatidCanonical,
-                senderName: "",
-                chatid: chatidCanonical,
-                ack: m.role === "assistant" ? 3 : undefined,
-              }));
-            return NextResponse.json({ messages, total, source: "db" });
+            // Fall back to Uazapi when the DB is empty on an INITIAL fetch
+            // (no afterTs filter). Two legitimate reasons the DB can be empty:
+            //   1. Legacy leads created before we started persisting inbound
+            //      messages — Uazapi still has their full history.
+            //   2. A lead auto-created elsewhere (e.g. CRM import) that never
+            //      received a webhook turn yet.
+            // During polling (afterTs set), skip the fallback — no point
+            // hammering Uazapi for incremental updates on a stale thread.
+            const canFallback = total === 0 && !afterTs && !search;
+            if (!canFallback) {
+              const chatidCanonical = `${phoneOnly}@s.whatsapp.net`;
+              const messages = rows
+                .slice()
+                .reverse()
+                .map((m) => ({
+                  id: m.id,
+                  messageid: m.externalId ?? m.id,
+                  text: m.content,
+                  fromMe: m.role === "assistant",
+                  messageTimestamp: m.createdAt.getTime(),
+                  messageType: "Conversation",
+                  sender: m.role === "assistant" ? "" : chatidCanonical,
+                  senderName: "",
+                  chatid: chatidCanonical,
+                  ack: m.role === "assistant" ? 3 : undefined,
+                }));
+              return NextResponse.json({ messages, total, source: "db" });
+            }
+            // else: fall through to Uazapi branch below
           }
         }
 
