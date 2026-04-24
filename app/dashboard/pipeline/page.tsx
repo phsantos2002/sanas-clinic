@@ -1,7 +1,6 @@
 import { getLeads } from "@/app/actions/leads";
 import { getStages } from "@/app/actions/stages";
 import { getFunnels } from "@/app/actions/funnels";
-import { CreateLeadModal } from "@/components/modals/CreateLeadModal";
 import { DashboardClient } from "@/components/dashboard/DashboardClient";
 import type { KanbanColumn } from "@/types";
 
@@ -21,20 +20,10 @@ export default async function PipelinePage() {
     leads: leads.filter((lead) => lead.stageId === stage.id),
   }));
 
+  // Cancel the dashboard layout's vertical padding + drop the page title.
+  // Lead count and "+ Novo Lead" now live in the filter bar itself.
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900">CRM</h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            {leadsResult.total} leads no total
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <CreateLeadModal stages={stages} />
-        </div>
-      </div>
-
+    <div className="flex flex-col gap-4 -mt-4 md:-mt-8">
       <DashboardClient leads={leads} columns={columns} stages={stages} funnels={funnels} />
     </div>
   );

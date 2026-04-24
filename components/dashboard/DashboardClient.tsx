@@ -18,6 +18,7 @@ import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { LeadsTable } from "@/components/dashboard/LeadsTable";
 import { LeadDetailModal } from "@/components/modals/LeadDetailModal";
 import { BulkActionBar } from "@/components/dashboard/BulkActionBar";
+import { CreateLeadModal } from "@/components/modals/CreateLeadModal";
 import { getAttendants } from "@/app/actions/whatsappHub";
 import { getCadences } from "@/app/actions/cadences";
 import type { FunnelData } from "@/app/actions/funnels";
@@ -413,8 +414,13 @@ export function DashboardClient({ leads, columns, stages, funnels = [] }: Props)
           <Download className="h-3.5 w-3.5" />
         </Button>
 
+        {/* New lead — moved here from the old page header */}
+        <div className="ml-auto">
+          <CreateLeadModal stages={stages} />
+        </div>
+
         {/* View toggle */}
-        <div className="flex items-center gap-1 border border-slate-200 rounded-xl p-1 ml-auto bg-slate-50">
+        <div className="flex items-center gap-1 border border-slate-200 rounded-xl p-1 bg-slate-50">
           <button
             onClick={() => setView("kanban")}
             className={`p-2 rounded-lg transition-all ${
