@@ -356,29 +356,47 @@ export async function processIncomingMessage(params: {
       }
     }
 
-    // ── Wait before reply (humanized delay) ───────────────────
-    // Default cut from 7s → 1s. Previous value was dominating end-to-end
-    // latency (22s total for a typical reply). Operators who want the old
-    // feel can raise it in Config → IA Chat → Comportamento.
+    // ── Burst-debounce + humanized wait ───────────────────────
+    // Two layered behaviors here:
+    //
+    //   1. waitBeforeReply (default 1s): the classic typing-pause delay.
+    //
+    //   2. Burst debounce: while we sleep, if the lead keeps typing
+    //      ("oi" → "tudo bem?" → "quanto custa?"), each new turn pushes the
+    //      window forward by another 2s window. We only run the AI once
+    //      *after* the lead has been quiet for 2s, then reply considering
+    //      ALL the messages they sent in the burst. Without this the AI
+    //      replies to "oi" alone and ignores the question that followed.
     const waitSeconds = aiConfig.waitBeforeReply ?? 1;
-    if (waitSeconds > 0) {
-      // Check if new message arrived during wait (cancelOnNewMsg)
-      await sleep(waitSeconds * 1000);
+    const debounceWindowMs = 2000;
+    if (waitSeconds > 0) await sleep(waitSeconds * 1000);
 
-      if (aiConfig.cancelOnNewMsg) {
-        const newerMsg = await prisma.message.findFirst({
-          where: {
-            lead: { userId, phone },
-            role: "user",
-            createdAt: { gt: new Date(Date.now() - waitSeconds * 1000) },
-            content: { not: text },
-          },
-        });
-        if (newerMsg) {
-          log.info("webhook_cancelled_newer_msg");
-          return;
-        }
-      }
+    let burstWaits = 0;
+    while (burstWaits < 5) {
+      const latest = await prisma.message.findFirst({
+        where: { leadId: lead.id, role: "user" },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, content: true, createdAt: true },
+      });
+      if (!latest) break;
+      const ageMs = Date.now() - latest.createdAt.getTime();
+      if (ageMs >= debounceWindowMs) break;
+      // Lead is still typing — wait out the rest of the window and re-check.
+      await sleep(debounceWindowMs - ageMs);
+      burstWaits++;
+    }
+
+    // After settling, only the job whose `text` matches the latest user
+    // message should produce a reply — others were superseded by a newer
+    // turn that itself acquired the lock and will reply.
+    const latestUserMsg = await prisma.message.findFirst({
+      where: { leadId: lead.id, role: "user" },
+      orderBy: { createdAt: "desc" },
+      select: { content: true },
+    });
+    if (latestUserMsg && latestUserMsg.content !== text) {
+      log.info("webhook_superseded_by_newer_turn");
+      return;
     }
 
     log.info("webhook_ai_generating", {

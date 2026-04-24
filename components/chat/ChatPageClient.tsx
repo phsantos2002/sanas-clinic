@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
+import { useChatStream } from "@/lib/hooks/useChatStream";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import {
   Search,
   MessageCircle,
@@ -559,6 +561,11 @@ export function ChatPageClient() {
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+  // Track whether the user is at/near the bottom — used to suppress autoscroll
+  // when they've scrolled up to read older messages and don't want to be
+  // yanked back when a new message arrives.
+  const atBottomRef = useRef(true);
   const messagesTopRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileType, setFileType] = useState<string>("");
@@ -815,7 +822,13 @@ export function ChatPageClient() {
           if (msgs.length > 0) {
             lastMsgTsRef.current = msgs[msgs.length - 1].messageTimestamp;
           }
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+          // Snap to the last message; Virtuoso handles smoothness
+          requestAnimationFrame(() =>
+            virtuosoRef.current?.scrollToIndex({
+              index: msgs.length - 1,
+              behavior: "auto",
+            })
+          );
         }
         setMsgTotal(data.total ?? msgs.length);
         setMsgOffset(offset + msgs.length);
@@ -879,14 +892,10 @@ export function ChatPageClient() {
           );
           if (truly.length === 0) return prev;
 
-          const container = messagesContainerRef.current;
-          const isAtBottom =
-            container &&
-            container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-
-          if (isAtBottom) {
-            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
-          } else {
+          // Virtuoso's followOutput will auto-scroll if the user is at bottom;
+          // when they're not, surface the unread badge so they know msgs
+          // arrived without yanking their scroll.
+          if (!atBottomRef.current) {
             setUnreadBelowCount((c) => c + truly.length);
             setShowScrollDown(true);
           }
@@ -903,11 +912,46 @@ export function ChatPageClient() {
   }, []);
 
   // Poll for new messages in selected chat (1s interval)
+  // SSE: subscribe to /api/chat/stream when a 1:1 chat is open. While the
+  // stream is alive (`sseActive` true) we suspend the 1s polling to avoid
+  // duplicate fetches; if SSE returns 404 (no Lead row, e.g. a group), the
+  // hook flips sseActive=false and the polling fallback takes over.
+  const [sseActive, setSseActive] = useState(false);
+  const handleStreamBatch = useCallback((incoming: Message[]) => {
+    const current = selectedChatRef.current;
+    if (!current) return;
+    const phoneAtStart = current.wa_chatid.split("@")[0];
+    const filtered = incoming.filter((m) => {
+      const mid = (m as unknown as { chatid?: string }).chatid;
+      return mid ? mid.split("@")[0] === phoneAtStart : true;
+    });
+    if (filtered.length === 0) return;
+    filtered.sort((a, b) => a.messageTimestamp - b.messageTimestamp);
+    const maxTs = filtered[filtered.length - 1].messageTimestamp;
+    if (maxTs > lastMsgTsRef.current) lastMsgTsRef.current = maxTs;
+    setMessages((prev) => {
+      const seen = new Set(prev.flatMap((m) => [m.messageid, m.id].filter(Boolean) as string[]));
+      const truly = filtered.filter(
+        (m) => !(m.messageid && seen.has(m.messageid)) && !(m.id && seen.has(m.id))
+      );
+      if (truly.length === 0) return prev;
+      if (!atBottomRef.current) {
+        setUnreadBelowCount((c) => c + truly.length);
+        setShowScrollDown(true);
+      }
+      setMsgTotal((t) => t + truly.length);
+      return [...prev, ...truly];
+    });
+  }, []);
+  useChatStream(selectedChatId ?? null, lastMsgTsRef.current, handleStreamBatch, setSseActive);
+
+  // Polling fallback — only runs when SSE isn't carrying messages for this
+  // chat (groups, missing Lead, network failure).
   useEffect(() => {
-    if (!selectedChatId) return;
+    if (!selectedChatId || sseActive) return;
     const interval = setInterval(checkNewMessages, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [selectedChatId, checkNewMessages]);
+  }, [selectedChatId, sseActive, checkNewMessages]);
 
   // Trigger an immediate refresh whenever the tab regains focus / becomes visible.
   // If the initial fetch never completed (lastMsgTsRef still 0), checkNewMessages
@@ -976,53 +1020,42 @@ export function ChatPageClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChatId]);
 
-  // Infinite scroll: load more when scrolling to top
-  const handleMessagesScroll = useCallback(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-
-    // Show/hide scroll-to-bottom button
-    const isNearBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight < 200;
-    if (isNearBottom) {
-      setShowScrollDown(false);
-      setUnreadBelowCount(0);
-    } else if (messages.length > 20) {
-      setShowScrollDown(true);
-    }
-
-    // Auto-load more when near top
-    if (container.scrollTop < 100 && !loadingMore && msgOffset < msgTotal && selectedChat) {
-      const prevHeight = container.scrollHeight;
-      fetchMessages(selectedChat.wa_chatid, msgOffset, true).then(() => {
-        // Maintain scroll position after prepending
-        requestAnimationFrame(() => {
-          if (container) {
-            container.scrollTop = container.scrollHeight - prevHeight;
-          }
-        });
-      });
-    }
-  }, [loadingMore, msgOffset, msgTotal, selectedChat, fetchMessages, messages.length]);
-
-  // Load more (manual button fallback)
+  // Load more (manual button fallback). Virtuoso's startReached handles the
+  // automatic case when the operator scrolls to the very top.
   const loadMore = () => {
     if (!selectedChat || loadingMore || msgOffset >= msgTotal) return;
     fetchMessages(selectedChat.wa_chatid, msgOffset, true);
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    virtuosoRef.current?.scrollToIndex({
+      index: messages.length - 1,
+      behavior: "smooth",
+    });
     setShowScrollDown(false);
     setUnreadBelowCount(0);
   };
 
-  // Pinned chats at top
-  const { pinnedChats, regularChats } = useMemo(() => {
+  // Pinned chats at top + flat virtual array for Virtuoso. The list contains
+  // a "Fixadas" header, the pinned rows, an optional "Todas" header, the
+  // regular rows, and a sentinel row that triggers lazy-load when reached.
+  type ChatVirtualItem =
+    | { type: "header"; label: string; icon?: "pin" }
+    | { type: "chat"; chat: Chat }
+    | { type: "sentinel" };
+  const chatVirtualItems = useMemo(() => {
     const pinned = chats.filter((c) => c.wa_pinned);
     const regular = chats.filter((c) => !c.wa_pinned);
-    return { pinnedChats: pinned, regularChats: regular };
-  }, [chats]);
+    const items: ChatVirtualItem[] = [];
+    if (pinned.length > 0) {
+      items.push({ type: "header", label: "Fixadas", icon: "pin" });
+      for (const c of pinned) items.push({ type: "chat", chat: c });
+      if (regular.length > 0) items.push({ type: "header", label: "Todas" });
+    }
+    for (const c of regular) items.push({ type: "chat", chat: c });
+    if (hasMoreChats && chats.length > 0) items.push({ type: "sentinel" });
+    return items;
+  }, [chats, hasMoreChats]);
 
   // Send message
   async function handleSend() {
@@ -1047,8 +1080,16 @@ export function ChatPageClient() {
       ack: 0,
       quotedMsg: replyTo ? { text: replyTo.text, sender: replyTo.sender } : undefined,
     };
-    setMessages((prev) => [...prev, optimistic]);
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    setMessages((prev) => {
+      const next = [...prev, optimistic];
+      requestAnimationFrame(() =>
+        virtuosoRef.current?.scrollToIndex({
+          index: next.length - 1,
+          behavior: "smooth",
+        })
+      );
+      return next;
+    });
 
     try {
       const phone = selectedChat.wa_chatid.split("@")[0];
@@ -1442,52 +1483,55 @@ export function ChatPageClient() {
             </div>
           )}
 
-          {/* Pinned section */}
-          {pinnedChats.length > 0 && (
-            <>
-              <div className="px-4 py-1.5 bg-slate-50 flex items-center gap-1">
-                <Pin className="h-3 w-3 text-slate-400" />
-                <span className="text-[10px] font-medium text-slate-400 uppercase">Fixadas</span>
-              </div>
-              {pinnedChats.map((chat) => (
-                <ChatItem
-                  key={chat.id || chat.wa_chatid}
-                  chat={chat}
-                  isSelected={selectedChat?.wa_chatid === chat.wa_chatid}
-                  onSelect={setSelectedChat}
-                  onMenuToggle={setShowChatMenu}
-                  showMenu={showChatMenu === chat.wa_chatid}
-                  onPin={handlePinChat}
-                  onArchive={handleArchiveChat}
-                  onMute={handleMuteChat}
-                />
-              ))}
-              {regularChats.length > 0 && (
-                <div className="px-4 py-1.5 bg-slate-50">
-                  <span className="text-[10px] font-medium text-slate-400 uppercase">Todas</span>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Regular chats */}
-          {regularChats.map((chat) => (
-            <ChatItem
-              key={chat.id || chat.wa_chatid}
-              chat={chat}
-              isSelected={selectedChat?.wa_chatid === chat.wa_chatid}
-              onSelect={setSelectedChat}
-              onMenuToggle={setShowChatMenu}
-              showMenu={showChatMenu === chat.wa_chatid}
-              onPin={handlePinChat}
-              onArchive={handleArchiveChat}
-              onMute={handleMuteChat}
+          {/* Virtualized chat list — only renders the ~15 visible rows even
+              when there are 1000+ conversations. Composes pinned section,
+              optional separator, regular chats, and a sentinel into one
+              flat array so Virtuoso can recycle DOM aggressively. */}
+          {chatVirtualItems.length > 0 && (
+            <Virtuoso
+              data={chatVirtualItems}
+              endReached={() => {
+                if (hasMoreChats && !loadingMoreChats) loadMoreChats();
+              }}
+              itemContent={(_, item) => {
+                if (item.type === "header") {
+                  return (
+                    <div className="px-4 py-1.5 bg-slate-50 flex items-center gap-1">
+                      {item.icon === "pin" && <Pin className="h-3 w-3 text-slate-400" />}
+                      <span className="text-[10px] font-medium text-slate-400 uppercase">
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                }
+                if (item.type === "sentinel") {
+                  return (
+                    <div className="px-4 py-3 text-center text-xs text-slate-400">
+                      {loadingMoreChats ? "Carregando mais conversas..." : ""}
+                    </div>
+                  );
+                }
+                const chat = item.chat;
+                return (
+                  <ChatItem
+                    chat={chat}
+                    isSelected={selectedChatId === chat.wa_chatid}
+                    onSelect={setSelectedChat}
+                    onMenuToggle={setShowChatMenu}
+                    showMenu={showChatMenu === chat.wa_chatid}
+                    onPin={handlePinChat}
+                    onArchive={handleArchiveChat}
+                    onMute={handleMuteChat}
+                  />
+                );
+              }}
+              computeItemKey={(_, item) => {
+                if (item.type === "header") return `h-${item.label}`;
+                if (item.type === "sentinel") return "sentinel";
+                return item.chat.id || item.chat.wa_chatid;
+              }}
+              style={{ height: "100%" }}
             />
-          ))}
-
-          {/* Lazy-load sentinel: triggers next page when visible */}
-          {hasMoreChats && chats.length > 0 && (
-            <ChatListSentinel onIntersect={loadMoreChats} loading={loadingMoreChats} />
           )}
         </div>
       </div>
@@ -1508,17 +1552,23 @@ export function ChatPageClient() {
                 <span className="text-sm font-bold text-slate-500 absolute inset-0 flex items-center justify-center">
                   {getInitials(resolveChatName(selectedChat) || "?")}
                 </span>
-                {(selectedChat.imagePreview || selectedChat.image) && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={selectedChat.imagePreview || selectedChat.image}
-                    alt=""
-                    className="w-full h-full object-cover relative"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                )}
+                {(() => {
+                  const phoneForHeader = (selectedChat.wa_chatid || "").split("@")[0];
+                  if (!phoneForHeader) return null;
+                  return (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/avatar/${encodeURIComponent(phoneForHeader)}`}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover relative"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  );
+                })()}
               </div>
 
               <div className="flex-1 min-w-0">
@@ -1600,39 +1650,22 @@ export function ChatPageClient() {
               </div>
             )}
 
-            {/* Messages */}
+            {/* Messages — virtualized so 1000+ message threads scroll at 60fps.
+                Background pattern stays on the wrapper; Virtuoso handles its
+                own scroll container internally. */}
             <div
-              ref={messagesContainerRef}
-              onScroll={handleMessagesScroll}
-              className="flex-1 overflow-y-auto px-4 py-3 space-y-1 relative"
+              className="flex-1 overflow-hidden relative"
               style={{
                 backgroundImage:
                   "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9InAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMSIgZmlsbD0iI2UyZThmMCIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZjFmNWY5Ii8+PHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSJ1cmwoI3ApIi8+PC9zdmc+')",
                 backgroundSize: "60px 60px",
               }}
             >
-              {/* Load more button */}
-              <div ref={messagesTopRef} />
-              {msgOffset < msgTotal && !loadingMsgs && (
-                <div className="flex justify-center py-2">
-                  <button
-                    onClick={loadMore}
-                    disabled={loadingMore}
-                    className="px-4 py-1.5 bg-white rounded-full text-xs text-slate-500 hover:bg-slate-50 shadow-sm border border-slate-200"
-                  >
-                    {loadingMore
-                      ? "Carregando..."
-                      : `Carregar anteriores (${msgTotal - msgOffset} restantes)`}
-                  </button>
-                </div>
-              )}
-
-              {loadingMsgs && (
+              {loadingMsgs && messages.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="h-5 w-5 animate-spin text-slate-400" />
                 </div>
-              )}
-              {!loadingMsgs && messages.length === 0 && (
+              ) : messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2 px-4">
                   <p className="text-sm text-slate-400 bg-white/80 px-4 py-2 rounded-lg shadow-sm">
                     Nenhuma mensagem encontrada
@@ -1661,29 +1694,71 @@ export function ChatPageClient() {
                     </details>
                   )}
                 </div>
-              )}
-
-              {messages.map((msg, idx) => (
-                <MessageRow
-                  key={msg.id || msg.messageid}
-                  msg={msg}
-                  showDateSeparator={shouldShowDateSeparator(messages, idx)}
-                  isGroup={!!selectedChat.wa_isGroup}
-                  isPickerOpen={showEmojiPicker === msg.messageid}
-                  isMenuOpen={showMsgMenu === msg.messageid}
-                  onReply={handleReplyMsg}
-                  onForward={handleForwardMsg}
-                  onCopy={handleCopyMsg}
-                  onTogglePicker={handleTogglePicker}
-                  onToggleMenu={handleToggleMenu}
-                  onReact={handleReactMsg}
-                  onStar={handleStarMsg}
-                  onEdit={handleEditMsg}
-                  onDeleteForMe={handleDeleteForMe}
-                  onDeleteForAll={handleDeleteForAll}
+              ) : (
+                <Virtuoso
+                  ref={virtuosoRef}
+                  data={messages}
+                  initialTopMostItemIndex={messages.length - 1}
+                  followOutput={(isAtBottom) => (isAtBottom ? "smooth" : false)}
+                  atBottomStateChange={(at) => {
+                    atBottomRef.current = at;
+                    if (at) {
+                      setShowScrollDown(false);
+                      setUnreadBelowCount(0);
+                    } else if (messages.length > 20) {
+                      setShowScrollDown(true);
+                    }
+                  }}
+                  startReached={() => {
+                    if (msgOffset < msgTotal && !loadingMore && selectedChat) {
+                      fetchMessages(selectedChat.wa_chatid, msgOffset, true);
+                    }
+                  }}
+                  components={{
+                    Header: () =>
+                      msgOffset < msgTotal && !loadingMsgs ? (
+                        <div className="flex justify-center py-2">
+                          {loadingMore ? (
+                            <div className="px-4 py-1.5 text-xs text-slate-400">Carregando…</div>
+                          ) : (
+                            <button
+                              onClick={loadMore}
+                              className="px-4 py-1.5 bg-white rounded-full text-xs text-slate-500 hover:bg-slate-50 shadow-sm border border-slate-200"
+                            >
+                              Carregar anteriores ({msgTotal - msgOffset} restantes)
+                            </button>
+                          )}
+                        </div>
+                      ) : null,
+                  }}
+                  itemContent={(idx, msg) => (
+                    <div className="px-4 py-0.5">
+                      <MessageRow
+                        msg={msg}
+                        showDateSeparator={shouldShowDateSeparator(messages, idx)}
+                        isGroup={!!selectedChat.wa_isGroup}
+                        isPickerOpen={showEmojiPicker === msg.messageid}
+                        isMenuOpen={showMsgMenu === msg.messageid}
+                        onReply={handleReplyMsg}
+                        onForward={handleForwardMsg}
+                        onCopy={handleCopyMsg}
+                        onTogglePicker={handleTogglePicker}
+                        onToggleMenu={handleToggleMenu}
+                        onReact={handleReactMsg}
+                        onStar={handleStarMsg}
+                        onEdit={handleEditMsg}
+                        onDeleteForMe={handleDeleteForMe}
+                        onDeleteForAll={handleDeleteForAll}
+                      />
+                    </div>
+                  )}
+                  computeItemKey={(_, msg) => msg.id || msg.messageid}
+                  style={{ height: "100%" }}
                 />
-              ))}
-              <div ref={messagesEndRef} />
+              )}
+              {/* Anchor kept for legacy scrollIntoView calls */}
+              <div ref={messagesEndRef} style={{ display: "none" }} />
+              <div ref={messagesContainerRef} style={{ display: "none" }} />
             </div>
 
             {/* Scroll to bottom button */}
@@ -2280,50 +2355,9 @@ function ChatListSentinel({ onIntersect, loading }: { onIntersect: () => void; l
 
 // ─── Chat Item Component ───
 
-// Process-wide memo: phones we've already attempted to fetch an avatar for in
-// this session. Prevents a scroll-jitter from re-firing /action=avatar for the
-// same chat, and also dedupes across multiple ChatItem unmount/remounts.
-const avatarAttemptedPhones = new Set<string>();
-
-function useLazyAvatar(phone: string, hasPic: boolean) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [fetched, setFetched] = useState<{ imagePreview: string; image: string } | null>(null);
-
-  useEffect(() => {
-    if (hasPic || !phone) return;
-    if (avatarAttemptedPhones.has(phone)) return;
-    const node = containerRef.current;
-    if (!node) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          if (avatarAttemptedPhones.has(phone)) return;
-          avatarAttemptedPhones.add(phone);
-          fetch(`/api/whatsapp?action=avatar&phone=${encodeURIComponent(phone)}`)
-            .then((r) => (r.ok ? r.json() : null))
-            .then((data) => {
-              if (!data) return;
-              if (data.imagePreview || data.image) {
-                setFetched({ imagePreview: data.imagePreview, image: data.image });
-              }
-            })
-            .catch(() => {
-              // Leave the in-memory guard set — retrying in this session
-              // won't help (Uazapi likely returned nothing or 403-ing URL).
-            });
-          obs.disconnect();
-          return;
-        }
-      },
-      { rootMargin: "200px 0px" } // start fetching a bit before it scrolls into view
-    );
-    obs.observe(node);
-    return () => obs.disconnect();
-  }, [phone, hasPic]);
-
-  return { containerRef, fetched };
-}
+// Avatars are now served through /api/avatar/[phone] — the backend proxies
+// Meta's signed URL through our domain with a 1-day browser cache, so the
+// <img> element does all the work natively. No JS-side lazy-fetch needed.
 
 function ChatItemImpl({
   chat,
@@ -2347,10 +2381,11 @@ function ChatItemImpl({
   const name = resolveChatName(chat);
   const lastMsg = chat.wa_lastMessageTextVote || "";
   const time = formatTime(chat.wa_lastMsgTimestamp);
-  const serverPic = chat.imagePreview || chat.image;
+  // Always route the avatar through our proxy. The <img> tag's native
+  // loading="lazy" + the 1-day Cache-Control we set server-side handles
+  // both deferred fetching and inter-session caching without any JS plumbing.
   const phoneForAvatar = (chat.wa_chatid || "").split("@")[0];
-  const { containerRef: avatarRef, fetched: lazyPic } = useLazyAvatar(phoneForAvatar, !!serverPic);
-  const pic = serverPic || lazyPic?.imagePreview || lazyPic?.image || "";
+  const pic = phoneForAvatar ? `/api/avatar/${encodeURIComponent(phoneForAvatar)}` : "";
   const lastType = chat.wa_lastMessageType;
 
   return (
@@ -2361,10 +2396,7 @@ function ChatItemImpl({
           isSelected ? "bg-emerald-50" : "hover:bg-slate-50"
         }`}
       >
-        <div
-          ref={avatarRef}
-          className="w-11 h-11 rounded-full flex-shrink-0 overflow-hidden bg-slate-200 flex items-center justify-center relative"
-        >
+        <div className="w-11 h-11 rounded-full flex-shrink-0 overflow-hidden bg-slate-200 flex items-center justify-center relative">
           <span className="text-sm font-bold text-slate-500 absolute inset-0 flex items-center justify-center">
             {getInitials(name)}
           </span>
@@ -2373,9 +2405,10 @@ function ChatItemImpl({
             <img
               src={pic}
               alt=""
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover relative"
               onError={(e) => {
-                // URL expired or unreachable: hide image so initials show through
                 (e.currentTarget as HTMLImageElement).style.display = "none";
               }}
             />
