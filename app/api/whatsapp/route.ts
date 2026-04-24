@@ -407,14 +407,18 @@ export async function GET(req: NextRequest) {
 
       case "avatar": {
         // Lazy avatar fetch for a single phone. Front calls this per visible
-        // chat that has no avatar yet, so we only hit Uazapi for what the
-        // operator actually sees — never for the full 200-chat page on load.
+        // chat that has no avatar yet — so we only hit Uazapi for what the
+        // operator actually sees, never for the full 200-chat page on load.
         const phone = (searchParams.get("phone") ?? "").replace(/\D/g, "");
         if (!phone) return NextResponse.json({ imagePreview: "", image: "" });
-        // Cache hit (even an "empty" marker from a recent probe) — short-circuit.
+        // Cache hit ONLY when we have a real (non-empty) avatar. Empty markers
+        // from prior failed enrichments would otherwise stick for 6h, leaving
+        // the operator staring at initials they explicitly tried to load.
+        // Per-session client-side dedup (avatarAttemptedPhones) already
+        // prevents thrash, so re-trying upstream here is safe.
         const cache = await loadAvatarCache(config.userId, [phone]);
         const cached = cache.get(phone);
-        if (cached) {
+        if (cached && (cached.imagePreview || cached.image)) {
           return NextResponse.json({
             imagePreview: cached.imagePreview,
             image: cached.image,
@@ -427,7 +431,6 @@ export async function GET(req: NextRequest) {
         });
         const imagePreview = (detail?.imagePreview as string) || "";
         const image = (detail?.image as string) || "";
-        // Fire-and-forget persist — the response ships before this hits the DB.
         saveAvatarCache(config.userId, [{ phone, imagePreview, image }]).catch(() => {});
         return NextResponse.json({ imagePreview, image, cached: false });
       }
@@ -515,18 +518,58 @@ export async function GET(req: NextRequest) {
         if (starred) body.isStarred = true;
         if (afterTs) body.messageTimestamp = { $gt: parseInt(afterTs) };
 
-        const data = await uazapi(config.serverUrl, config.token, "POST", "/message/find", body);
+        let data = await uazapi(config.serverUrl, config.token, "POST", "/message/find", body);
+        // Group fallback: if the chatid filter returned nothing, retry using
+        // wa_chatid instead. Some Uazapi builds index group threads under
+        // that key and silently return [] for the chatid path.
+        if (
+          isGroup &&
+          (!data ||
+            (Array.isArray(data?.messages) && data.messages.length === 0) ||
+            (Array.isArray(data) && data.length === 0))
+        ) {
+          const altBody: Record<string, unknown> = {
+            wa_chatid: chatid,
+            limit,
+            offset,
+          };
+          if (search) altBody.text = `~${search}`;
+          if (afterTs) altBody.messageTimestamp = { $gt: parseInt(afterTs) };
+          const alt = await uazapi(
+            config.serverUrl,
+            config.token,
+            "POST",
+            "/message/find",
+            altBody
+          );
+          if (
+            alt &&
+            ((Array.isArray(alt?.messages) && alt.messages.length > 0) ||
+              (Array.isArray(alt) && alt.length > 0))
+          ) {
+            data = alt;
+          }
+        }
         const rawMessages = Array.isArray(data?.messages)
           ? data.messages
           : Array.isArray(data)
             ? data
             : [];
 
+        // Defensive filter. For 1:1 chats Uazapi is strict enough that a raw
+        // chatid string comparison works. For groups the LID format may vary
+        // (`120...@g.us`, `120...@lid`, or even bare), so we relax to "the
+        // phone-numeric part matches the group id" — the upstream `$in`
+        // filter already constrained the query to this group, this just
+        // ensures we don't accidentally drop a valid message.
         const expectedSet = new Set(chatIdVariants);
+        const groupBase = isGroup ? phoneOnly : null;
         const messages = rawMessages.filter((m: Record<string, unknown>) => {
           const mid = m?.chatid as string | undefined;
           if (!mid) return false;
-          return expectedSet.has(mid);
+          if (expectedSet.has(mid)) return true;
+          if (groupBase && mid.split("@")[0] === groupBase) return true;
+          return false;
         });
 
         return NextResponse.json({
