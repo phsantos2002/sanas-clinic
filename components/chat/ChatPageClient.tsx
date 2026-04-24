@@ -1428,7 +1428,7 @@ export function ChatPageClient() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-7.5rem)] -mx-4 md:-mx-6 overflow-hidden rounded-xl border border-slate-200">
+    <div className="flex h-[calc(100vh-5rem)] -mx-4 md:-mx-6 overflow-hidden rounded-xl border border-slate-200">
       {/* ─── Sidebar ─── */}
       <div
         className={`${showMobileSidebar ? "flex" : "hidden"} md:flex w-full md:w-[340px] flex-shrink-0 border-r border-slate-200 bg-white flex-col overflow-hidden`}

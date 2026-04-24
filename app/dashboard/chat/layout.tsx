@@ -22,10 +22,10 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
   const visibleTabs = await getVisibleChatTabs();
 
   return (
-    // Cancel the dashboard layout's top padding so the conversation list
-    // starts flush with the top nav — WhatsApp-style full-height panel
-    // instead of a floating card with whitespace above.
-    <div className="flex flex-col gap-3 -mt-4 md:-mt-8">
+    // Cancel both the top AND bottom padding of the dashboard layout
+    // so the chat occupies the full viewport below the top nav — no
+    // gray strip above or below the conversation panel.
+    <div className="flex flex-col gap-3 -mt-4 md:-mt-8 -mb-4 md:-mb-8">
       <ChatTabsNav visibleTabs={visibleTabs} />
       {children}
     </div>
