@@ -442,15 +442,20 @@ export async function GET(req: NextRequest) {
         const search = searchParams.get("search") ?? "";
         const starred = searchParams.get("starred") === "true";
         const afterTs = searchParams.get("afterTs");
+        // beforeTs lets the front pull older history when the operator
+        // scrolls past the messages we have in the DB. We always go upstream
+        // for these requests (DB has nothing older by definition).
+        const beforeTs = searchParams.get("beforeTs");
 
         const phoneOnly = chatid.split("@")[0];
         const isGroup = chatid.includes("@g.us");
 
         // ── Postgres-first source (1:1 chats only) ─────────────────
         // Groups still read from Uazapi — we don't persist group histories
-        // locally (no Lead row, multiple senders). `starred` also bypasses
-        // the DB since we don't track that flag server-side.
-        if (!isGroup && !starred && phoneOnly) {
+        // locally (no Lead row, multiple senders). `starred` and `beforeTs`
+        // also bypass the DB: starred isn't tracked server-side, and
+        // beforeTs is by definition asking for history older than ours.
+        if (!isGroup && !starred && !beforeTs && phoneOnly) {
           const lead = await prisma.lead.findFirst({
             where: { userId: config.userId, phone: phoneOnly },
             select: { id: true },
@@ -527,38 +532,49 @@ export async function GET(req: NextRequest) {
         };
         if (search) body.text = `~${search}`;
         if (starred) body.isStarred = true;
-        if (afterTs) body.messageTimestamp = { $gt: parseInt(afterTs) };
+        if (afterTs && !beforeTs) body.messageTimestamp = { $gt: parseInt(afterTs) };
+        if (beforeTs) body.messageTimestamp = { $lt: parseInt(beforeTs) };
 
         let data = await uazapi(config.serverUrl, config.token, "POST", "/message/find", body);
         // Group fallback: if the chatid filter returned nothing, retry using
         // wa_chatid instead. Some Uazapi builds index group threads under
         // that key and silently return [] for the chatid path.
-        if (
-          isGroup &&
-          (!data ||
-            (Array.isArray(data?.messages) && data.messages.length === 0) ||
-            (Array.isArray(data) && data.length === 0))
-        ) {
-          const altBody: Record<string, unknown> = {
-            wa_chatid: chatid,
-            limit,
-            offset,
-          };
-          if (search) altBody.text = `~${search}`;
-          if (afterTs) altBody.messageTimestamp = { $gt: parseInt(afterTs) };
-          const alt = await uazapi(
-            config.serverUrl,
-            config.token,
-            "POST",
-            "/message/find",
-            altBody
-          );
-          if (
-            alt &&
-            ((Array.isArray(alt?.messages) && alt.messages.length > 0) ||
-              (Array.isArray(alt) && alt.length > 0))
-          ) {
-            data = alt;
+        const dataIsEmpty = (d: unknown) =>
+          !d ||
+          (Array.isArray((d as { messages?: unknown[] })?.messages) &&
+            (d as { messages: unknown[] }).messages.length === 0) ||
+          (Array.isArray(d) && (d as unknown[]).length === 0);
+
+        if (isGroup && dataIsEmpty(data)) {
+          const baseAlt: Record<string, unknown> = { limit, offset };
+          if (search) baseAlt.text = `~${search}`;
+          if (afterTs && !beforeTs) baseAlt.messageTimestamp = { $gt: parseInt(afterTs) };
+          if (beforeTs) baseAlt.messageTimestamp = { $lt: parseInt(beforeTs) };
+
+          // Try a sequence of progressively looser filter shapes. We stop at
+          // the first one that returns anything; if all five strike out we
+          // accept the empty result (Uazapi genuinely doesn't have history).
+          const lidBare = chatid.split("@")[0];
+          const altShapes: Record<string, unknown>[] = [
+            { ...baseAlt, wa_chatid: chatid },
+            { ...baseAlt, wa_chatid: { $in: [chatid, `${lidBare}@lid`, lidBare] } },
+            { ...baseAlt, chatid: { $regex: `^${lidBare}` } },
+            { ...baseAlt, groupid: chatid },
+            { ...baseAlt, groupId: chatid },
+          ];
+
+          for (const shape of altShapes) {
+            const alt = await uazapi(
+              config.serverUrl,
+              config.token,
+              "POST",
+              "/message/find",
+              shape
+            );
+            if (!dataIsEmpty(alt)) {
+              data = alt;
+              break;
+            }
           }
         }
         const rawMessages = Array.isArray(data?.messages)

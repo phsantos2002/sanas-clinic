@@ -1013,6 +1013,7 @@ export function ChatPageClient() {
     setMsgOffset(0);
     setUnreadBelowCount(0);
     setShowScrollDown(false);
+    setNoOlderHistory(false);
     lastMsgTsRef.current = 0;
     fetchMessages(selectedChatId);
     // Mark as read
@@ -1020,12 +1021,66 @@ export function ChatPageClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChatId]);
 
+  // Load older history. Two stages:
+  //   1. Pull additional rows from our DB by offset until msgOffset==msgTotal.
+  //   2. Once DB is exhausted, ask Uazapi for messages BEFORE the oldest one
+  //      we already have (beforeTs). This is what unlocks long histories on
+  //      legacy leads where the DB only has the recent webhook turns.
+  // `noOlderHistory` is set once Uazapi also returns nothing, so we stop
+  // pestering on every scroll-to-top.
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [noOlderHistory, setNoOlderHistory] = useState(false);
+  const loadOlder = useCallback(async () => {
+    if (!selectedChat || loadingOlder) return;
+    if (msgOffset < msgTotal) {
+      setLoadingOlder(true);
+      await fetchMessages(selectedChat.wa_chatid, msgOffset, true);
+      setLoadingOlder(false);
+      return;
+    }
+    if (noOlderHistory || messages.length === 0) return;
+    const oldest = messages[0];
+    if (!oldest?.messageTimestamp) return;
+    setLoadingOlder(true);
+    try {
+      const res = await fetch(
+        `/api/whatsapp?action=messages&chatid=${encodeURIComponent(
+          selectedChat.wa_chatid
+        )}&limit=${MSG_PAGE_SIZE}&beforeTs=${oldest.messageTimestamp}`
+      );
+      const data = await res.json();
+      const incoming: Message[] = (data.messages ?? []).map((m: Record<string, unknown>) => ({
+        ...m,
+        text: (m.text as string) || (m.caption as string) || "",
+      }));
+      if (incoming.length === 0) {
+        setNoOlderHistory(true);
+      } else {
+        incoming.sort((a, b) => a.messageTimestamp - b.messageTimestamp);
+        setMessages((prev) => {
+          const seen = new Set(
+            prev.flatMap((m) => [m.messageid, m.id].filter(Boolean) as string[])
+          );
+          const truly = incoming.filter(
+            (m) => !(m.messageid && seen.has(m.messageid)) && !(m.id && seen.has(m.id))
+          );
+          if (truly.length === 0) {
+            setNoOlderHistory(true);
+            return prev;
+          }
+          return [...truly, ...prev];
+        });
+      }
+    } catch {
+      /* ignore — operator can scroll up again to retry */
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [selectedChat, loadingOlder, msgOffset, msgTotal, noOlderHistory, messages, fetchMessages]);
+
   // Load more (manual button fallback). Virtuoso's startReached handles the
   // automatic case when the operator scrolls to the very top.
-  const loadMore = () => {
-    if (!selectedChat || loadingMore || msgOffset >= msgTotal) return;
-    fetchMessages(selectedChat.wa_chatid, msgOffset, true);
-  };
+  const loadMore = loadOlder;
 
   const scrollToBottom = () => {
     virtuosoRef.current?.scrollToIndex({
@@ -1710,26 +1765,28 @@ export function ChatPageClient() {
                     }
                   }}
                   startReached={() => {
-                    if (msgOffset < msgTotal && !loadingMore && selectedChat) {
-                      fetchMessages(selectedChat.wa_chatid, msgOffset, true);
+                    if (!loadingOlder && selectedChat && !noOlderHistory) {
+                      loadOlder();
                     }
                   }}
                   components={{
                     Header: () =>
-                      msgOffset < msgTotal && !loadingMsgs ? (
+                      noOlderHistory ? null : (
                         <div className="flex justify-center py-2">
-                          {loadingMore ? (
-                            <div className="px-4 py-1.5 text-xs text-slate-400">Carregando…</div>
+                          {loadingOlder ? (
+                            <div className="px-4 py-1.5 text-xs text-slate-400">
+                              Carregando histórico…
+                            </div>
                           ) : (
                             <button
-                              onClick={loadMore}
+                              onClick={loadOlder}
                               className="px-4 py-1.5 bg-white rounded-full text-xs text-slate-500 hover:bg-slate-50 shadow-sm border border-slate-200"
                             >
-                              Carregar anteriores ({msgTotal - msgOffset} restantes)
+                              Carregar anteriores
                             </button>
                           )}
                         </div>
-                      ) : null,
+                      ),
                   }}
                   itemContent={(idx, msg) => (
                     <div className="px-4 py-0.5">
