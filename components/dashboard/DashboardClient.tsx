@@ -63,7 +63,6 @@ export function DashboardClient({ leads, columns, stages, funnels = [] }: Props)
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   const [stageFilter, setStageFilter] = useState<string | null>(null);
-  const [scoreFilter, setScoreFilter] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>(loadSavedFilters);
@@ -117,19 +116,12 @@ export function DashboardClient({ leads, columns, stages, funnels = [] }: Props)
     setSelectionMode(false);
   }, []);
 
-  const hasActiveFilters = !!(
-    search.trim() ||
-    sourceFilter ||
-    stageFilter ||
-    scoreFilter ||
-    tagFilter
-  );
+  const hasActiveFilters = !!(search.trim() || sourceFilter || stageFilter || tagFilter);
 
   const clearFilters = useCallback(() => {
     setSearch("");
     setSourceFilter(null);
     setStageFilter(null);
-    setScoreFilter(null);
     setTagFilter(null);
   }, []);
 
@@ -188,21 +180,12 @@ export function DashboardClient({ leads, columns, stages, funnels = [] }: Props)
       result = result.filter((l) => l.stageId === stageFilter);
     }
 
-    if (scoreFilter) {
-      if (scoreFilter === "vip") result = result.filter((l) => l.score >= 80);
-      else if (scoreFilter === "quente")
-        result = result.filter((l) => l.score >= 50 && l.score < 80);
-      else if (scoreFilter === "morno")
-        result = result.filter((l) => l.score >= 25 && l.score < 50);
-      else if (scoreFilter === "frio") result = result.filter((l) => l.score < 25);
-    }
-
     if (tagFilter) {
       result = result.filter((l) => l.tags?.includes(tagFilter!));
     }
 
     return result;
-  }, [leads, search, sourceFilter, stageFilter, scoreFilter, tagFilter]);
+  }, [leads, search, sourceFilter, stageFilter, tagFilter]);
 
   const exportCSV = useCallback(() => {
     const headers = ["Nome", "Telefone", "Email", "Origem", "Etapa", "Campanha", "Criado em"];
@@ -248,197 +231,167 @@ export function DashboardClient({ leads, columns, stages, funnels = [] }: Props)
 
   return (
     <div className="space-y-5">
-      {/* Filter bar — organized as two semantic rows:
-          Row 1: primary filters (funnel, search, dropdowns)
-          Row 2: saved filters + bulk actions on the left, primary action + view toggle on the right */}
-      <div className="bg-white border border-slate-100 rounded-2xl px-3 py-2.5 sm:px-5 sm:py-3 shadow-sm space-y-2.5">
-        {/* Row 1: filters */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {funnels.length > 0 && (
-            <div className="flex items-center gap-2">
-              <GitBranch className="h-4 w-4 text-slate-400" />
-              <CustomSelect
-                options={funnels.map((f) => ({ value: f.id, label: f.name }))}
-                value={funnelId ?? funnels[0]?.id ?? ""}
-                onChange={(v) => setFunnelId(v || null)}
-                className="w-[180px]"
-              />
-            </div>
-          )}
-
-          <div className="relative w-full sm:flex-1 sm:min-w-[220px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-            <Input
-              placeholder="Buscar nome, telefone ou email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-sm border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white"
+      {/* Filter bar — single row on desktop with everything inline.
+          Order: funnel, search, origin, stage, saved filters, select, export,
+          novo lead, view toggle. Wraps to additional rows only on narrow
+          screens; the browser picks the wrap points based on available width. */}
+      <div className="bg-white border border-slate-100 rounded-2xl px-3 py-2.5 sm:px-5 sm:py-3 shadow-sm flex items-center gap-2 flex-wrap">
+        {funnels.length > 0 && (
+          <div className="flex items-center gap-2">
+            <GitBranch className="h-4 w-4 text-slate-400" />
+            <CustomSelect
+              options={funnels.map((f) => ({ value: f.id, label: f.name }))}
+              value={funnelId ?? funnels[0]?.id ?? ""}
+              onChange={(v) => setFunnelId(v || null)}
+              className="w-[160px]"
             />
           </div>
+        )}
 
-          <CustomSelect
-            options={[
-              { value: "", label: "Todas as Origens" },
-              { value: "meta", label: "Meta Ads" },
-              { value: "whatsapp", label: "WhatsApp" },
-              { value: "manual", label: "Manual" },
-              { value: "unknown", label: "Não Rastreada" },
-            ]}
-            value={sourceFilter ?? ""}
-            onChange={(v) => setSourceFilter(v || null)}
-            className="w-full sm:w-[170px]"
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+          <Input
+            placeholder="Buscar nome, telefone, email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-9 text-sm border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white"
           />
-
-          <CustomSelect
-            options={[
-              { value: "", label: "Todas as Etapas" },
-              ...visibleStages.map((s) => ({ value: s.id, label: s.name })),
-            ]}
-            value={stageFilter ?? ""}
-            onChange={(v) => setStageFilter(v || null)}
-            className="w-full sm:w-[170px]"
-          />
-
-          <CustomSelect
-            options={[
-              { value: "", label: "Todos os Scores" },
-              { value: "vip", label: "VIP (80+)" },
-              { value: "quente", label: "Quente (50-79)" },
-              { value: "morno", label: "Morno (25-49)" },
-              { value: "frio", label: "Frio (0-24)" },
-            ]}
-            value={scoreFilter ?? ""}
-            onChange={(v) => setScoreFilter(v || null)}
-            className="w-full sm:w-[150px]"
-          />
-
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors whitespace-nowrap"
-            >
-              <X className="h-3.5 w-3.5" />
-              Limpar
-            </button>
-          )}
         </div>
 
-        {/* Divider between rows */}
-        <div className="h-px bg-slate-100" />
+        <CustomSelect
+          options={[
+            { value: "", label: "Todas as Origens" },
+            { value: "meta", label: "Meta Ads" },
+            { value: "whatsapp", label: "WhatsApp" },
+            { value: "manual", label: "Manual" },
+            { value: "unknown", label: "Não Rastreada" },
+          ]}
+          value={sourceFilter ?? ""}
+          onChange={(v) => setSourceFilter(v || null)}
+          className="w-full sm:w-[150px]"
+        />
 
-        {/* Row 2: actions — left group and right group */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Left group: secondary actions */}
-          <div className="relative">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowSavedDropdown(!showSavedDropdown)}
-              className="h-9 text-sm gap-2 rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-medium"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              Filtros Salvos
-            </Button>
-            {showSavedDropdown && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowSavedDropdown(false)} />
-                <div className="absolute left-0 top-full mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-xl min-w-[220px] py-1.5">
-                  {savedFilters.length === 0 ? (
-                    <p className="text-sm text-slate-400 px-4 py-3">Nenhum filtro salvo</p>
-                  ) : (
-                    savedFilters.map((f, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between px-4 py-2 hover:bg-slate-50 cursor-pointer"
-                      >
-                        <button
-                          onClick={() => applySavedFilter(f)}
-                          className="text-sm text-slate-700 flex-1 text-left font-medium"
-                        >
-                          {f.name}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeSavedFilter(i);
-                          }}
-                          className="text-slate-300 hover:text-red-500 ml-2 transition-colors"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                  <div className="border-t border-slate-100 mt-1 pt-1">
-                    <button
-                      onClick={saveCurrentFilter}
-                      disabled={!hasActiveFilters}
-                      className="w-full text-left text-sm px-4 py-2 text-indigo-600 hover:bg-indigo-50 disabled:text-slate-300 disabled:hover:bg-transparent font-medium"
-                    >
-                      + Salvar filtro atual
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+        <CustomSelect
+          options={[
+            { value: "", label: "Todas as Etapas" },
+            ...visibleStages.map((s) => ({ value: s.id, label: s.name })),
+          ]}
+          value={stageFilter ?? ""}
+          onChange={(v) => setStageFilter(v || null)}
+          className="w-full sm:w-[150px]"
+        />
 
-          <Button
-            variant={selectionMode || selectedIds.size > 0 ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setSelectionMode((v) => !v);
-              if (selectionMode) setSelectedIds(new Set());
-            }}
-            className={`h-9 text-sm gap-2 rounded-xl ${selectionMode || selectedIds.size > 0 ? "bg-indigo-600 hover:bg-indigo-700 text-white" : ""}`}
-            title="Seleção em massa (ou use Ctrl/Cmd+click nos cards)"
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors whitespace-nowrap"
           >
-            <CheckSquare className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">
-              {selectedIds.size > 0
-                ? `${selectedIds.size} selecionado${selectedIds.size > 1 ? "s" : ""}`
-                : selectionMode
-                  ? "Sair"
-                  : "Selecionar"}
-            </span>
-          </Button>
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
 
+        <div className="relative">
           <Button
             variant="outline"
             size="sm"
-            onClick={exportCSV}
-            className="h-9 text-sm gap-2 rounded-xl"
-            title="Exportar CSV"
+            onClick={() => setShowSavedDropdown(!showSavedDropdown)}
+            className="h-9 text-sm gap-2 rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-medium"
           >
-            <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Exportar</span>
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Filtros Salvos</span>
           </Button>
+          {showSavedDropdown && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowSavedDropdown(false)} />
+              <div className="absolute left-0 top-full mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-xl min-w-[220px] py-1.5">
+                {savedFilters.length === 0 ? (
+                  <p className="text-sm text-slate-400 px-4 py-3">Nenhum filtro salvo</p>
+                ) : (
+                  savedFilters.map((f, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between px-4 py-2 hover:bg-slate-50 cursor-pointer"
+                    >
+                      <button
+                        onClick={() => applySavedFilter(f)}
+                        className="text-sm text-slate-700 flex-1 text-left font-medium"
+                      >
+                        {f.name}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeSavedFilter(i);
+                        }}
+                        className="text-slate-300 hover:text-red-500 ml-2 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
+                <div className="border-t border-slate-100 mt-1 pt-1">
+                  <button
+                    onClick={saveCurrentFilter}
+                    disabled={!hasActiveFilters}
+                    className="w-full text-left text-sm px-4 py-2 text-indigo-600 hover:bg-indigo-50 disabled:text-slate-300 disabled:hover:bg-transparent font-medium"
+                  >
+                    + Salvar filtro atual
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
-          {/* Right group — primary action + view switcher */}
-          <div className="ml-auto flex items-center gap-2">
-            <CreateLeadModal stages={stages} />
-            <div className="flex items-center gap-1 border border-slate-200 rounded-xl p-1 bg-slate-50">
-              <button
-                onClick={() => setView("kanban")}
-                className={`p-2 rounded-lg transition-all ${
-                  view === "kanban"
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-400 hover:text-slate-600"
-                }`}
-              >
-                <Kanban className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setView("table")}
-                className={`p-2 rounded-lg transition-all ${
-                  view === "table"
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-400 hover:text-slate-600"
-                }`}
-              >
-                <List className="h-4 w-4" />
-              </button>
-            </div>
+        <Button
+          variant={selectionMode || selectedIds.size > 0 ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setSelectionMode((v) => !v);
+            if (selectionMode) setSelectedIds(new Set());
+          }}
+          className={`h-9 text-sm gap-2 rounded-xl ${selectionMode || selectedIds.size > 0 ? "bg-indigo-600 hover:bg-indigo-700 text-white" : ""}`}
+          title="Seleção em massa (ou use Ctrl/Cmd+click nos cards)"
+        >
+          <CheckSquare className="h-3.5 w-3.5" />
+          {selectedIds.size > 0 && <span className="hidden lg:inline">{selectedIds.size}</span>}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={exportCSV}
+          className="h-9 text-sm gap-2 rounded-xl"
+          title="Exportar CSV"
+        >
+          <Download className="h-3.5 w-3.5" />
+        </Button>
+
+        {/* Primary action + view toggle pushed right */}
+        <div className="ml-auto flex items-center gap-2">
+          <CreateLeadModal stages={stages} />
+          <div className="flex items-center gap-1 border border-slate-200 rounded-xl p-1 bg-slate-50">
+            <button
+              onClick={() => setView("kanban")}
+              className={`p-2 rounded-lg transition-all ${
+                view === "kanban"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              <Kanban className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setView("table")}
+              className={`p-2 rounded-lg transition-all ${
+                view === "table"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              <List className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>

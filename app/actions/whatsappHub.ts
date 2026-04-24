@@ -294,7 +294,6 @@ export async function createBroadcast(data: {
   message: string;
   filters?: {
     tags?: string[];
-    scoreMin?: number;
     stageIds?: string[];
     source?: string;
   };
@@ -309,7 +308,6 @@ export async function createBroadcast(data: {
   // Count matching leads
   const where: Record<string, unknown> = { userId: user.id };
   if (data.filters?.tags?.length) where.tags = { hasSome: data.filters.tags };
-  if (data.filters?.scoreMin) where.score = { gte: data.filters.scoreMin };
   if (data.filters?.stageIds?.length) where.stageId = { in: data.filters.stageIds };
   if (data.filters?.source) where.source = data.filters.source;
 
@@ -363,7 +361,6 @@ export async function executeBroadcast(
   const where: Record<string, unknown> = { userId: user.id };
   if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0)
     where.tags = { hasSome: filters.tags };
-  if (filters.scoreMin) where.score = { gte: filters.scoreMin };
   if (filters.stageIds && Array.isArray(filters.stageIds) && filters.stageIds.length > 0)
     where.stageId = { in: filters.stageIds };
   if (filters.source) where.source = filters.source;

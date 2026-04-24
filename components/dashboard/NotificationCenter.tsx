@@ -29,7 +29,6 @@ const TYPE_COLORS: Record<string, string> = {
   lead_replied: "bg-blue-500",
   workflow_error: "bg-red-600",
   broadcast_done: "bg-teal-500",
-  score_change: "bg-violet-500",
 };
 
 function timeAgo(date: Date): string {

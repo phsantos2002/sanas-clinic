@@ -15,7 +15,6 @@ import {
   Bot,
   Clock,
 } from "lucide-react";
-import { LeadScoreBadge } from "@/components/ui/LeadScoreBadge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -191,17 +190,7 @@ export function LeadCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {/* Avatar initial */}
-            <div
-              className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${
-                lead.scoreLabel === "vip"
-                  ? "bg-violet-500"
-                  : lead.scoreLabel === "quente"
-                    ? "bg-rose-500"
-                    : lead.scoreLabel === "morno"
-                      ? "bg-amber-500"
-                      : "bg-slate-400"
-              }`}
-            >
+            <div className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-slate-400">
               {lead.name.charAt(0).toUpperCase()}
             </div>
             <p className="text-sm font-semibold text-slate-900 truncate">{lead.name}</p>
@@ -237,15 +226,12 @@ export function LeadCard({
             </div>
           )}
 
-          {/* Source + Score + Tags */}
+          {/* Source + Tags */}
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
             {config && (
               <div className={`flex items-center justify-center w-5 h-5 rounded ${config.bg}`}>
                 <SourceIcon source={lead.source} size={12} />
               </div>
-            )}
-            {lead.score > 0 && (
-              <LeadScoreBadge score={lead.score} label={lead.scoreLabel} variant="compact" />
             )}
             {lead.tags?.slice(0, 2).map((tag) => (
               <span

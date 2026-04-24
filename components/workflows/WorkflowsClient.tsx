@@ -16,7 +16,6 @@ import {
   Tag,
   Users,
   ArrowRight,
-  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -39,7 +38,6 @@ const TRIGGER_LABELS: Record<string, { label: string; icon: typeof Zap; color: s
   },
   inactivity: { label: "Inatividade", icon: Clock, color: "bg-amber-100 text-amber-700" },
   tag_added: { label: "Tag Adicionada", icon: Tag, color: "bg-violet-100 text-violet-700" },
-  score_change: { label: "Score Mudou", icon: BarChart3, color: "bg-red-100 text-red-700" },
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -48,7 +46,6 @@ const ACTION_LABELS: Record<string, string> = {
   add_tag: "Adicionar Tag",
   remove_tag: "Remover Tag",
   assign_attendant: "Atribuir Atendente",
-  update_score: "Alterar Score",
   notify: "Notificar",
 };
 

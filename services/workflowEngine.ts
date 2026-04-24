@@ -65,13 +65,8 @@ export async function fireTrigger(
     if (triggerType === "tag_added" && trigger.config?.tag) {
       if (triggerData?.tag !== trigger.config.tag) continue;
     }
-    if (triggerType === "score_change" && trigger.config?.threshold) {
-      const threshold = trigger.config.threshold as number;
-      const direction = trigger.config.direction as string;
-      const newScore = triggerData?.score as number;
-      if (direction === "above" && newScore < threshold) continue;
-      if (direction === "below" && newScore > threshold) continue;
-    }
+    // Legacy score_change trigger removed — lead.score is no longer updated.
+    if (triggerType === "score_change") continue;
 
     // Check no duplicate execution for this lead+workflow in last hour
     const recent = await prisma.workflowExecution.findFirst({
@@ -272,13 +267,11 @@ function evaluateCondition(config: StepConfig, lead: any): boolean {
   const value = config.value;
 
   let leadValue: unknown;
-  if (field === "score") leadValue = lead.score;
-  else if (field === "source") leadValue = lead.source;
+  if (field === "source") leadValue = lead.source;
   else if (field === "stage") leadValue = lead.stage?.eventName;
   else if (field === "tags") leadValue = lead.tags;
   else if (field === "aiEnabled") leadValue = lead.aiEnabled;
-  else if (field === "scoreLabel") leadValue = lead.scoreLabel;
-  else return true; // Unknown field, pass through
+  else return true; // Unknown field (including legacy "score"/"scoreLabel"), pass through
 
   switch (operator) {
     case "equals":
@@ -411,15 +404,8 @@ async function executeAction(config: StepConfig, lead: any, userId: string): Pro
     }
 
     case "update_score": {
-      const delta = (config.delta as number) || 0;
-      const newScore = Math.max(0, Math.min(100, lead.score + delta));
-      const label =
-        newScore >= 80 ? "vip" : newScore >= 50 ? "quente" : newScore >= 25 ? "morno" : "frio";
-      await prisma.lead.update({
-        where: { id: lead.id },
-        data: { score: newScore, scoreLabel: label },
-      });
-      return `Score ${delta > 0 ? "+" : ""}${delta} = ${newScore}`;
+      // Legacy action — lead scoring was removed from the product.
+      return `Acao ignorada (score removido do sistema)`;
     }
 
     case "notify": {

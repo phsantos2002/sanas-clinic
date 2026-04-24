@@ -3,8 +3,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { validateCronAuth } from "@/lib/validateCronAuth";
 import { prisma } from "@/lib/prisma";
-import { findLeadsForReactivation } from "@/services/leadScoring";
 import { sendMessage } from "@/services/whatsappService";
+
+async function findLeadsForReactivation(userId: string, inactiveDays: number) {
+  const cutoff = new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000);
+  return prisma.lead.findMany({
+    where: {
+      userId,
+      aiEnabled: true,
+      lastInteractionAt: { lt: cutoff },
+      OR: [
+        { reactivationSentAt: null },
+        { reactivationSentAt: { lt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) } },
+      ],
+      stage: { eventName: { not: "Purchase" } },
+    },
+    select: { id: true, name: true, phone: true, lastInteractionAt: true },
+    take: 20,
+    orderBy: { createdAt: "desc" },
+  });
+}
 
 export async function GET(req: NextRequest) {
   const deny = validateCronAuth(req);

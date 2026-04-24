@@ -7,7 +7,6 @@ import {
   getAdvancedFunnel,
   getLTVBySource,
   getCACByChannel,
-  getScoreDistribution,
   getAIUsageReport,
 } from "@/app/actions/advancedAnalytics";
 import { prisma } from "@/lib/prisma";
@@ -20,19 +19,16 @@ import {
 import { OutboundPerformance } from "@/components/dashboard/OutboundPerformance";
 
 export default async function AnalyticsPage() {
-  const [data, sourceStats, creatives, user, funnel, ltv, cac, scores, aiUsage] = await Promise.all(
-    [
-      getAnalytics().catch(() => null),
-      getLeadSourceStats().catch(() => null),
-      getAdCreativeReport().catch(() => []),
-      getCurrentUser().catch(() => null),
-      getAdvancedFunnel().catch(() => null),
-      getLTVBySource().catch(() => []),
-      getCACByChannel().catch(() => []),
-      getScoreDistribution().catch(() => []),
-      getAIUsageReport().catch(() => null),
-    ]
-  );
+  const [data, sourceStats, creatives, user, funnel, ltv, cac, aiUsage] = await Promise.all([
+    getAnalytics().catch(() => null),
+    getLeadSourceStats().catch(() => null),
+    getAdCreativeReport().catch(() => []),
+    getCurrentUser().catch(() => null),
+    getAdvancedFunnel().catch(() => null),
+    getLTVBySource().catch(() => []),
+    getCACByChannel().catch(() => []),
+    getAIUsageReport().catch(() => null),
+  ]);
 
   if (!data) {
     return (
@@ -123,9 +119,6 @@ export default async function AnalyticsPage() {
         funnel={funnel ?? []}
         ltv={ltv}
         cac={cac}
-        scores={
-          Array.isArray(scores) ? { frio: 0, morno: 0, quente: 0, vip: 0, avgScore: 0 } : scores
-        }
         aiUsage={
           aiUsage ?? {
             totalOperations: 0,

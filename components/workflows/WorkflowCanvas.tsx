@@ -25,7 +25,6 @@ const NODE_TYPES = [
   { type: "trigger", subtype: "new_lead", label: "Novo Lead", color: "bg-violet-500" },
   { type: "trigger", subtype: "stage_change", label: "Mudanca de Etapa", color: "bg-violet-500" },
   { type: "trigger", subtype: "tag_added", label: "Tag Adicionada", color: "bg-violet-500" },
-  { type: "condition", subtype: "score_check", label: "Verificar Score", color: "bg-amber-500" },
   { type: "condition", subtype: "tag_check", label: "Verificar Tag", color: "bg-amber-500" },
   { type: "condition", subtype: "stage_check", label: "Verificar Etapa", color: "bg-amber-500" },
   { type: "action", subtype: "send_whatsapp", label: "Enviar WhatsApp", color: "bg-teal-500" },
@@ -38,7 +37,6 @@ const NODE_TYPES = [
     label: "Atribuir Atendente",
     color: "bg-teal-500",
   },
-  { type: "action", subtype: "update_score", label: "Atualizar Score", color: "bg-teal-500" },
   { type: "action", subtype: "delay", label: "Aguardar", color: "bg-slate-500" },
 ] as const;
 

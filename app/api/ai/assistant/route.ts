@@ -150,8 +150,6 @@ async function executeTool(
       const limit = (input.limit as number) || 10;
       const where: Record<string, unknown> = { userId };
 
-      if (status === "hot") where.score = { gte: 50 };
-      if (status === "cold") where.score = { lt: 25 };
       if (status === "stuck") {
         where.lastInteractionAt = { lt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) };
         where.stage = { eventName: { not: "Purchase" } };
@@ -162,14 +160,12 @@ async function executeTool(
         select: {
           name: true,
           phone: true,
-          score: true,
-          scoreLabel: true,
           source: true,
           tags: true,
           lastInteractionAt: true,
           stage: { select: { name: true } },
         },
-        orderBy: { score: "desc" },
+        orderBy: { createdAt: "desc" },
         take: limit,
       });
 
@@ -177,8 +173,6 @@ async function executeTool(
         leads.map((l) => ({
           nome: l.name,
           telefone: l.phone,
-          score: l.score,
-          label: l.scoreLabel,
           fonte: l.source,
           estagio: l.stage?.name,
           tags: l.tags,
@@ -324,8 +318,6 @@ async function executeTool(
     case "prepare_broadcast": {
       const filter = (input.filter as string) || "all";
       const where: Record<string, unknown> = { userId };
-      if (filter === "hot") where.score = { gte: 50 };
-      if (filter === "cold") where.score = { lt: 25 };
       if (filter === "inactive")
         where.lastInteractionAt = { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) };
 

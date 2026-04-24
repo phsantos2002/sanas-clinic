@@ -292,51 +292,6 @@ export async function getCohortAnalysis(): Promise<CohortRow[]> {
 }
 
 // ══════════════════════════════════════════════════════════════
-// SCORE DISTRIBUTION
-// ══════════════════════════════════════════════════════════════
-
-export type ScoreDistribution = {
-  frio: number;
-  morno: number;
-  quente: number;
-  vip: number;
-  avgScore: number;
-};
-
-export async function getScoreDistribution(): Promise<ScoreDistribution> {
-  const user = await getCurrentUser();
-  if (!user) return { frio: 0, morno: 0, quente: 0, vip: 0, avgScore: 0 };
-
-  const groups = await prisma.lead.groupBy({
-    by: ["scoreLabel"],
-    where: { userId: user.id },
-    _count: { id: true },
-  });
-
-  const avg = await prisma.lead.aggregate({
-    where: { userId: user.id },
-    _avg: { score: true },
-  });
-
-  const dist: ScoreDistribution = {
-    frio: 0,
-    morno: 0,
-    quente: 0,
-    vip: 0,
-    avgScore: Math.round(avg._avg.score || 0),
-  };
-  for (const g of groups) {
-    if (g.scoreLabel === "frio") dist.frio = g._count.id;
-    else if (g.scoreLabel === "morno") dist.morno = g._count.id;
-    else if (g.scoreLabel === "quente") dist.quente = g._count.id;
-    else if (g.scoreLabel === "vip") dist.vip = g._count.id;
-    else dist.frio += g._count.id; // null scoreLabel = frio
-  }
-
-  return dist;
-}
-
-// ══════════════════════════════════════════════════════════════
 // AI USAGE & COST REPORT
 // ══════════════════════════════════════════════════════════════
 
@@ -423,7 +378,6 @@ export async function exportLeadsCSV(): Promise<string> {
     "Telefone",
     "Email",
     "Estagio",
-    "Score",
     "Tags",
     "Fonte",
     "Campanha",
@@ -437,7 +391,6 @@ export async function exportLeadsCSV(): Promise<string> {
     l.phone,
     l.email || "",
     l.stage?.name || "",
-    String(l.score),
     l.tags.join("; "),
     l.source || "",
     l.campaign || "",
@@ -458,12 +411,11 @@ export async function exportAnalyticsJSON(): Promise<string> {
   const user = await getCurrentUser();
   if (!user) return "{}";
 
-  const [funnel, ltv, cac, cohort, scores, aiUsage] = await Promise.all([
+  const [funnel, ltv, cac, cohort, aiUsage] = await Promise.all([
     getAdvancedFunnel(),
     getLTVBySource(),
     getCACByChannel(),
     getCohortAnalysis(),
-    getScoreDistribution(),
     getAIUsageReport(),
   ]);
 
@@ -474,7 +426,6 @@ export async function exportAnalyticsJSON(): Promise<string> {
       ltvBySource: ltv,
       cacByChannel: cac,
       cohortAnalysis: cohort,
-      scoreDistribution: scores,
       aiUsage,
     },
     null,
@@ -492,23 +443,21 @@ export async function getAnalyticsNarrative(_force = false) {
   const monthAgo = new Date(now.getTime() - 30 * 86400000);
   const weekAgo = new Date(now.getTime() - 7 * 86400000);
 
-  const [totalLeads, weekLeads, convertedLeads, avgScore, publishedPosts, stages] =
-    await Promise.all([
-      prisma.lead.count({ where: { userId: user.id, createdAt: { gte: monthAgo } } }),
-      prisma.lead.count({ where: { userId: user.id, createdAt: { gte: weekAgo } } }),
-      prisma.lead.count({
-        where: { userId: user.id, stage: { eventName: "Purchase" }, createdAt: { gte: monthAgo } },
-      }),
-      prisma.lead.aggregate({ where: { userId: user.id }, _avg: { score: true } }),
-      prisma.socialPost.count({
-        where: { userId: user.id, status: "published", publishedAt: { gte: monthAgo } },
-      }),
-      prisma.stage.findMany({
-        where: { userId: user.id },
-        include: { _count: { select: { leads: true } } },
-        orderBy: { order: "asc" },
-      }),
-    ]);
+  const [totalLeads, weekLeads, convertedLeads, publishedPosts, stages] = await Promise.all([
+    prisma.lead.count({ where: { userId: user.id, createdAt: { gte: monthAgo } } }),
+    prisma.lead.count({ where: { userId: user.id, createdAt: { gte: weekAgo } } }),
+    prisma.lead.count({
+      where: { userId: user.id, stage: { eventName: "Purchase" }, createdAt: { gte: monthAgo } },
+    }),
+    prisma.socialPost.count({
+      where: { userId: user.id, status: "published", publishedAt: { gte: monthAgo } },
+    }),
+    prisma.stage.findMany({
+      where: { userId: user.id },
+      include: { _count: { select: { leads: true } } },
+      orderBy: { order: "asc" },
+    }),
+  ]);
 
   const parts: string[] = [];
 
@@ -516,9 +465,6 @@ export async function getAnalyticsNarrative(_force = false) {
   parts.push(
     `No ultimo mes, voce recebeu ${totalLeads} leads (${weekLeads} esta semana) com taxa de conversao de ${conversionRate}%.`
   );
-
-  const avgScoreVal = Math.round(avgScore._avg.score || 0);
-  parts.push(`Score medio dos seus leads: ${avgScoreVal}/100.`);
 
   // Find bottleneck
   if (stages.length >= 2) {

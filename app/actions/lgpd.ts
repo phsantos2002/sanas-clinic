@@ -49,7 +49,6 @@ export async function exportLeadData(leadId: string): Promise<ActionResult<LeadD
         cidade: lead.city,
         notas: lead.notes,
         fonte: lead.source,
-        score: lead.score,
         tags: lead.tags,
         criadoEm: lead.createdAt.toISOString(),
       },

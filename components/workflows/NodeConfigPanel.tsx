@@ -77,36 +77,6 @@ export function NodeConfigPanel({ node, stages, onUpdate, onClose, onDelete }: P
         )}
 
         {/* Condition configs */}
-        {node.subtype === "score_check" && (
-          <>
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">Operador</label>
-              <select
-                value={(config.operator as string) || "gt"}
-                onChange={(e) => updateField("operator", e.target.value)}
-                className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-300"
-              >
-                <option value="gt">Maior que</option>
-                <option value="lt">Menor que</option>
-                <option value="gte">Maior ou igual</option>
-                <option value="lte">Menor ou igual</option>
-                <option value="equals">Igual a</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">Valor</label>
-              <input
-                type="number"
-                value={(config.value as number) || 50}
-                onChange={(e) => updateField("value", parseInt(e.target.value))}
-                min={0}
-                max={100}
-                className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-300"
-              />
-            </div>
-          </>
-        )}
-
         {node.subtype === "tag_check" && (
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1">Tag a verificar</label>
@@ -184,21 +154,6 @@ export function NodeConfigPanel({ node, stages, onUpdate, onClose, onDelete }: P
               placeholder="Nome da tag"
               className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-300"
             />
-          </div>
-        )}
-
-        {node.subtype === "update_score" && (
-          <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1">Delta do Score</label>
-            <input
-              type="number"
-              value={(config.delta as number) || 0}
-              onChange={(e) => updateField("delta", parseInt(e.target.value))}
-              className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-300"
-            />
-            <p className="text-[10px] text-slate-400 mt-1">
-              Positivo para somar, negativo para subtrair
-            </p>
           </div>
         )}
 

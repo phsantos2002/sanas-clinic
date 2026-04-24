@@ -60,7 +60,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       id: lead.id,
       type: "lead",
       title: lead.name,
-      subtitle: `${lead.phone} · ${lead.scoreLabel || "sem score"}`,
+      subtitle: lead.phone,
       url: "/dashboard/pipeline",
     });
   }

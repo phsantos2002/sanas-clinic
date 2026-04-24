@@ -31,7 +31,6 @@ export function BroadcastClient({
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const [filterTags, setFilterTags] = useState("");
-  const [filterScoreMin, setFilterScoreMin] = useState(0);
   const [filterStageId, setFilterStageId] = useState("");
   const [creating, setCreating] = useState(false);
   const [executing, setExecuting] = useState<string | null>(null);
@@ -45,7 +44,6 @@ export function BroadcastClient({
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean);
-    if (filterScoreMin > 0) filters.scoreMin = filterScoreMin;
     if (filterStageId) filters.stageIds = [filterStageId];
 
     const result = await createBroadcast({
@@ -53,7 +51,7 @@ export function BroadcastClient({
       message: message.trim(),
       filters:
         Object.keys(filters).length > 0
-          ? (filters as { tags?: string[]; scoreMin?: number; stageIds?: string[] })
+          ? (filters as { tags?: string[]; stageIds?: string[] })
           : undefined,
     });
     setCreating(false);
@@ -176,33 +174,20 @@ export function BroadcastClient({
                 placeholder="Tags (ex: vip, retorno)"
                 className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
               />
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] text-slate-400">Score minimo</label>
-                  <input
-                    type="number"
-                    value={filterScoreMin}
-                    onChange={(e) => setFilterScoreMin(Number(e.target.value))}
-                    min={0}
-                    max={100}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400">Estagio</label>
-                  <select
-                    value={filterStageId}
-                    onChange={(e) => setFilterStageId(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                  >
-                    <option value="">Todos</option>
-                    {stages.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400">Estagio</label>
+                <select
+                  value={filterStageId}
+                  onChange={(e) => setFilterStageId(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                >
+                  <option value="">Todos</option>
+                  {stages.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="flex gap-2">

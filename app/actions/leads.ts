@@ -549,21 +549,3 @@ export async function getLeadTimeline(leadId: string): Promise<TimelineEvent[]> 
 
   return events;
 }
-
-// ── Recalculate single lead score ────────────────────────────
-
-export async function refreshLeadScore(
-  leadId: string
-): Promise<ActionResult<{ score: number; label: string }>> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, error: "Nao autenticado" };
-
-  const lead = await prisma.lead.findFirst({ where: { id: leadId, userId: user.id } });
-  if (!lead) return { success: false, error: "Lead nao encontrado" };
-
-  const { recalculateLeadScore } = await import("@/services/leadScoring");
-  const result = await recalculateLeadScore(leadId);
-
-  revalidatePath("/dashboard");
-  return { success: true, data: result };
-}

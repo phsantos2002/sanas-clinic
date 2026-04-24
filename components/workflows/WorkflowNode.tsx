@@ -11,7 +11,6 @@ import {
   ArrowRight,
   Tag,
   Users,
-  TrendingUp,
 } from "lucide-react";
 
 export type CanvasNode = {
@@ -27,7 +26,6 @@ const NODE_ICONS: Record<string, typeof Zap> = {
   new_lead: Users,
   stage_change: ArrowRight,
   tag_added: Tag,
-  score_check: TrendingUp,
   tag_check: Tag,
   stage_check: GitBranch,
   send_whatsapp: MessageCircle,
@@ -35,7 +33,6 @@ const NODE_ICONS: Record<string, typeof Zap> = {
   add_tag: Tag,
   remove_tag: Tag,
   assign_attendant: Users,
-  update_score: TrendingUp,
   delay: Clock,
 };
 
@@ -168,7 +165,6 @@ export function WorkflowNode({
               {node.subtype === "send_whatsapp" && (node.config.message as string)?.slice(0, 40)}
               {node.subtype === "delay" && `${node.config.minutes || 0} minutos`}
               {node.subtype === "add_tag" && `Tag: ${node.config.tag}`}
-              {node.subtype === "update_score" && `Delta: ${node.config.delta}`}
             </div>
           )}
         </div>

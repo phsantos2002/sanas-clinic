@@ -13,13 +13,7 @@ import {
   BarChart3,
   Bot,
 } from "lucide-react";
-import type {
-  FunnelStep,
-  LTVData,
-  CACData,
-  ScoreDistribution,
-  AIUsageReport,
-} from "@/app/actions/advancedAnalytics";
+import type { FunnelStep, LTVData, CACData, AIUsageReport } from "@/app/actions/advancedAnalytics";
 
 const SOURCE_LABELS: Record<string, string> = {
   meta: "Meta Ads",
@@ -33,13 +27,11 @@ export function AdvancedAnalyticsSection({
   funnel,
   ltv,
   cac,
-  scores,
   aiUsage,
 }: {
   funnel: FunnelStep[];
   ltv: LTVData[];
   cac: CACData[];
-  scores: ScoreDistribution;
   aiUsage: AIUsageReport;
 }) {
   return (
@@ -173,50 +165,7 @@ export function AdvancedAnalyticsSection({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Score Distribution */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5">
-          <h3 className="font-semibold text-slate-900 text-sm mb-4 flex items-center gap-2">
-            <Users className="h-4 w-4 text-violet-500" /> Distribuicao de Scores
-          </h3>
-          <div className="grid grid-cols-4 gap-3 mb-4">
-            {[
-              {
-                label: "Frio",
-                value: scores.frio,
-                icon: Snowflake,
-                color: "text-blue-600 bg-blue-50",
-              },
-              {
-                label: "Morno",
-                value: scores.morno,
-                icon: Zap,
-                color: "text-orange-600 bg-orange-50",
-              },
-              {
-                label: "Quente",
-                value: scores.quente,
-                icon: Flame,
-                color: "text-red-600 bg-red-50",
-              },
-              { label: "VIP", value: scores.vip, icon: Crown, color: "text-amber-600 bg-amber-50" },
-            ].map((s) => (
-              <div key={s.label} className={`rounded-xl p-3 text-center ${s.color}`}>
-                <s.icon className="h-5 w-5 mx-auto mb-1" />
-                <p className="text-lg font-bold">{s.value}</p>
-                <p className="text-[10px]">{s.label}</p>
-              </div>
-            ))}
-          </div>
-          <div className="bg-slate-50 rounded-xl p-3 text-center">
-            <p className="text-xs text-slate-400">Score Medio</p>
-            <p className="text-2xl font-bold text-slate-900">
-              {scores.avgScore}
-              <span className="text-sm text-slate-400">/100</span>
-            </p>
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 gap-4">
         {/* AI Usage */}
         <div className="bg-white border border-slate-100 rounded-2xl p-5">
           <h3 className="font-semibold text-slate-900 text-sm mb-4 flex items-center gap-2">
@@ -254,7 +203,7 @@ export function AdvancedAnalyticsSection({
           <Zap className="h-4 w-4 text-amber-500" /> Insights da IA
         </h3>
         <div className="space-y-2">
-          {generateInsights(funnel, ltv, cac, scores).map((insight, i) => (
+          {generateInsights(funnel, ltv, cac).map((insight, i) => (
             <div key={i} className="flex items-start gap-2 bg-amber-50 rounded-xl p-3">
               <span className="text-amber-500 mt-0.5 shrink-0">💡</span>
               <p className="text-sm text-amber-800">{insight}</p>
@@ -266,12 +215,7 @@ export function AdvancedAnalyticsSection({
   );
 }
 
-function generateInsights(
-  funnel: FunnelStep[],
-  ltv: LTVData[],
-  cac: CACData[],
-  scores: ScoreDistribution
-): string[] {
+function generateInsights(funnel: FunnelStep[], ltv: LTVData[], cac: CACData[]): string[] {
   const insights: string[] = [];
 
   // Funnel insights
@@ -311,27 +255,6 @@ function generateInsights(
   if (bestROAS && bestROAS.roas > 2) {
     insights.push(
       `Melhor ROAS: canal "${bestROAS.channel}" com ${bestROAS.roas}x de retorno. Considere aumentar investimento.`
-    );
-  }
-
-  // Score insights
-  const total = scores.frio + scores.morno + scores.quente + scores.vip;
-  if (total > 0) {
-    const hotPercent = Math.round(((scores.quente + scores.vip) / total) * 100);
-    if (hotPercent > 30) {
-      insights.push(
-        `${hotPercent}% dos seus leads sao quentes ou VIP. Pipeline saudavel — foque no atendimento.`
-      );
-    } else if (hotPercent < 10) {
-      insights.push(
-        `Apenas ${hotPercent}% dos leads sao quentes. Invista em qualificacao e follow-up mais rapido.`
-      );
-    }
-  }
-
-  if (scores.avgScore > 0) {
-    insights.push(
-      `Score medio dos leads: ${scores.avgScore}/100. ${scores.avgScore >= 40 ? "Acima da media — bom sinal." : "Abaixo da media — melhore o engajamento."}`
     );
   }
 
