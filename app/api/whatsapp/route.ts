@@ -486,35 +486,92 @@ export async function GET(req: NextRequest) {
               prisma.message.count({ where: { leadId: lead.id } }),
             ]);
 
-            // Fall back to Uazapi when the DB is empty on an INITIAL fetch
-            // (no afterTs filter). Two legitimate reasons the DB can be empty:
-            //   1. Legacy leads created before we started persisting inbound
-            //      messages — Uazapi still has their full history.
-            //   2. A lead auto-created elsewhere (e.g. CRM import) that never
-            //      received a webhook turn yet.
-            // During polling (afterTs set), skip the fallback — no point
-            // hammering Uazapi for incremental updates on a stale thread.
-            const canFallback = total === 0 && !afterTs && !search;
-            if (!canFallback) {
-              const chatidCanonical = `${phoneOnly}@s.whatsapp.net`;
-              const messages = rows
-                .slice()
-                .reverse()
-                .map((m) => ({
-                  id: m.id,
-                  messageid: m.externalId ?? m.id,
-                  text: m.content,
-                  fromMe: m.role === "assistant",
-                  messageTimestamp: m.createdAt.getTime(),
-                  messageType: "Conversation",
-                  sender: m.role === "assistant" ? "" : chatidCanonical,
-                  senderName: "",
-                  chatid: chatidCanonical,
-                  ack: m.role === "assistant" ? 3 : undefined,
-                }));
-              return NextResponse.json({ messages, total, source: "db" });
+            const chatidCanonical = `${phoneOnly}@s.whatsapp.net`;
+            const dbMessages = rows
+              .slice()
+              .reverse()
+              .map((m) => ({
+                id: m.id,
+                messageid: m.externalId ?? m.id,
+                text: m.content,
+                fromMe: m.role === "assistant",
+                messageTimestamp: m.createdAt.getTime(),
+                messageType: "Conversation",
+                sender: m.role === "assistant" ? "" : chatidCanonical,
+                senderName: "",
+                chatid: chatidCanonical,
+                ack: m.role === "assistant" ? 3 : undefined,
+              }));
+
+            // Polling / pagination / search: DB-only is the right answer.
+            const isInitialLoad = !afterTs && !search && offset === 0;
+            if (!isInitialLoad) {
+              return NextResponse.json({ messages: dbMessages, total, source: "db" });
             }
-            // else: fall through to Uazapi branch below
+
+            // Initial load: if the DB has the full requested page already, ship
+            // it. Otherwise top up from Uazapi to cover legacy leads where the
+            // DB only holds the few recent webhook turns we managed to capture.
+            if (total >= limit) {
+              return NextResponse.json({ messages: dbMessages, total, source: "db" });
+            }
+
+            const upstreamBody: Record<string, unknown> = {
+              chatid: {
+                $in: Array.from(
+                  new Set([`${phoneOnly}@s.whatsapp.net`, `${phoneOnly}@c.us`, chatid])
+                ),
+              },
+              limit,
+              offset: 0,
+            };
+            const upstreamData = await uazapi(
+              config.serverUrl,
+              config.token,
+              "POST",
+              "/message/find",
+              upstreamBody
+            );
+            const upstreamRaw = Array.isArray(upstreamData?.messages)
+              ? upstreamData.messages
+              : Array.isArray(upstreamData)
+                ? upstreamData
+                : [];
+
+            // Defensive filter (same logic as the dedicated Uazapi branch).
+            const expected = new Set(
+              Array.from(new Set([`${phoneOnly}@s.whatsapp.net`, `${phoneOnly}@c.us`, chatid]))
+            );
+            const upstreamMessages = upstreamRaw.filter((m: Record<string, unknown>) => {
+              const mid = m?.chatid as string | undefined;
+              return mid ? expected.has(mid) : false;
+            });
+
+            // Merge — dedupe by externalId/messageid/id, prefer DB rows
+            // (they may carry the AI ack flag we can't reconstruct from
+            // upstream). Sort oldest-first to match the front-end contract.
+            const seen = new Set<string>();
+            const merged: typeof dbMessages = [];
+            for (const m of dbMessages) {
+              const key = m.messageid || m.id;
+              if (key && !seen.has(key)) {
+                seen.add(key);
+                merged.push(m);
+              }
+            }
+            for (const m of upstreamMessages as Array<Record<string, unknown>>) {
+              const key = (m.messageid || m.id || m.messageId) as string | undefined;
+              if (!key || seen.has(key)) continue;
+              seen.add(key);
+              merged.push(m as unknown as (typeof dbMessages)[number]);
+            }
+            merged.sort((a, b) => a.messageTimestamp - b.messageTimestamp);
+
+            return NextResponse.json({
+              messages: merged,
+              total: Math.max(total, merged.length),
+              source: "db+uazapi",
+            });
           }
         }
 
