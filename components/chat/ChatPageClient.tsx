@@ -499,8 +499,37 @@ function resolveChatName(chat: {
   return pickReal(chat.wa_contactName, chat.wa_name, chat.name) || chat.phone || "Sem nome";
 }
 
+// Per-browser persisted read state. Uazapi's wa_unreadCount is the only signal
+// we have for "what's unread on the actual WhatsApp account," but it's not
+// reliably synced from reads done on the operator's phone — leaves a stale pile
+// of badges in Sanas. We override it with our own watermark: for each chat,
+// the timestamp of the most recent message the operator has acknowledged
+// (either by opening the chat in Sanas or by hitting "marcar todas"). Render
+// shows 0 unread whenever the watermark covers the chat's last message ts.
+const READ_STATE_KEY = "sanas-chat-read-state-v1";
+function loadReadMap(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(READ_STATE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+function persistReadMap(map: Record<string, number>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(READ_STATE_KEY, JSON.stringify(map));
+  } catch {
+    /* quota / disabled — fall back to in-memory only */
+  }
+}
+
 export function ChatPageClient() {
   const [chats, setChats] = useState<Chat[]>([]);
+  const [readMap, setReadMap] = useState<Record<string, number>>(loadReadMap);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   // Debounce the upstream-facing value so every keystroke doesn't refire the
@@ -522,6 +551,19 @@ export function ChatPageClient() {
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
+
+  // Bump the read watermark for a chat. Idempotent — only writes if the new
+  // timestamp is greater than what's stored, so racing callers don't undo
+  // each other.
+  const markChatRead = useCallback((chatid: string, upTo: number) => {
+    if (!chatid || !upTo) return;
+    setReadMap((prev) => {
+      if ((prev[chatid] ?? 0) >= upTo) return prev;
+      const next = { ...prev, [chatid]: upTo };
+      persistReadMap(next);
+      return next;
+    });
+  }, []);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [msgOffset, setMsgOffset] = useState(0);
@@ -701,24 +743,16 @@ export function ChatPageClient() {
         if (controller.signal.aborted) return;
         const data = await res.json();
         const page: Chat[] = data.chats ?? [];
-        // The currently-open chat was just marked-read locally; keep it at 0
-        // so the next silent poll doesn't repaint Uazapi's stale count before
-        // the /chat/read call propagates upstream.
-        const openId = selectedChatRef.current?.wa_chatid;
-        const zeroOpen = (list: Chat[]) =>
-          openId
-            ? list.map((c) => (c.wa_chatid === openId ? { ...c, wa_unreadCount: 0 } : c))
-            : list;
         if (silent) {
           // Merge: top page replaced; keep any deeper-loaded pages below
           setChats((prev) => {
-            if (prev.length <= PAGE_SIZE) return zeroOpen(page);
+            if (prev.length <= PAGE_SIZE) return page;
             const topIds = new Set(page.map((c) => c.id || c.wa_chatid));
             const deeper = prev.slice(PAGE_SIZE).filter((c) => !topIds.has(c.id || c.wa_chatid));
-            return zeroOpen([...page, ...deeper]);
+            return [...page, ...deeper];
           });
         } else {
-          setChats(zeroOpen(page));
+          setChats(page);
           setHasMoreChats(page.length >= PAGE_SIZE);
         }
       } catch (err) {
@@ -1024,13 +1058,12 @@ export function ChatPageClient() {
     setNoOlderHistory(false);
     lastMsgTsRef.current = 0;
     fetchMessages(selectedChatId);
-    // Mark as read — optimistically zero the local badge so the operator
-    // doesn't keep seeing "15 unread" on a chat they just opened. Uazapi's
-    // /chat/read takes a beat to reflect, and the next fetchChats refresh
-    // would otherwise repaint the stale count for ~3s.
-    setChats((prev) =>
-      prev.map((c) => (c.wa_chatid === selectedChatId ? { ...c, wa_unreadCount: 0 } : c))
-    );
+    // Bump our local read watermark up to the chat's last message ts so the
+    // badge zeros out and stays out across silent polls — even after the
+    // operator switches to another chat. Uazapi's wa_unreadCount alone isn't
+    // a reliable signal: phone-side reads don't propagate back consistently.
+    const openChat = chats.find((c) => c.wa_chatid === selectedChatId);
+    markChatRead(selectedChatId, openChat?.wa_lastMsgTimestamp || Date.now());
     apiPost("mark-read", { chatid: selectedChatId }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChatId]);
@@ -1108,13 +1141,29 @@ export function ChatPageClient() {
   // Pinned chats at top + flat virtual array for Virtuoso. The list contains
   // a "Fixadas" header, the pinned rows, an optional "Todas" header, the
   // regular rows, and a sentinel row that triggers lazy-load when reached.
+  // Apply the local read watermark to override Uazapi's wa_unreadCount. The
+  // currently-open chat is always shown as 0 (operator is actively looking at
+  // it; new SSE messages render in real-time, no badge needed).
+  const displayChats = useMemo(() => {
+    return chats.map((c) => {
+      if (c.wa_unreadCount <= 0) return c;
+      const isOpen = selectedChatId && c.wa_chatid === selectedChatId;
+      const watermark = readMap[c.wa_chatid] ?? 0;
+      const lastMsgTs = c.wa_lastMsgTimestamp || 0;
+      if (isOpen || (lastMsgTs > 0 && watermark >= lastMsgTs)) {
+        return { ...c, wa_unreadCount: 0 };
+      }
+      return c;
+    });
+  }, [chats, readMap, selectedChatId]);
+
   type ChatVirtualItem =
     | { type: "header"; label: string; icon?: "pin" }
     | { type: "chat"; chat: Chat }
     | { type: "sentinel" };
   const chatVirtualItems = useMemo(() => {
-    const pinned = chats.filter((c) => c.wa_pinned);
-    const regular = chats.filter((c) => !c.wa_pinned);
+    const pinned = displayChats.filter((c) => c.wa_pinned);
+    const regular = displayChats.filter((c) => !c.wa_pinned);
     const items: ChatVirtualItem[] = [];
     if (pinned.length > 0) {
       items.push({ type: "header", label: "Fixadas", icon: "pin" });
@@ -1122,9 +1171,37 @@ export function ChatPageClient() {
       if (regular.length > 0) items.push({ type: "header", label: "Todas" });
     }
     for (const c of regular) items.push({ type: "chat", chat: c });
-    if (hasMoreChats && chats.length > 0) items.push({ type: "sentinel" });
+    if (hasMoreChats && displayChats.length > 0) items.push({ type: "sentinel" });
     return items;
-  }, [chats, hasMoreChats]);
+  }, [displayChats, hasMoreChats]);
+
+  // "Marcar todas como lidas" — bumps every visible chat's watermark to its
+  // last-message ts and best-effort tells Uazapi too. Useful when the
+  // operator already cleared the pile on their phone and just wants Sanas
+  // to catch up without clicking 30 chats.
+  const markAllRead = useCallback(() => {
+    setReadMap((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const c of chats) {
+        if (c.wa_unreadCount > 0) {
+          const ts = c.wa_lastMsgTimestamp || Date.now();
+          if ((next[c.wa_chatid] ?? 0) < ts) {
+            next[c.wa_chatid] = ts;
+            changed = true;
+          }
+        }
+      }
+      if (!changed) return prev;
+      persistReadMap(next);
+      return next;
+    });
+    for (const c of chats) {
+      if (c.wa_unreadCount > 0) {
+        apiPost("mark-read", { chatid: c.wa_chatid }).catch(() => {});
+      }
+    }
+  }, [chats]);
 
   // Send message
   async function handleSend() {
@@ -1478,6 +1555,14 @@ export function ChatPageClient() {
                 title={chatFilter === "unread" ? "Mostrando nao lidas" : "Filtrar nao lidas"}
               >
                 <Filter className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={markAllRead}
+                disabled={!displayChats.some((c) => c.wa_unreadCount > 0)}
+                className="p-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Marcar todas como lidas"
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
               </button>
               <Button
                 variant="ghost"
