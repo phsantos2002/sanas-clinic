@@ -577,20 +577,29 @@ export async function processIncomingMessage(params: {
 
       // ── Send audio if configured ──────────────────────────────
       if (aiConfig.sendAudio && sendAudio && finalReply.length >= (aiConfig.audioMinChars ?? 50)) {
-        try {
-          const { generateAudio } = await import("@/services/textToSpeech");
-          const audioBuffer = await generateAudio(
-            finalReply,
-            aiConfig.openaiKey || aiConfig.apiKey || ""
-          );
-          // For now, skip audio sending if we only have buffer (need URL for Uazapi)
-          const audioUrl = audioBuffer ? null : null; // TODO: upload buffer to get URL
-          if (audioUrl) {
-            await sendAudio(phone, audioUrl);
-            log.info("webhook_audio_sent");
+        // Skip TTS entirely if Blob storage isn't configured — generating audio
+        // costs money (OpenAI TTS) and we'd have no way to deliver it.
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+          log.warn("webhook_audio_skipped_no_blob_token");
+        } else {
+          try {
+            const { generateAudio } = await import("@/services/textToSpeech");
+            const audioBuffer = await generateAudio(
+              finalReply,
+              aiConfig.openaiKey || aiConfig.apiKey || ""
+            );
+            if (audioBuffer) {
+              const { put } = await import("@vercel/blob");
+              const blob = await put(`whatsapp-audio/${userId}/${Date.now()}.mp3`, audioBuffer, {
+                access: "public",
+                contentType: "audio/mpeg",
+              });
+              await sendAudio(phone, blob.url);
+              log.info("webhook_audio_sent");
+            }
+          } catch (err) {
+            log.error("webhook_audio_error", {}, err);
           }
-        } catch (err) {
-          log.error("webhook_audio_error", { err });
         }
       }
 

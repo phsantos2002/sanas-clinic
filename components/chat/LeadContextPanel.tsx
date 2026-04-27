@@ -227,9 +227,15 @@ export function LeadContextPanel({
     toast.success("Notas salvas");
   };
 
+  // Below lg, the panel renders as a fixed right-side drawer (slide-in from
+  // the right, full-height). At lg+ it's an inline column inside the chat
+  // shell — preserving the existing 3-pane desktop layout.
+  const drawerClass =
+    "fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-white border-l border-slate-200 shadow-2xl overflow-y-auto flex flex-col lg:relative lg:w-72 lg:max-w-none lg:flex-shrink-0 lg:shadow-none lg:z-auto";
+
   if (loading) {
     return (
-      <div className="w-72 border-l border-slate-200 bg-white p-4 animate-pulse hidden lg:block">
+      <div className={`${drawerClass} animate-pulse p-4`}>
         <div className="h-12 bg-slate-100 rounded-lg mb-3" />
         <div className="h-8 bg-slate-100 rounded-lg mb-3" />
         <div className="h-32 bg-slate-100 rounded-lg" />
@@ -239,7 +245,7 @@ export function LeadContextPanel({
 
   if (!lead) {
     return (
-      <div className="w-72 border-l border-slate-200 bg-white p-4 hidden lg:flex flex-col items-center justify-center">
+      <div className={`${drawerClass} items-center justify-center p-4`}>
         <p className="text-xs text-slate-400 text-center">Lead nao encontrado no CRM</p>
         <button onClick={onClose} className="mt-2 text-xs text-indigo-600 hover:text-indigo-800">
           Fechar
@@ -249,7 +255,7 @@ export function LeadContextPanel({
   }
 
   return (
-    <div className="w-72 flex-shrink-0 border-l border-slate-200 bg-white flex-col overflow-y-auto hidden lg:flex">
+    <div className={drawerClass}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
         <h3 className="text-sm font-semibold text-slate-800">Detalhes do Lead</h3>

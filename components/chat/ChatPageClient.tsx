@@ -571,7 +571,14 @@ export function ChatPageClient() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
-  const [showPanel, setShowPanel] = useState(true);
+  // Closed by default — on mobile/tablet the panel is a drawer that should
+  // only open when the user taps the contact header. On lg+ we auto-open it
+  // after mount to preserve the existing inline layout.
+  const [showPanel, setShowPanel] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(min-width: 1024px)").matches) setShowPanel(true);
+  }, []);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null); // messageid for reaction picker
@@ -1519,7 +1526,7 @@ export function ChatPageClient() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] -mx-4 md:-mx-6 overflow-hidden rounded-xl border border-slate-200">
+    <div className="flex h-[calc(100dvh-8rem)] md:h-[calc(100dvh-5rem)] -mx-4 md:-mx-6 overflow-hidden rounded-xl border border-slate-200">
       {/* ─── Sidebar ─── */}
       <div
         className={`${showMobileSidebar ? "flex" : "hidden"} md:flex w-full md:w-[340px] flex-shrink-0 border-r border-slate-200 bg-white flex-col overflow-hidden`}
@@ -1702,43 +1709,50 @@ export function ChatPageClient() {
                 <ArrowLeft className="h-5 w-5 text-slate-600" />
               </button>
 
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center flex-shrink-0 relative">
-                <span className="text-sm font-bold text-slate-500 absolute inset-0 flex items-center justify-center">
-                  {getInitials(resolveChatName(selectedChat) || "?")}
-                </span>
-                {(() => {
-                  const phoneForHeader = (selectedChat.wa_chatid || "").split("@")[0];
-                  if (!phoneForHeader) return null;
-                  return (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={`/api/avatar/${encodeURIComponent(phoneForHeader)}`}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover relative"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  );
-                })()}
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowPanel(true)}
+                className="flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg hover:bg-slate-100 transition-colors -mx-1 px-1 py-1"
+                title="Ver detalhes do lead"
+              >
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center flex-shrink-0 relative">
+                  <span className="text-sm font-bold text-slate-500 absolute inset-0 flex items-center justify-center">
+                    {getInitials(resolveChatName(selectedChat) || "?")}
+                  </span>
+                  {(() => {
+                    const phoneForHeader = (selectedChat.wa_chatid || "").split("@")[0];
+                    if (!phoneForHeader) return null;
+                    return (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/avatar/${encodeURIComponent(phoneForHeader)}`}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover relative"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    );
+                  })()}
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900 truncate">
-                  {resolveChatName(selectedChat)}
-                </p>
-                <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                  {selectedChat.wa_chatid?.split("@")[0]}
-                  {selectedChat.wa_isGroup && (
-                    <span className="ml-1 px-1.5 py-0.5 bg-slate-200 rounded text-[9px]">
-                      Grupo
-                    </span>
-                  )}
-                  {msgTotal > 0 && <span className="ml-1 text-slate-300">{msgTotal} msgs</span>}
-                </p>
-              </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">
+                    {resolveChatName(selectedChat)}
+                  </p>
+                  <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                    {selectedChat.wa_chatid?.split("@")[0]}
+                    {selectedChat.wa_isGroup && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-slate-200 rounded text-[9px]">
+                        Grupo
+                      </span>
+                    )}
+                    {msgTotal > 0 && <span className="ml-1 text-slate-300">{msgTotal} msgs</span>}
+                  </p>
+                </div>
+              </button>
 
               <div className="flex items-center gap-0.5">
                 {chatLeadAi !== null && (
@@ -2116,15 +2130,22 @@ export function ChatPageClient() {
         )}
       </div>
 
-      {/* Lead Context Panel */}
+      {/* Lead Context Panel — inline column on lg+, slide-in drawer below lg */}
       {selectedChat && showPanel && (
-        <LeadContextPanel
-          leadPhone={selectedChat.wa_chatid?.split("@")[0] || selectedChat.phone || ""}
-          initialPinned={!!selectedChat.wa_pinned}
-          initialArchived={!!selectedChat.wa_archived}
-          initialMuted={!!selectedChat.wa_muted}
-          onClose={() => setShowPanel(false)}
-        />
+        <>
+          {/* Backdrop only below lg; tapping it closes the drawer */}
+          <div
+            className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+            onClick={() => setShowPanel(false)}
+          />
+          <LeadContextPanel
+            leadPhone={selectedChat.wa_chatid?.split("@")[0] || selectedChat.phone || ""}
+            initialPinned={!!selectedChat.wa_pinned}
+            initialArchived={!!selectedChat.wa_archived}
+            initialMuted={!!selectedChat.wa_muted}
+            onClose={() => setShowPanel(false)}
+          />
+        </>
       )}
 
       {/* ─── Forward Modal ─── */}

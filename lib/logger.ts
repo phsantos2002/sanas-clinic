@@ -29,8 +29,6 @@ function getMinLevel(): number {
   return process.env.NODE_ENV === "production" ? LEVELS.info : LEVELS.debug;
 }
 
-const IS_PROD = process.env.NODE_ENV === "production";
-
 // Cores ANSI apenas em dev
 const COLORS: Record<LogLevel, string> = {
   debug: "\x1b[36m", // cyan
@@ -67,7 +65,7 @@ function emit(
   const timestamp = new Date().toISOString();
   const merged = { ...bindings, ...context };
 
-  if (IS_PROD) {
+  if (process.env.NODE_ENV === "production") {
     // JSON estruturado — uma linha por log
     const entry: Record<string, unknown> = {
       ts: timestamp,
