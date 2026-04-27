@@ -442,6 +442,47 @@ export async function GET(req: NextRequest) {
         const search = searchParams.get("search") ?? "";
         const starred = searchParams.get("starred") === "true";
         const afterTs = searchParams.get("afterTs");
+
+        // Sliding-window dedupe applied to EVERY return path. The webhook
+        // pipeline has a documented race where two concurrent deliveries of
+        // the same inbound message can both pass the externalId dedup (the
+        // lead doesn't exist yet for either, so the check is skipped) and
+        // both run an AI reply, persisting two assistant rows with identical
+        // content. The root-cause fix lives in webhookProcessor; this one is
+        // a read-side guard that hides existing duplicates already in the DB
+        // and tolerates wider timestamp drift than a fixed bucket would.
+        const dedupeMessages = <
+          T extends { text?: string; fromMe?: boolean; messageTimestamp?: number },
+        >(
+          msgs: T[]
+        ): T[] => {
+          const out: T[] = [];
+          const WINDOW_MS = 60_000;
+          for (const m of msgs) {
+            const text = (m.text ?? "").trim();
+            if (!text) {
+              out.push(m);
+              continue;
+            }
+            const ts = typeof m.messageTimestamp === "number" ? m.messageTimestamp : 0;
+            const dir = m.fromMe ? "a" : "u";
+            // Walk backwards — duplicates land near each other in chrono order,
+            // so the early break keeps this O(n) on the common path.
+            let isDup = false;
+            for (let i = out.length - 1; i >= 0; i--) {
+              const prev = out[i];
+              const prevTs = typeof prev.messageTimestamp === "number" ? prev.messageTimestamp : 0;
+              if (ts - prevTs > WINDOW_MS) break;
+              if ((prev.fromMe ? "a" : "u") !== dir) continue;
+              if ((prev.text ?? "").trim() === text) {
+                isDup = true;
+                break;
+              }
+            }
+            if (!isDup) out.push(m);
+          }
+          return out;
+        };
         // beforeTs lets the front pull older history when the operator
         // scrolls past the messages we have in the DB. We always go upstream
         // for these requests (DB has nothing older by definition).
@@ -506,14 +547,24 @@ export async function GET(req: NextRequest) {
             // Polling / pagination / search: DB-only is the right answer.
             const isInitialLoad = !afterTs && !search && offset === 0;
             if (!isInitialLoad) {
-              return NextResponse.json({ messages: dbMessages, total, source: "db" });
+              const deduped = dedupeMessages(dbMessages);
+              return NextResponse.json({
+                messages: deduped,
+                total: Math.max(0, total - (dbMessages.length - deduped.length)),
+                source: "db",
+              });
             }
 
             // Initial load: if the DB has the full requested page already, ship
             // it. Otherwise top up from Uazapi to cover legacy leads where the
             // DB only holds the few recent webhook turns we managed to capture.
             if (total >= limit) {
-              return NextResponse.json({ messages: dbMessages, total, source: "db" });
+              const deduped = dedupeMessages(dbMessages);
+              return NextResponse.json({
+                messages: deduped,
+                total: Math.max(0, total - (dbMessages.length - deduped.length)),
+                source: "db",
+              });
             }
 
             const upstreamBody: Record<string, unknown> = {
@@ -589,10 +640,11 @@ export async function GET(req: NextRequest) {
               merged.push(m as unknown as (typeof dbMessages)[number]);
             }
             merged.sort((a, b) => a.messageTimestamp - b.messageTimestamp);
+            const dedupedMerged = dedupeMessages(merged);
 
             return NextResponse.json({
-              messages: merged,
-              total: Math.max(total, merged.length),
+              messages: dedupedMerged,
+              total: Math.max(total, dedupedMerged.length),
               source: "db+uazapi",
             });
           }
@@ -679,9 +731,10 @@ export async function GET(req: NextRequest) {
           return false;
         });
 
+        const dedupedUazapi = dedupeMessages(messages);
         return NextResponse.json({
-          messages,
-          total: messages.length,
+          messages: dedupedUazapi,
+          total: dedupedUazapi.length,
           source: "uazapi",
           ...(data?.__error
             ? { upstreamError: String(data.__error), upstreamStatus: data.__status }
