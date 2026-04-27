@@ -701,16 +701,24 @@ export function ChatPageClient() {
         if (controller.signal.aborted) return;
         const data = await res.json();
         const page: Chat[] = data.chats ?? [];
+        // The currently-open chat was just marked-read locally; keep it at 0
+        // so the next silent poll doesn't repaint Uazapi's stale count before
+        // the /chat/read call propagates upstream.
+        const openId = selectedChatRef.current?.wa_chatid;
+        const zeroOpen = (list: Chat[]) =>
+          openId
+            ? list.map((c) => (c.wa_chatid === openId ? { ...c, wa_unreadCount: 0 } : c))
+            : list;
         if (silent) {
           // Merge: top page replaced; keep any deeper-loaded pages below
           setChats((prev) => {
-            if (prev.length <= PAGE_SIZE) return page;
+            if (prev.length <= PAGE_SIZE) return zeroOpen(page);
             const topIds = new Set(page.map((c) => c.id || c.wa_chatid));
             const deeper = prev.slice(PAGE_SIZE).filter((c) => !topIds.has(c.id || c.wa_chatid));
-            return [...page, ...deeper];
+            return zeroOpen([...page, ...deeper]);
           });
         } else {
-          setChats(page);
+          setChats(zeroOpen(page));
           setHasMoreChats(page.length >= PAGE_SIZE);
         }
       } catch (err) {
@@ -1016,7 +1024,13 @@ export function ChatPageClient() {
     setNoOlderHistory(false);
     lastMsgTsRef.current = 0;
     fetchMessages(selectedChatId);
-    // Mark as read
+    // Mark as read — optimistically zero the local badge so the operator
+    // doesn't keep seeing "15 unread" on a chat they just opened. Uazapi's
+    // /chat/read takes a beat to reflect, and the next fetchChats refresh
+    // would otherwise repaint the stale count for ~3s.
+    setChats((prev) =>
+      prev.map((c) => (c.wa_chatid === selectedChatId ? { ...c, wa_unreadCount: 0 } : c))
+    );
     apiPost("mark-read", { chatid: selectedChatId }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChatId]);

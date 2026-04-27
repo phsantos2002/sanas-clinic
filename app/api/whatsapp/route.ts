@@ -549,20 +549,43 @@ export async function GET(req: NextRequest) {
 
             // Merge — dedupe by externalId/messageid/id, prefer DB rows
             // (they may carry the AI ack flag we can't reconstruct from
-            // upstream). Sort oldest-first to match the front-end contract.
+            // upstream). When a DB row was persisted without an externalId
+            // (notably AI assistant replies — webhookProcessor saves them
+            // without the wamid), the same logical message arrives from
+            // Uazapi under a different key (the real wamid) and would slip
+            // past an id-only dedupe, producing two visible bubbles for the
+            // same outgoing message. Add a content+direction+~10s-bucket
+            // fingerprint as a secondary key to catch that case.
             const seen = new Set<string>();
+            const fingerprints = new Set<string>();
+            const fingerprint = (m: {
+              text?: string;
+              fromMe?: boolean;
+              messageTimestamp?: number;
+            }) => {
+              const ts = typeof m.messageTimestamp === "number" ? m.messageTimestamp : 0;
+              const bucket = Math.floor(ts / 10_000);
+              const text = (m.text ?? "").slice(0, 80);
+              return `${m.fromMe ? "a" : "u"}|${bucket}|${text}`;
+            };
             const merged: typeof dbMessages = [];
             for (const m of dbMessages) {
               const key = m.messageid || m.id;
               if (key && !seen.has(key)) {
                 seen.add(key);
+                fingerprints.add(fingerprint(m));
                 merged.push(m);
               }
             }
             for (const m of upstreamMessages as Array<Record<string, unknown>>) {
               const key = (m.messageid || m.id || m.messageId) as string | undefined;
-              if (!key || seen.has(key)) continue;
-              seen.add(key);
+              if (key && seen.has(key)) continue;
+              const fp = fingerprint(
+                m as { text?: string; fromMe?: boolean; messageTimestamp?: number }
+              );
+              if (fingerprints.has(fp)) continue;
+              if (key) seen.add(key);
+              fingerprints.add(fp);
               merged.push(m as unknown as (typeof dbMessages)[number]);
             }
             merged.sort((a, b) => a.messageTimestamp - b.messageTimestamp);
