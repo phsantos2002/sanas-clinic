@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/app/actions/user";
 import { ChatTabsNav } from "@/components/chat/ChatTabsNav";
+import { ScrollLock } from "@/components/chat/ScrollLock";
 
 async function getVisibleChatTabs(): Promise<string[]> {
   const user = await getCurrentUser();
@@ -26,6 +27,7 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
     // so the chat occupies the full viewport below the top nav — no
     // gray strip above or below the conversation panel.
     <div className="flex flex-col gap-3 -mt-4 md:-mt-8 -mb-4 md:-mb-8">
+      <ScrollLock />
       <ChatTabsNav visibleTabs={visibleTabs} />
       {children}
     </div>
