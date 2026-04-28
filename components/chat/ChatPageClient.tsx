@@ -1535,9 +1535,18 @@ export function ChatPageClient() {
     ? "max-md:fixed max-md:inset-0 max-md:z-30 max-md:h-[100dvh] max-md:max-h-none max-md:m-0 max-md:rounded-none max-md:border-0 max-md:bg-white"
     : "";
 
+  // iOS Safari quirk: leaving a fixed-overlay fullscreen sometimes parks the
+  // body in a scrolled-up state, hiding the dashboard nav above the chat
+  // list. Reset scroll on every fullscreen → list transition.
+  useEffect(() => {
+    if (!selectedChat && typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
+  }, [selectedChat]);
+
   return (
     <div
-      className={`flex h-[calc(100dvh-8rem)] md:h-[calc(100dvh-5rem)] -mx-4 md:-mx-6 overflow-hidden rounded-xl border border-slate-200 ${mobileFullscreen}`}
+      className={`flex h-[calc(100dvh-6rem)] md:h-[calc(100dvh-5rem)] -mx-4 md:-mx-6 overflow-hidden rounded-xl border border-slate-200 ${mobileFullscreen}`}
     >
       {/* ─── Sidebar ─── */}
       <div
@@ -1637,7 +1646,7 @@ export function ChatPageClient() {
               placeholder="Buscar conversa..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-8 text-xs border-slate-200 rounded-lg bg-slate-50"
+              className="pl-9 h-8 text-base md:text-xs border-slate-200 rounded-lg bg-slate-50"
             />
           </div>
         </div>
@@ -1814,7 +1823,7 @@ export function ChatPageClient() {
                     e.key === "Enter" && selectedChat && fetchMessages(selectedChat.wa_chatid)
                   }
                   placeholder="Buscar nesta conversa..."
-                  className="flex-1 text-sm outline-none"
+                  className="flex-1 text-base md:text-sm outline-none"
                   autoFocus
                 />
                 <button
@@ -2106,7 +2115,7 @@ export function ChatPageClient() {
                   placeholder="Digite uma mensagem..."
                   value={newMsg}
                   onChange={(e) => setNewMsg(e.target.value)}
-                  className="flex-1 h-10 rounded-full bg-white border-slate-200"
+                  className="flex-1 h-10 rounded-full bg-white border-slate-200 text-base md:text-sm"
                   disabled={sending}
                 />
                 <Button
@@ -2189,7 +2198,7 @@ export function ChatPageClient() {
                   placeholder="Buscar contato..."
                   value={forwardSearch}
                   onChange={(e) => setForwardSearch(e.target.value)}
-                  className="pl-9 h-8 text-xs"
+                  className="pl-9 h-8 text-base md:text-xs"
                 />
               </div>
             </div>
