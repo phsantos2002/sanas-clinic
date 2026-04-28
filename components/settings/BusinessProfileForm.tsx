@@ -1,151 +1,213 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { updateBusinessProfile, type BusinessProfileData } from "@/app/actions/businessProfile";
+import type { BusinessProfile } from "@prisma/client";
 
-type BusinessProfile = {
-  name?: string;
-  niche?: string;
-  city?: string;
-  services?: string;
-  avgTicket?: string;
-  differentials?: string;
+type Props = {
+  initial: BusinessProfile | null;
 };
 
-const NICHES = [
-  "b2c_servicos",
-  "b2c_varejo",
-  "b2c_saude",
-  "b2c_beleza",
-  "b2c_alimentacao",
-  "b2c_educacao",
-  "b2c_fitness",
-  "b2c_imobiliario",
-  "b2b_servicos",
-  "b2b_software",
-  "b2b_consultoria",
-  "b2b_industria",
-  "b2b_agencia",
-  "outro",
+const PIX_TYPES = [
+  { value: "", label: "Selecione..." },
+  { value: "cpf", label: "CPF" },
+  { value: "cnpj", label: "CNPJ" },
+  { value: "email", label: "Email" },
+  { value: "phone", label: "Telefone" },
+  { value: "random", label: "Chave aleatoria" },
 ];
 
-const NICHE_LABELS: Record<string, string> = {
-  b2c_servicos: "B2C — Servicos locais",
-  b2c_varejo: "B2C — Varejo / Loja",
-  b2c_saude: "B2C — Saude / Consultorio",
-  b2c_beleza: "B2C — Estetica / Beleza",
-  b2c_alimentacao: "B2C — Alimentacao",
-  b2c_educacao: "B2C — Educacao / Cursos",
-  b2c_fitness: "B2C — Fitness / Academia",
-  b2c_imobiliario: "B2C — Imobiliario",
-  b2b_servicos: "B2B — Servicos profissionais",
-  b2b_software: "B2B — Software / SaaS",
-  b2b_consultoria: "B2B — Consultoria",
-  b2b_industria: "B2B — Industria",
-  b2b_agencia: "B2B — Agencia / Marketing",
-  outro: "Outro",
-};
+export function BusinessProfileForm({ initial }: Props) {
+  const [pending, startTransition] = useTransition();
+  const [data, setData] = useState<BusinessProfileData>({
+    companyName: initial?.companyName ?? "",
+    description: initial?.description ?? "",
+    businessEmail: initial?.businessEmail ?? "",
+    businessPhone: initial?.businessPhone ?? "",
+    website: initial?.website ?? "",
+    instagram: initial?.instagram ?? "",
+    address: initial?.address ?? "",
+    city: initial?.city ?? "",
+    state: initial?.state ?? "",
+    zipCode: initial?.zipCode ?? "",
+    businessHours: initial?.businessHours ?? "",
+    pixKey: initial?.pixKey ?? "",
+    pixKeyType: initial?.pixKeyType ?? "",
+  });
 
-export function BusinessProfileForm({
-  initial,
-  onSave,
-}: {
-  initial: BusinessProfile | null;
-  onSave: (data: BusinessProfile) => Promise<{ success: boolean; error?: string }>;
-}) {
-  const [profile, setProfile] = useState<BusinessProfile>(initial || {});
-  const [saving, setSaving] = useState(false);
+  const update = (k: keyof BusinessProfileData, v: string) =>
+    setData((prev) => ({ ...prev, [k]: v }));
 
-  const update = (field: keyof BusinessProfile, value: string) => {
-    setProfile((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    const result = await onSave(profile);
-    setSaving(false);
-    if (result.success) toast.success("Perfil salvo!");
-    else toast.error(result.error || "Erro ao salvar");
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    startTransition(async () => {
+      const res = await updateBusinessProfile(data);
+      if (res.success) toast.success("Dados do negocio salvos");
+      else toast.error(res.error || "Erro ao salvar");
+    });
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <label className="text-sm font-medium text-slate-700 mb-1 block">Nome do negocio</label>
-        <input
-          type="text"
-          value={profile.name || ""}
-          onChange={(e) => update("name", e.target.value)}
-          placeholder="Ex: Consultório Silva, Loja Moderna, Software XYZ..."
-          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-medium text-slate-700 mb-1 block">Nicho</label>
-          <select
-            value={profile.niche || ""}
-            onChange={(e) => update("niche", e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">Selecione...</option>
-            {NICHES.map((n) => (
-              <option key={n} value={n}>
-                {NICHE_LABELS[n]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-700 mb-1 block">Cidade</label>
-          <input
-            type="text"
-            value={profile.city || ""}
-            onChange={(e) => update("city", e.target.value)}
-            placeholder="Ex: Sao Paulo - SP"
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <FieldGroup label="Identidade">
+        <Field label="Nome da empresa">
+          <Input
+            value={data.companyName ?? ""}
+            onChange={(e) => update("companyName", e.target.value)}
+            placeholder="Ex: Clinica Sanas"
           />
-        </div>
-      </div>
-      <div>
-        <label className="text-sm font-medium text-slate-700 mb-1 block">Servicos oferecidos</label>
-        <textarea
-          value={profile.services || ""}
-          onChange={(e) => update("services", e.target.value)}
-          rows={2}
-          placeholder="Descreva o que você vende ou oferece (produtos, serviços, planos)."
-          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-medium text-slate-700 mb-1 block">Ticket medio (R$)</label>
-          <input
-            type="text"
-            value={profile.avgTicket || ""}
-            onChange={(e) => update("avgTicket", e.target.value)}
-            placeholder="Ex: 500"
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        </Field>
+        <Field label="Descricao" hint="Sobre o negocio, especialidades, diferenciais">
+          <textarea
+            value={data.description ?? ""}
+            onChange={(e) => update("description", e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Ex: Clinica de estetica especializada em harmonizacao facial..."
           />
+        </Field>
+      </FieldGroup>
+
+      <FieldGroup label="Contato">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Email comercial">
+            <Input
+              type="email"
+              value={data.businessEmail ?? ""}
+              onChange={(e) => update("businessEmail", e.target.value)}
+              placeholder="contato@empresa.com.br"
+            />
+          </Field>
+          <Field label="Telefone comercial">
+            <Input
+              value={data.businessPhone ?? ""}
+              onChange={(e) => update("businessPhone", e.target.value)}
+              placeholder="(11) 99999-9999"
+            />
+          </Field>
+          <Field label="Site">
+            <Input
+              value={data.website ?? ""}
+              onChange={(e) => update("website", e.target.value)}
+              placeholder="empresa.com.br"
+            />
+          </Field>
+          <Field label="Instagram">
+            <Input
+              value={data.instagram ?? ""}
+              onChange={(e) => update("instagram", e.target.value)}
+              placeholder="@empresa"
+            />
+          </Field>
         </div>
-        <div>
-          <label className="text-sm font-medium text-slate-700 mb-1 block">Diferenciais</label>
-          <input
-            type="text"
-            value={profile.differentials || ""}
-            onChange={(e) => update("differentials", e.target.value)}
-            placeholder="Ex: Atendimento premium, 10 anos de experiencia"
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      </FieldGroup>
+
+      <FieldGroup label="Localizacao">
+        <Field label="Endereco">
+          <Input
+            value={data.address ?? ""}
+            onChange={(e) => update("address", e.target.value)}
+            placeholder="Rua X, 123, Bairro Y"
           />
+        </Field>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field label="Cidade">
+            <Input
+              value={data.city ?? ""}
+              onChange={(e) => update("city", e.target.value)}
+              placeholder="Sao Jose dos Campos"
+            />
+          </Field>
+          <Field label="Estado">
+            <Input
+              value={data.state ?? ""}
+              onChange={(e) => update("state", e.target.value)}
+              placeholder="SP"
+              maxLength={2}
+            />
+          </Field>
+          <Field label="CEP">
+            <Input
+              value={data.zipCode ?? ""}
+              onChange={(e) => update("zipCode", e.target.value)}
+              placeholder="00000-000"
+            />
+          </Field>
         </div>
+      </FieldGroup>
+
+      <FieldGroup label="Operacao">
+        <Field
+          label="Horario de funcionamento"
+          hint="Texto livre que a IA usa pra responder pergunta de horario"
+        >
+          <Input
+            value={data.businessHours ?? ""}
+            onChange={(e) => update("businessHours", e.target.value)}
+            placeholder="Ex: Seg-Sex 9-18h, Sab 9-13h"
+          />
+        </Field>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field label="Tipo de chave PIX">
+            <select
+              value={data.pixKeyType ?? ""}
+              onChange={(e) => update("pixKeyType", e.target.value)}
+              className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {PIX_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Chave PIX">
+              <Input
+                value={data.pixKey ?? ""}
+                onChange={(e) => update("pixKey", e.target.value)}
+                placeholder="Ex: 12345678000190 ou contato@empresa.com.br"
+              />
+            </Field>
+          </div>
+        </div>
+      </FieldGroup>
+
+      <div className="flex justify-end pt-2">
+        <Button type="submit" disabled={pending} size="sm">
+          {pending ? "Salvando..." : "Salvar"}
+        </Button>
       </div>
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
-      >
-        {saving ? "Salvando..." : "Salvar Perfil"}
-      </button>
+    </form>
+  );
+}
+
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</h3>
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-xs font-medium text-slate-700">{label}</label>
+      {children}
+      {hint && <p className="text-[10px] text-slate-400">{hint}</p>}
     </div>
   );
 }

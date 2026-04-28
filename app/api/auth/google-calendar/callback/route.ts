@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   if (!code || !userId) {
     return NextResponse.redirect(
-      new URL("/dashboard/settings/services?error=missing_params", req.url)
+      new URL("/dashboard/settings/business?error=missing_params", req.url)
     );
   }
 
@@ -43,12 +43,12 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.redirect(
-      new URL("/dashboard/settings/services?calendar=connected", req.url)
+      new URL("/dashboard/settings/business?calendar=connected", req.url)
     );
   } catch (err) {
     console.error("[Google Calendar] OAuth error:", err);
     return NextResponse.redirect(
-      new URL("/dashboard/settings/services?error=oauth_failed", req.url)
+      new URL("/dashboard/settings/business?error=oauth_failed", req.url)
     );
   }
 }

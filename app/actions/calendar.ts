@@ -46,7 +46,7 @@ export async function saveCalendarConfig(data: {
     },
   });
 
-  revalidatePath("/dashboard/settings/services");
+  revalidatePath("/dashboard/settings/business");
   return { success: true };
 }
 
@@ -55,6 +55,6 @@ export async function disconnectCalendar() {
   if (!user) return { success: false, error: "Não autenticado" };
 
   await prisma.googleCalendar.deleteMany({ where: { userId: user.id } });
-  revalidatePath("/dashboard/settings/services");
+  revalidatePath("/dashboard/settings/business");
   return { success: true };
 }

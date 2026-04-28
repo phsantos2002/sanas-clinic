@@ -40,7 +40,7 @@ export async function createService(data: ServiceData) {
       },
     });
 
-    revalidatePath("/dashboard/settings/services");
+    revalidatePath("/dashboard/settings/business");
     return { success: true };
   } catch (err) {
     console.error("[services] Erro ao criar:", err);

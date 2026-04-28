@@ -74,7 +74,7 @@ const STEPS = [
     title: "Servicos & Agenda",
     subtitle: "Cadastre servicos + Google Calendar",
     desc: "Cadastre servicos (nome, valor, duracao). Conecte o Google Calendar e a IA agenda automaticamente via WhatsApp.",
-    action: "/dashboard/settings/services",
+    action: "/dashboard/settings/business",
   },
   {
     icon: Brain,

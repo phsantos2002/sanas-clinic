@@ -1,18 +1,15 @@
 import { getAIResponseConfig, saveAIResponseConfig } from "@/app/actions/aiResponseConfig";
 import { getAIConfig } from "@/app/actions/aiConfig";
 import { listFlows } from "@/app/actions/chatbot";
-import { getServices } from "@/app/actions/services";
 import { AIResponseConfigForm } from "@/components/settings/AIResponseConfigForm";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
 import { ChatbotFlowsSection } from "@/components/settings/ChatbotFlowsSection";
-import { ServicesManager } from "@/components/settings/ServicesManager";
 
 export default async function AISettingsPage() {
-  const [responseConfig, aiConfig, flows, services] = await Promise.all([
+  const [responseConfig, aiConfig, flows] = await Promise.all([
     getAIResponseConfig(),
     getAIConfig(),
     listFlows(),
-    getServices(),
   ]);
 
   return (
@@ -52,18 +49,6 @@ export default async function AISettingsPage() {
           </p>
         </div>
         <AIResponseConfigForm initial={responseConfig} onSave={saveAIResponseConfig} />
-      </div>
-
-      {/* Serviços alimentados ao prompt da IA */}
-      <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Serviços</h2>
-          <p className="text-sm text-slate-400 mt-0.5">
-            Cadastre serviços com nome, valor e duração. Todos marcados como ativos são injetados no
-            prompt da IA para responder perguntas sobre preços e disponibilidade.
-          </p>
-        </div>
-        <ServicesManager initialServices={services} />
       </div>
 
       {/* Chatbot flows */}
