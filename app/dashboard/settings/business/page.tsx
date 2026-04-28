@@ -5,12 +5,26 @@ import { BusinessProfileForm } from "@/components/settings/BusinessProfileForm";
 import { ServicesManager } from "@/components/settings/ServicesManager";
 import { CalendarConfig } from "@/components/settings/CalendarConfig";
 
+// URL de gestão de env vars desse projeto Vercel. Hardcoded por simplicidade
+// — se mudar de projeto, atualizar aqui.
+const VERCEL_ENV_URL =
+  "https://vercel.com/pedro-henriques-projects-c54468f6/sanas-pulse/settings/environment-variables";
+
 export default async function BusinessSettingsPage() {
   const [profile, services, calendarConfig] = await Promise.all([
     getBusinessProfile(),
     getServices(),
     getCalendarConfig(),
   ]);
+
+  // Detecta se as credenciais OAuth do Google Cloud foram configuradas.
+  // Sem isso a tela de "Conectar Google Calendar" daria erro 500 — em vez
+  // disso renderizamos o setup wizard inline.
+  const googleCloudConfigured = !!(
+    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+  );
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sanas-pulse.vercel.app";
+  const redirectUri = `${appUrl}/api/auth/google-calendar/callback`;
 
   return (
     <div className="space-y-4 max-w-3xl">
@@ -45,7 +59,14 @@ export default async function BusinessSettingsPage() {
             Conecte para agendamento automatico via WhatsApp e exibicao na aba Calendario
           </p>
         </div>
-        <CalendarConfig config={calendarConfig} />
+        <CalendarConfig
+          config={calendarConfig}
+          setup={{
+            googleCloudConfigured,
+            redirectUri,
+            vercelEnvUrl: VERCEL_ENV_URL,
+          }}
+        />
       </div>
     </div>
   );

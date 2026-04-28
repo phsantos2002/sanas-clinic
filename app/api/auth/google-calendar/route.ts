@@ -16,15 +16,12 @@ const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL
  * GET /api/auth/google-calendar — Initiate OAuth flow
  */
 export async function GET() {
-  // Check if Google is configured
+  // Check if Google is configured. Sem env vars, redireciona pro setup
+  // wizard inline em /settings/business em vez de JSON cru — usuário cai
+  // direto no passo a passo de criar credenciais no Google Cloud.
   if (!GOOGLE_CLIENT_ID) {
-    return NextResponse.json(
-      {
-        error: "Google Calendar nao configurado",
-        detail: "Env vars GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET nao definidas no Vercel",
-      },
-      { status: 500 }
-    );
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sanas-pulse.vercel.app";
+    return NextResponse.redirect(`${appUrl}/dashboard/settings/business?setup=google-calendar`);
   }
 
   const supabase = await createClient();

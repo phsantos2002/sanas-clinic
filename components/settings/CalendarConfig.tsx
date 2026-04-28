@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Calendar, Check, ExternalLink, Clock, X } from "lucide-react";
 import { saveCalendarConfig, disconnectCalendar } from "@/app/actions/calendar";
+import { GoogleCalendarSetupWizard } from "./GoogleCalendarSetupWizard";
 
 type CalendarConfigData = {
   connected: boolean;
@@ -16,6 +17,12 @@ type CalendarConfigData = {
   timezone: string;
 } | null;
 
+type SetupInfo = {
+  googleCloudConfigured: boolean;
+  redirectUri: string;
+  vercelEnvUrl: string;
+};
+
 const DAYS = [
   { id: 0, label: "Dom" },
   { id: 1, label: "Seg" },
@@ -26,12 +33,29 @@ const DAYS = [
   { id: 6, label: "Sab" },
 ];
 
-export function CalendarConfig({ config }: { config: CalendarConfigData }) {
+export function CalendarConfig({
+  config,
+  setup,
+}: {
+  config: CalendarConfigData;
+  setup?: SetupInfo;
+}) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [hoursStart, setHoursStart] = useState(config?.businessHoursStart || "09:00");
   const [hoursEnd, setHoursEnd] = useState(config?.businessHoursEnd || "18:00");
   const [workDays, setWorkDays] = useState<number[]>(config?.workDays || [1, 2, 3, 4, 5, 6]);
+
+  // Setup OAuth do Google Cloud não feito ainda → mostra wizard em vez do
+  // botão "Conectar" (que daria erro 500 sem GOOGLE_CLIENT_ID/SECRET).
+  if (setup && !setup.googleCloudConfigured) {
+    return (
+      <GoogleCalendarSetupWizard
+        redirectUri={setup.redirectUri}
+        vercelEnvUrl={setup.vercelEnvUrl}
+      />
+    );
+  }
 
   const toggleDay = (day: number) => {
     setWorkDays((prev) =>
