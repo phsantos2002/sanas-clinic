@@ -475,6 +475,13 @@ export async function processIncomingMessage(params: {
         calendarContext = await getCalendarContextForAI(userId);
       } catch {}
 
+      // ── Build context with business profile (Meu Negócio) ─────
+      let businessContext: string | null = null;
+      try {
+        const { getBusinessContextForAI } = await import("@/app/actions/businessProfile");
+        businessContext = await getBusinessContextForAI(userId);
+      } catch {}
+
       // Refetch messages right before calling the LLM. The initial `lead` was
       // loaded early in the pipeline (before the waitBeforeReply sleep), so any
       // messages that arrived while we slept — and were saved by competing jobs
@@ -500,6 +507,9 @@ export async function processIncomingMessage(params: {
 
       // Append services context to system prompt
       let enrichedSystemPrompt = aiConfig.systemPrompt || "";
+      if (businessContext) {
+        enrichedSystemPrompt += `\n\n${businessContext}`;
+      }
       if (servicesContext) {
         enrichedSystemPrompt += `\n\n${servicesContext}`;
       }

@@ -40,6 +40,7 @@ model User {
   workflows          Workflow[]
   googleCalendar     GoogleCalendar?
   funnels            Funnel[]
+  businessProfile    BusinessProfile?
 }
 
 model AIConfig {
@@ -203,8 +204,9 @@ model Message {
   externalId String? // ex: "wamid.HBgNNTUxMTk4..." ou "BAE5..."
   createdAt  DateTime @default(now())
 
-  // Unique por lead + provider message id (previne duplicatas)
-  @@unique([leadId, externalId])
+  // TODO: re-add @@unique([leadId, externalId]) depois de limpar
+  // duplicatas legadas no DB. O lock per-message no webhookProcessor +
+  // read-side dedup já cobre o caso ativo.
   @@index([leadId])
   @@index([leadId, createdAt])
 }
@@ -655,6 +657,40 @@ model Service {
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
+}
+
+// Dados do negócio do operador. Alimenta a aba "Meu Negócio" das
+// configurações e é injetado como contexto no system prompt da IA do
+// chat (getBusinessContextForAI), pra que a IA responda perguntas sobre
+// endereço, horário, PIX, redes sociais, etc com precisão.
+model BusinessProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Identidade
+  companyName String?
+  description String?
+
+  // Contato
+  businessEmail String?
+  businessPhone String?
+  website       String?
+  instagram     String?
+
+  // Localização
+  address String?
+  city    String?
+  state   String?
+  zipCode String?
+
+  // Operação
+  businessHours String? // free-form pra IA (ex: "Seg-Sex 9-18h, Sáb 9-13h")
+  pixKey        String?
+  pixKeyType    String? // "cpf" | "cnpj" | "email" | "phone" | "random"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model GoogleCalendar {
