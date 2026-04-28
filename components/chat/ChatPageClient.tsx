@@ -1165,19 +1165,30 @@ export function ChatPageClient() {
   }, [chats, readMap, selectedChatId]);
 
   type ChatVirtualItem =
-    | { type: "header"; label: string; icon?: "pin" }
+    | { type: "header"; label: string; icon?: "pin" | "users" | "user" }
     | { type: "chat"; chat: Chat }
     | { type: "sentinel" };
   const chatVirtualItems = useMemo(() => {
     const pinned = displayChats.filter((c) => c.wa_pinned);
     const regular = displayChats.filter((c) => !c.wa_pinned);
+    // Groups separated from 1:1 conversations so the operator doesn't lose
+    // active leads in a wall of group noise. Pinned section stays mixed —
+    // the operator pinned them on purpose, regardless of type.
+    const privateChats = regular.filter((c) => !c.wa_isGroup);
+    const groupChats = regular.filter((c) => c.wa_isGroup);
     const items: ChatVirtualItem[] = [];
     if (pinned.length > 0) {
       items.push({ type: "header", label: "Fixadas", icon: "pin" });
       for (const c of pinned) items.push({ type: "chat", chat: c });
-      if (regular.length > 0) items.push({ type: "header", label: "Todas" });
     }
-    for (const c of regular) items.push({ type: "chat", chat: c });
+    if (privateChats.length > 0) {
+      items.push({ type: "header", label: "Conversas", icon: "user" });
+      for (const c of privateChats) items.push({ type: "chat", chat: c });
+    }
+    if (groupChats.length > 0) {
+      items.push({ type: "header", label: "Grupos", icon: "users" });
+      for (const c of groupChats) items.push({ type: "chat", chat: c });
+    }
     if (hasMoreChats && displayChats.length > 0) items.push({ type: "sentinel" });
     return items;
   }, [displayChats, hasMoreChats]);
@@ -1680,6 +1691,8 @@ export function ChatPageClient() {
                   return (
                     <div className="px-4 py-1.5 bg-slate-50 flex items-center gap-1">
                       {item.icon === "pin" && <Pin className="h-3 w-3 text-slate-400" />}
+                      {item.icon === "user" && <MessageCircle className="h-3 w-3 text-slate-400" />}
+                      {item.icon === "users" && <Users className="h-3 w-3 text-slate-400" />}
                       <span className="text-[10px] font-medium text-slate-400 uppercase">
                         {item.label}
                       </span>
