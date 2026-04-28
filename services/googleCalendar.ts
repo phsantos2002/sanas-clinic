@@ -5,6 +5,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { decrypt, encrypt } from "@/lib/crypto";
+import * as mcp from "./mcp/calendarMcpClient";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
@@ -117,7 +118,17 @@ type GoogleCalendarConfig = {
   calendarId: string;
 };
 
-// ─── Calendar API ─────────────────────────────────────────
+// ─── Calendar API (via MCP client) ───────────────────────
+//
+// Os wrappers abaixo agora delegam pro cliente MCP in-process. Mantém
+// a assinatura pública pra não quebrar callers (webhookProcessor,
+// CalendarConfig, futura UI Trinks). Toda lógica de fetch/Google v3
+// REST API foi movida pra services/mcp/calendarMcpServer.ts.
+//
+// OAuth helpers (getGoogleAuthUrl, exchangeCodeForTokens,
+// getGoogleUserEmail, refreshAccessToken, getValidToken) ficam aqui —
+// não fazem sentido como tools MCP (são parte do bootstrap do token,
+// não da operação de calendar).
 
 export async function getGoogleUserEmail(accessToken: string): Promise<string | null> {
   try {
@@ -143,29 +154,19 @@ export async function getUpcomingEvents(
   userId: string,
   daysAhead: number = 7
 ): Promise<CalendarEvent[]> {
-  const auth = await getValidToken(userId);
-  if (!auth) return [];
-
   const now = new Date();
   const end = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
-
-  const params = new URLSearchParams({
-    timeMin: now.toISOString(),
-    timeMax: end.toISOString(),
-    singleEvents: "true",
-    orderBy: "startTime",
-    maxResults: "50",
-    timeZone: auth.config.timezone,
-  });
-
-  const res = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(auth.calendarId)}/events?${params}`,
-    { headers: { Authorization: `Bearer ${auth.token}` } }
-  );
-
-  if (!res.ok) return [];
-  const data = await res.json();
-  return (data.items || []) as CalendarEvent[];
+  try {
+    const { events } = await mcp.listEvents({
+      userId,
+      timeMin: now.toISOString(),
+      timeMax: end.toISOString(),
+      maxResults: 50,
+    });
+    return events as unknown as CalendarEvent[];
+  } catch {
+    return [];
+  }
 }
 
 export async function getFreeSlots(
@@ -173,76 +174,12 @@ export async function getFreeSlots(
   date: string, // YYYY-MM-DD
   durationMinutes: number = 60
 ): Promise<{ start: string; end: string }[]> {
-  const auth = await getValidToken(userId);
-  if (!auth) return [];
-
-  const { businessHoursStart, businessHoursEnd, workDays, timezone } = auth.config;
-
-  // Check if date is a work day
-  const d = new Date(date + "T12:00:00");
-  if (!workDays.includes(d.getDay())) return [];
-
-  // Get events for this day
-  const dayStart = `${date}T${businessHoursStart}:00`;
-  const dayEnd = `${date}T${businessHoursEnd}:00`;
-
-  const params = new URLSearchParams({
-    timeMin: new Date(`${date}T00:00:00`).toISOString(),
-    timeMax: new Date(`${date}T23:59:59`).toISOString(),
-    singleEvents: "true",
-    orderBy: "startTime",
-    timeZone: timezone,
-  });
-
-  const res = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(auth.calendarId)}/events?${params}`,
-    { headers: { Authorization: `Bearer ${auth.token}` } }
-  );
-
-  if (!res.ok) return [];
-  const data = await res.json();
-  const events = (data.items || []) as CalendarEvent[];
-
-  // Calculate free slots
-  const busySlots = events
-    .filter((e) => e.start?.dateTime && e.end?.dateTime)
-    .map((e) => ({
-      start: new Date(e.start.dateTime).getTime(),
-      end: new Date(e.end.dateTime).getTime(),
-    }));
-
-  const slots: { start: string; end: string }[] = [];
-  const [startH, startM] = businessHoursStart.split(":").map(Number);
-  const [endH, endM] = businessHoursEnd.split(":").map(Number);
-  const dStart = new Date(`${date}T${businessHoursStart}:00`);
-  const dEnd = new Date(`${date}T${businessHoursEnd}:00`);
-
-  let cursor = dStart.getTime();
-  const slotDuration = durationMinutes * 60 * 1000;
-
-  while (cursor + slotDuration <= dEnd.getTime()) {
-    const slotEnd = cursor + slotDuration;
-    const isBusy = busySlots.some((b) => cursor < b.end && slotEnd > b.start);
-
-    if (!isBusy) {
-      slots.push({
-        start: new Date(cursor).toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: timezone,
-        }),
-        end: new Date(slotEnd).toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: timezone,
-        }),
-      });
-    }
-
-    cursor += 30 * 60 * 1000; // Step 30 min
+  try {
+    const result = await mcp.getFreeBusy({ userId, date, durationMinutes });
+    return result.slots ?? [];
+  } catch {
+    return [];
   }
-
-  return slots;
 }
 
 export async function createCalendarEvent(
@@ -254,60 +191,30 @@ export async function createCalendarEvent(
     durationMinutes: number;
     attendeeEmail?: string;
     attendeeName?: string;
+    attendantId?: string;
+    leadId?: string;
   }
 ): Promise<{ success: boolean; eventId?: string; eventLink?: string; error?: string }> {
-  const auth = await getValidToken(userId);
-  if (!auth) return { success: false, error: "Google Calendar nao conectado" };
-
-  const startDate = new Date(params.startDateTime);
-  const endDate = new Date(startDate.getTime() + params.durationMinutes * 60 * 1000);
-
-  const event: Record<string, unknown> = {
-    summary: params.summary,
-    description: params.description || "",
-    start: { dateTime: startDate.toISOString(), timeZone: auth.config.timezone },
-    end: { dateTime: endDate.toISOString(), timeZone: auth.config.timezone },
-    reminders: {
-      useDefault: false,
-      overrides: [
-        { method: "popup", minutes: 60 },
-        { method: "popup", minutes: 15 },
-      ],
-    },
-  };
-
-  if (params.attendeeEmail) {
-    event.attendees = [{ email: params.attendeeEmail, displayName: params.attendeeName || "" }];
+  try {
+    const result = await mcp.createEvent({ userId, ...params });
+    return {
+      success: true,
+      eventId: result.eventId,
+      eventLink: result.eventLink,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erro desconhecido",
+    };
   }
-
-  const res = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(auth.calendarId)}/events`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${auth.token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(event),
-    }
-  );
-
-  if (!res.ok) {
-    const err = await res.text();
-    return { success: false, error: `Erro ao criar evento: ${err}` };
-  }
-
-  const created = await res.json();
-  return {
-    success: true,
-    eventId: created.id,
-    eventLink: created.htmlLink,
-  };
 }
 
 // ─── Context for AI ───────────────────────────────────────
 
 export async function getCalendarContextForAI(userId: string): Promise<string | null> {
+  // Lê config diretamente do DB pra não criar tool MCP só pra metadata
+  // estática. getValidToken já valida que o calendar está conectado.
   const auth = await getValidToken(userId);
   if (!auth) return null;
 
@@ -315,7 +222,6 @@ export async function getCalendarContextForAI(userId: string): Promise<string | 
   const todayStr = now.toISOString().split("T")[0];
   const tomorrowStr = new Date(now.getTime() + 86400000).toISOString().split("T")[0];
 
-  // Get free slots for today and tomorrow
   const todaySlots = await getFreeSlots(userId, todayStr, 60);
   const tomorrowSlots = await getFreeSlots(userId, tomorrowStr, 60);
 
