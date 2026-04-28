@@ -4,6 +4,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { decrypt, encrypt } from "@/lib/crypto";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
@@ -82,17 +83,21 @@ async function getValidToken(
   const config = await prisma.googleCalendar.findUnique({ where: { userId } });
   if (!config) return null;
 
-  let token = config.accessToken;
+  // Tokens are encrypted at rest (Sub-fase A). decrypt() falls back to
+  // plaintext for legacy rows that haven't been migrated yet.
+  let token = decrypt(config.accessToken);
+  const refreshTokenPlain = config.refreshToken ? decrypt(config.refreshToken) : "";
 
   // Refresh if expired (with 5 min buffer)
   if (new Date() >= new Date(config.tokenExpiry.getTime() - 5 * 60 * 1000)) {
+    if (!refreshTokenPlain) return null;
     try {
-      const refreshed = await refreshAccessToken(config.refreshToken);
+      const refreshed = await refreshAccessToken(refreshTokenPlain);
       token = refreshed.access_token;
       await prisma.googleCalendar.update({
         where: { userId },
         data: {
-          accessToken: token,
+          accessToken: encrypt(token),
           tokenExpiry: new Date(Date.now() + refreshed.expires_in * 1000),
         },
       });
