@@ -1525,8 +1525,20 @@ export function ChatPageClient() {
     setNewChatNumber("");
   };
 
+  // On mobile, when a chat is open, escape the dashboard shell entirely:
+  // a full-viewport fixed overlay sidesteps the dvh-vs-safe-area quirks
+  // that were intermittently pushing the input below the fold (header
+  // visible but no input — or input visible but header scrolled off).
+  // Desktop and the conversation list (no chat selected) keep the inline
+  // layout so the dashboard nav stays visible alongside.
+  const mobileFullscreen = selectedChat
+    ? "max-md:fixed max-md:inset-0 max-md:z-30 max-md:h-[100dvh] max-md:max-h-none max-md:m-0 max-md:rounded-none max-md:border-0 max-md:bg-white"
+    : "";
+
   return (
-    <div className="flex h-[calc(100dvh-8rem)] md:h-[calc(100dvh-5rem)] -mx-4 md:-mx-6 overflow-hidden rounded-xl border border-slate-200">
+    <div
+      className={`flex h-[calc(100dvh-8rem)] md:h-[calc(100dvh-5rem)] -mx-4 md:-mx-6 overflow-hidden rounded-xl border border-slate-200 ${mobileFullscreen}`}
+    >
       {/* ─── Sidebar ─── */}
       <div
         className={`${showMobileSidebar ? "flex" : "hidden"} md:flex w-full md:w-[340px] flex-shrink-0 border-r border-slate-200 bg-white flex-col overflow-hidden`}
@@ -2004,7 +2016,10 @@ export function ChatPageClient() {
             )}
 
             {/* Input */}
-            <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex-shrink-0">
+            <div
+              className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex-shrink-0"
+              style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+            >
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
