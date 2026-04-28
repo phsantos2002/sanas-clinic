@@ -538,6 +538,9 @@ export function ChatPageClient() {
   // snappy because it binds to `search`.
   const debouncedSearch = useDebouncedValue(search, 300);
   const [chatFilter, setChatFilter] = useState<"all" | "unread">("all");
+  // Segmented control: 1:1 vs groups. Splits the volume so a noisy 84-unread
+  // group thread doesn't push active leads out of sight.
+  const [chatType, setChatType] = useState<"private" | "groups">("private");
   const [msgSearch, setMsgSearch] = useState("");
   const debouncedMsgSearch = useDebouncedValue(msgSearch, 300);
   const [showMsgSearch, setShowMsgSearch] = useState(false);
@@ -1169,29 +1172,36 @@ export function ChatPageClient() {
     | { type: "chat"; chat: Chat }
     | { type: "sentinel" };
   const chatVirtualItems = useMemo(() => {
-    const pinned = displayChats.filter((c) => c.wa_pinned);
-    const regular = displayChats.filter((c) => !c.wa_pinned);
-    // Groups separated from 1:1 conversations so the operator doesn't lose
-    // active leads in a wall of group noise. Pinned section stays mixed —
-    // the operator pinned them on purpose, regardless of type.
-    const privateChats = regular.filter((c) => !c.wa_isGroup);
-    const groupChats = regular.filter((c) => c.wa_isGroup);
+    // Filter by the active tab — only show 1:1 OR only groups, never both.
+    // Pinned chats also obey the tab so a pinned group doesn't appear in
+    // "Conversas" and vice-versa.
+    const matches = (c: Chat) => (chatType === "groups" ? c.wa_isGroup : !c.wa_isGroup);
+    const visible = displayChats.filter(matches);
+    const pinned = visible.filter((c) => c.wa_pinned);
+    const regular = visible.filter((c) => !c.wa_pinned);
     const items: ChatVirtualItem[] = [];
     if (pinned.length > 0) {
       items.push({ type: "header", label: "Fixadas", icon: "pin" });
       for (const c of pinned) items.push({ type: "chat", chat: c });
+      if (regular.length > 0) items.push({ type: "header", label: "Todas" });
     }
-    if (privateChats.length > 0) {
-      items.push({ type: "header", label: "Conversas", icon: "user" });
-      for (const c of privateChats) items.push({ type: "chat", chat: c });
-    }
-    if (groupChats.length > 0) {
-      items.push({ type: "header", label: "Grupos", icon: "users" });
-      for (const c of groupChats) items.push({ type: "chat", chat: c });
-    }
-    if (hasMoreChats && displayChats.length > 0) items.push({ type: "sentinel" });
+    for (const c of regular) items.push({ type: "chat", chat: c });
+    if (hasMoreChats && visible.length > 0) items.push({ type: "sentinel" });
     return items;
-  }, [displayChats, hasMoreChats]);
+  }, [displayChats, hasMoreChats, chatType]);
+
+  // Per-tab unread counts for the segmented control badges.
+  const unreadCounts = useMemo(() => {
+    let priv = 0;
+    let grp = 0;
+    for (const c of displayChats) {
+      if (c.wa_unreadCount > 0) {
+        if (c.wa_isGroup) grp += 1;
+        else priv += 1;
+      }
+    }
+    return { private: priv, groups: grp };
+  }, [displayChats]);
 
   // "Marcar todas como lidas" — bumps every visible chat's watermark to its
   // last-message ts and best-effort tells Uazapi too. Useful when the
@@ -1659,6 +1669,43 @@ export function ChatPageClient() {
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-8 text-base md:text-xs border-slate-200 rounded-lg bg-slate-50"
             />
+          </div>
+
+          {/* Type tabs (Conversas / Grupos) */}
+          <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+            {(
+              [
+                { key: "private", label: "Conversas", icon: MessageCircle },
+                { key: "groups", label: "Grupos", icon: Users },
+              ] as const
+            ).map((tab) => {
+              const isActive = chatType === tab.key;
+              const count = unreadCounts[tab.key];
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setChatType(tab.key)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    isActive
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  <tab.icon className="h-3.5 w-3.5" />
+                  <span>{tab.label}</span>
+                  {count > 0 && (
+                    <span
+                      className={`min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                        isActive ? "bg-emerald-500 text-white" : "bg-slate-300 text-slate-700"
+                      }`}
+                    >
+                      {count > 99 ? "99+" : count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
