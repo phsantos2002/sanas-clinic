@@ -1,7 +1,20 @@
+import type { Viewport } from "next";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/app/actions/user";
 import { ChatTabsNav } from "@/components/chat/ChatTabsNav";
 import { ScrollLock } from "@/components/chat/ScrollLock";
+
+// Lock viewport zoom on /chat. iOS Safari was loading the page with a
+// residual zoom from previous interactions (text-base on inputs prevents
+// NEW auto-zoom but doesn't undo a remembered scale). With maximumScale=1
+// + userScalable=false the chat shell renders at 1x consistently — same
+// pattern WhatsApp Web/Slack use for chat-style interfaces.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 async function getVisibleChatTabs(): Promise<string[]> {
   const user = await getCurrentUser();
