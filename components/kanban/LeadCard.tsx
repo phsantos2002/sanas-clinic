@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Bot,
   Clock,
+  UserCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ import type { Lead } from "@/types";
 
 type Props = {
   lead: Lead;
+  assigneeName?: string | null;
   onClickLead?: (leadId: string) => void;
   stagnationThreshold?: number | null;
   onMoveNext?: (leadId: string) => void;
@@ -46,6 +48,7 @@ function getDaysInStage(lead: Lead): number | null {
 
 export function LeadCard({
   lead,
+  assigneeName = null,
   onClickLead,
   stagnationThreshold,
   onMoveNext,
@@ -241,6 +244,15 @@ export function LeadCard({
                 {tag}
               </span>
             ))}
+            {assigneeName && (
+              <span
+                className="flex items-center gap-0.5 text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded max-w-[110px]"
+                title={`Responsavel: ${assigneeName}`}
+              >
+                <UserCircle className="h-2.5 w-2.5 shrink-0" />
+                <span className="truncate">{assigneeName.split(" ")[0]}</span>
+              </span>
+            )}
           </div>
         </div>
 

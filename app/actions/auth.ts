@@ -18,18 +18,27 @@ async function ensureUserInDB(email: string, name?: string) {
     include: { stages: true },
   });
 
-  if (!existing) {
-    const newUser = await prisma.user.create({
-      data: { email, name: name ?? null },
-    });
-    await prisma.stage.createMany({
-      data: DEFAULT_STAGES.map((s) => ({ ...s, userId: newUser.id })),
-    });
-  } else if (existing.stages.length === 0) {
-    await prisma.stage.createMany({
-      data: DEFAULT_STAGES.map((s) => ({ ...s, userId: existing.id })),
-    });
+  if (existing) {
+    if (existing.stages.length === 0) {
+      await prisma.stage.createMany({
+        data: DEFAULT_STAGES.map((s) => ({ ...s, userId: existing.id })),
+      });
+    }
+    return;
   }
+
+  // Blindagem: um vendedor (Attendant) que loga com a própria conta NÃO deve
+  // virar um tenant próprio. Se o email pertence a um Attendant, não cria User.
+  // A linkagem sessão→tenant é feita em resolveSession() (app/actions/user.ts).
+  const attendant = await prisma.attendant.findFirst({ where: { authEmail: email } });
+  if (attendant) return;
+
+  const newUser = await prisma.user.create({
+    data: { email, name: name ?? null },
+  });
+  await prisma.stage.createMany({
+    data: DEFAULT_STAGES.map((s) => ({ ...s, userId: newUser.id })),
+  });
 }
 
 export async function signInWithFacebook() {

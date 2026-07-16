@@ -6,6 +6,7 @@ export type ChatMessage = { role: "user" | "assistant"; content: string };
 export type AIResponse = {
   reply: string;
   newStageEventName: string | null;
+  humanHandoff: boolean; // lead pediu atendente humano (marcador HANDOFF)
 };
 
 export type AIProviderConfig = {
@@ -26,6 +27,13 @@ Os estágios possíveis são:
 - STAGE: QualifiedLead (demonstrou interesse claro, informou o que quer)
 - STAGE: Schedule (quer agendar ou está agendando)
 - STAGE: Purchase (agendamento confirmado / pagamento feito)
+
+IMPORTANTE — transferência para atendente humano:
+Se o cliente pedir para falar com uma pessoa, atendente, humano ou vendedor,
+demonstrar frustração com o atendimento automático, ou fizer uma pergunta que
+você não tem informação para responder, confirme educadamente que vai chamar
+um atendente e inclua TAMBÉM uma linha separada:
+HANDOFF: atendente
 
 Responda SEMPRE em português brasileiro. Respostas curtas e diretas.`;
 
@@ -50,8 +58,12 @@ const MAX_HISTORY_MESSAGES = 20;
 function parseResponse(fullText: string): AIResponse {
   const stageMatch = fullText.match(/STAGE:\s*(\w+)/);
   const newStageEventName = stageMatch ? stageMatch[1] : null;
-  const reply = fullText.replace(/\n?STAGE:\s*\w+\n?/g, "").trim();
-  return { reply, newStageEventName };
+  const humanHandoff = /HANDOFF:\s*\w+/i.test(fullText);
+  const reply = fullText
+    .replace(/\n?STAGE:\s*\w+\n?/g, "")
+    .replace(/\n?HANDOFF:\s*\w+\n?/gi, "")
+    .trim();
+  return { reply, newStageEventName, humanHandoff };
 }
 
 async function generateWithOpenAI(
@@ -135,6 +147,7 @@ export async function generateAIReply(
     return {
       reply: `Olá! No momento não consegui processar sua mensagem automaticamente. Um atendente da ${clinicName} vai te responder em breve!`,
       newStageEventName: null,
+      humanHandoff: false,
     };
   }
 }

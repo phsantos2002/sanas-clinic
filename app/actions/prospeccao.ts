@@ -244,8 +244,10 @@ export async function revertImportBatch(
 // ══════════════════════════════════════════════════════════════
 
 export async function updateAttendantRole(id: string, role: AttendantRole): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, error: "Nao autenticado" };
+  const { requireManagerContext } = await import("@/lib/authGuard");
+  const ctx = await requireManagerContext();
+  if (!ctx) return { success: false, error: "Sem permissao" };
+  const user = ctx.user;
 
   const valid = ATTENDANT_ROLES.some((r) => r.value === role);
   if (!valid) return { success: false, error: "Papel invalido" };

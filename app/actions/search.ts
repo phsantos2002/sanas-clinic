@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
+import { getLeadWhereScope } from "@/lib/authGuard";
 
 export type SearchResult = {
   id: string;
@@ -18,10 +19,13 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
   const q = query.trim();
   const results: SearchResult[] = [];
 
+  // Vendedor/cs só encontram leads atribuídos a eles.
+  const leadScope = (await getLeadWhereScope()) ?? { userId: user.id };
+
   const [leads, posts, templates] = await Promise.all([
     prisma.lead.findMany({
       where: {
-        userId: user.id,
+        ...leadScope,
         OR: [
           { name: { contains: q, mode: "insensitive" } },
           { phone: { contains: q } },

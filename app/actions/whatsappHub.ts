@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
+import { requireManagerContext } from "@/lib/authGuard";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "@/types";
 
 // ══════════════════════════════════════════════════════════════
@@ -19,6 +21,7 @@ export type AttendantData = {
   avatar: string | null;
   dailyActivityGoal: number;
   createdAt: Date;
+  inviteStatus?: string; // "none" | "pending" | "active"
 };
 
 export async function getAttendants(): Promise<AttendantData[]> {
@@ -37,21 +40,55 @@ export async function createAttendant(data: {
   phone?: string;
   role?: string;
 }): Promise<ActionResult<AttendantData>> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, error: "Nao autenticado" };
+  const ctx = await requireManagerContext();
+  if (!ctx) return { success: false, error: "Sem permissao" };
 
   if (!data.name?.trim()) return { success: false, error: "Nome obrigatorio" };
+
+  const email = data.email?.trim().toLowerCase() || null;
+
+  // Email não pode colidir com um tenant existente (viraria sessão ambígua).
+  if (email) {
+    const conflict = await prisma.user.findUnique({ where: { email } });
+    if (conflict) {
+      return { success: false, error: "Este email ja pertence a uma conta principal" };
+    }
+  }
 
   try {
     const attendant = await prisma.attendant.create({
       data: {
-        userId: user.id,
+        userId: ctx.tenantId,
         name: data.name.trim(),
-        email: data.email?.trim() || null,
+        email,
         phone: data.phone?.trim() || null,
         role: data.role || "attendant",
+        // Com email, o vendedor pode logar: linkagem por authEmail em resolveSession().
+        authEmail: email,
+        invitedAt: email ? new Date() : null,
+        inviteStatus: email ? "pending" : "none",
       },
     });
+
+    // Convite por email (opcional — exige SUPABASE_SERVICE_ROLE_KEY).
+    // Sem a chave, o vendedor se cadastra normalmente com o mesmo email
+    // e o vínculo acontece no primeiro login.
+    if (email) {
+      const admin = createAdminClient();
+      if (admin) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+        const { data: invited, error } = await admin.auth.admin.inviteUserByEmail(email, {
+          redirectTo: `${appUrl}/auth/reset-password`,
+        });
+        if (!error && invited?.user) {
+          await prisma.attendant.update({
+            where: { id: attendant.id },
+            data: { authUserId: invited.user.id },
+          });
+        }
+        // Erro no convite não desfaz a criação — o cadastro manual continua válido.
+      }
+    }
 
     revalidatePath("/dashboard");
     return { success: true, data: attendant };
@@ -61,13 +98,13 @@ export async function createAttendant(data: {
 }
 
 export async function deleteAttendant(id: string): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, error: "Nao autenticado" };
+  const ctx = await requireManagerContext();
+  if (!ctx) return { success: false, error: "Sem permissao" };
 
-  await prisma.attendant.deleteMany({ where: { id, userId: user.id } });
+  await prisma.attendant.deleteMany({ where: { id, userId: ctx.tenantId } });
   // Unassign leads
   await prisma.lead.updateMany({
-    where: { userId: user.id, assignedTo: id },
+    where: { userId: ctx.tenantId, assignedTo: id },
     data: { assignedTo: null },
   });
 
@@ -79,8 +116,10 @@ export async function assignLeadToAttendant(
   leadId: string,
   attendantId: string | null
 ): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, error: "Nao autenticado" };
+  // Reatribuir leads é gestão — vendedor não transfere leads (nem para si).
+  const ctx = await requireManagerContext();
+  if (!ctx) return { success: false, error: "Sem permissao" };
+  const user = ctx.user;
 
   const result = await prisma.lead.updateMany({
     where: { id: leadId, userId: user.id },

@@ -565,6 +565,12 @@ model Attendant {
   avatar            String?
   status            String    @default("offline") // "online" | "away" | "busy" | "offline"
   statusUpdatedAt   DateTime?
+  // Login do vendedor (Supabase Auth). Vendedor NÃO é um User/tenant próprio —
+  // é resolvido para o tenant do dono (userId) via resolveSession().
+  authUserId        String?   @unique // supabase auth.users.id, preenchido no 1º login
+  authEmail         String? // email usado no login Supabase (linkagem do convite)
+  invitedAt         DateTime?
+  inviteStatus      String    @default("none") // "none" | "pending" | "active"
   // Prospeccao outbound metas
   dailyActivityGoal Int       @default(50) // metas diarias (atividades esperadas/dia)
   createdAt         DateTime  @default(now())
@@ -575,6 +581,7 @@ model Attendant {
 
   @@index([userId])
   @@index([userId, role])
+  @@index([authEmail])
 }
 
 model AttendantFunnel {

@@ -37,8 +37,10 @@ export async function saveWhatsAppConfig(
   metaAppSecret?: string
 ): Promise<ActionResult<void>> {
   try {
-    const dbUser = await getAuthenticatedUser();
-    if (!dbUser) return { success: false, error: "Não autenticado" };
+    const { requireManagerContext } = await import("@/lib/authGuard");
+    const mgr = await requireManagerContext();
+    if (!mgr) return { success: false, error: "Sem permissao" };
+    const dbUser = mgr.user;
 
     // Only update metaAppSecret if a non-empty value was provided;
     // if the field is omitted or blank, keep the existing value (upsert will overwrite
@@ -68,8 +70,10 @@ export async function saveWhatsAppConfig(
 
 export async function saveUazapiConfig(): Promise<ActionResult<{ qrcode?: string }>> {
   try {
-    const dbUser = await getAuthenticatedUser();
-    if (!dbUser) return { success: false, error: "Não autenticado" };
+    const { requireManagerContext } = await import("@/lib/authGuard");
+    const mgr = await requireManagerContext();
+    if (!mgr) return { success: false, error: "Sem permissao" };
+    const dbUser = mgr.user;
 
     const serverUrl = (process.env.UAZAPI_SERVER_URL || "").trim().replace(/\/+$/, "");
     const adminToken = (process.env.UAZAPI_ADMIN_TOKEN || "").trim();

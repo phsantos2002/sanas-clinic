@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
+import { getLeadWhereScope } from "@/lib/authGuard";
 import { sendFacebookEvent } from "@/services/facebookEvents";
 import { fireTrigger } from "@/services/workflowEngine";
 import { createLeadSchema, updateLeadSchema, normalizePhone } from "@/lib/validations";
@@ -11,18 +12,19 @@ import type { ActionResult, Lead, LeadDetail, LeadSourceStats } from "@/types";
 // ── Paginated getLeads ───────────────────────────────────────
 
 export async function getLeads(page = 1, limit = 200): Promise<{ leads: Lead[]; total: number }> {
-  const user = await getCurrentUser();
-  if (!user) return { leads: [], total: 0 };
+  // Escopo por sessão: dono/admin/manager veem tudo; vendedor/cs só os seus.
+  const scope = await getLeadWhereScope();
+  if (!scope) return { leads: [], total: 0 };
 
   const [leads, total] = await Promise.all([
     prisma.lead.findMany({
-      where: { userId: user.id },
+      where: scope,
       include: { stage: true },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
     }),
-    prisma.lead.count({ where: { userId: user.id } }),
+    prisma.lead.count({ where: scope }),
   ]);
 
   return { leads: leads as Lead[], total };
@@ -31,13 +33,13 @@ export async function getLeads(page = 1, limit = 200): Promise<{ leads: Lead[]; 
 // ── Get Lead by Phone ────────────────────────────────────────
 
 export async function getLeadByPhone(phone: string): Promise<LeadDetail | null> {
-  const user = await getCurrentUser();
-  if (!user) return null;
+  const scope = await getLeadWhereScope();
+  if (!scope) return null;
 
   const normalized = phone.replace(/\D/g, "");
   const lead = await prisma.lead.findFirst({
     where: {
-      userId: user.id,
+      ...scope,
       phone: { endsWith: normalized.slice(-8) },
     },
     include: {

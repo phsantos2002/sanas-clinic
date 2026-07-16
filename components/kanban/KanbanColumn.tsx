@@ -74,6 +74,11 @@ export function KanbanColumn({
             <LeadCard
               key={lead.id}
               lead={lead}
+              assigneeName={
+                lead.assignedTo
+                  ? (attendants?.find((a) => a.id === lead.assignedTo)?.name ?? null)
+                  : null
+              }
               onClickLead={onClickLead}
               selected={selectedIds?.has(lead.id)}
               onToggleSelect={onToggleSelect}

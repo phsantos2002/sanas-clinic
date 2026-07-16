@@ -21,7 +21,7 @@ type EditorNode = {
   message: string;
   next: string; // empty = no auto-next
   buttons: { label: string; next: string }[];
-  action: "" | "pause_ai" | "tag" | "stage" | "noop";
+  action: "" | "pause_ai" | "handoff" | "tag" | "stage" | "noop";
   actionArg: string;
 };
 
@@ -459,7 +459,8 @@ function FlowEditor({
                         className="text-xs border border-slate-200 rounded px-2 py-1"
                       >
                         <option value="">nenhuma</option>
-                        <option value="pause_ai">Pausar IA (handoff humano)</option>
+                        <option value="handoff">Transferir p/ vendedor (pausa IA + atribui)</option>
+                        <option value="pause_ai">Pausar IA (sem atribuir)</option>
                         <option value="tag">Adicionar tag</option>
                         <option value="stage">Mover para etapa</option>
                       </select>

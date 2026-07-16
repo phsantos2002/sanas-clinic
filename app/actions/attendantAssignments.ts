@@ -52,8 +52,10 @@ export async function setAttendantFunnelAccess(
   funnelId: string,
   opts: { allStages: boolean; stageIds?: string[] }
 ): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, error: "Nao autenticado" };
+  const { requireManagerContext } = await import("@/lib/authGuard");
+  const ctx = await requireManagerContext();
+  if (!ctx) return { success: false, error: "Sem permissao" };
+  const user = ctx.user;
 
   const [attendant, funnel] = await Promise.all([
     prisma.attendant.findFirst({ where: { id: attendantId, userId: user.id } }),

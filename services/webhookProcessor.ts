@@ -37,6 +37,35 @@ function isOptOutMessage(text: string): boolean {
   );
 }
 
+// ── Handoff humano por palavra-chave ────────────────────────
+// Pedidos explícitos de atendente pausam a IA e roteiam o lead a um vendedor
+// (round-robin). Complementa a detecção por intenção da própria IA (HANDOFF:).
+const HUMAN_HANDOFF_KEYWORDS = [
+  "falar com atendente",
+  "falar com um atendente",
+  "falar com humano",
+  "falar com uma pessoa",
+  "falar com alguem",
+  "falar com alguém",
+  "falar com vendedor",
+  "falar com um vendedor",
+  "atendente humano",
+  "quero atendente",
+  "quero um atendente",
+  "quero humano",
+  "atendimento humano",
+];
+
+const HANDOFF_CONFIRMATION =
+  "Claro! Já estou te transferindo para um dos nossos atendentes. Um momento, por favor. 😊";
+
+/** Returns true if the message is an explicit request for a human attendant. */
+function isHandoffRequest(text: string): boolean {
+  const normalized = text.toLowerCase().trim();
+  if (!normalized || normalized.length > 120) return false;
+  return HUMAN_HANDOFF_KEYWORDS.some((kw) => normalized.includes(kw));
+}
+
 // ── Postgres advisory lock helpers ─────────────────────────
 // Used to serialize parallel jobs touching the same lead — prevents duplicate
 // AI replies when the same chat receives multiple messages near-simultaneously.
@@ -353,6 +382,21 @@ export async function processIncomingMessage(params: {
       })
       .catch(() => {});
 
+    // ── Handoff humano por palavra-chave ──────────────────────
+    // "quero falar com atendente" etc: pausa IA, atribui vendedor, confirma.
+    if (lead.aiEnabled && isHandoffRequest(text)) {
+      log.info("webhook_handoff_keyword_detected", { leadId: lead.id });
+      const { executeHumanHandoff } = await import("@/services/leadRouting");
+      await executeHumanHandoff(userId, lead.id, "keyword");
+      await sendReply(phone, HANDOFF_CONFIRMATION).catch(() => {});
+      await prisma.message
+        .create({
+          data: { leadId: lead.id, role: "assistant", content: HANDOFF_CONFIRMATION },
+        })
+        .catch(() => {});
+      return;
+    }
+
     // ── Check if AI should respond ────────────────────────────
     if (!lead.aiEnabled) {
       log.debug("webhook_ai_disabled", { leadId: lead.id });
@@ -517,13 +561,17 @@ export async function processIncomingMessage(params: {
         enrichedSystemPrompt += `\n\n${calendarContext}`;
       }
 
-      const { reply, newStageEventName } = await generateAIReply(history, lead.name || pushName, {
-        provider: aiConfig.provider,
-        model: aiConfig.model,
-        apiKey: aiConfig.apiKey,
-        clinicName: aiConfig.clinicName,
-        systemPrompt: enrichedSystemPrompt || null,
-      });
+      const { reply, newStageEventName, humanHandoff } = await generateAIReply(
+        history,
+        lead.name || pushName,
+        {
+          provider: aiConfig.provider,
+          model: aiConfig.model,
+          apiKey: aiConfig.apiKey,
+          clinicName: aiConfig.clinicName,
+          systemPrompt: enrichedSystemPrompt || null,
+        }
+      );
 
       // ── Personalize reply ─────────────────────────────────────
       let finalReply = reply;
@@ -647,6 +695,17 @@ export async function processIncomingMessage(params: {
 
           fireTrigger(userId, "stage_change", lead.id, { stageId: newStage.id }).catch(() => {});
         }
+      }
+
+      // ── Handoff por intenção (IA sinalizou HANDOFF:) ──────────
+      // A resposta da IA já confirmou a transferência ao lead; aqui pausamos
+      // a IA e roteamos o lead para um vendedor.
+      if (humanHandoff) {
+        log.info("webhook_handoff_ai_detected", { leadId: lead.id });
+        const { executeHumanHandoff } = await import("@/services/leadRouting");
+        await executeHumanHandoff(userId, lead.id, "ai").catch((err) => {
+          log.error("webhook_handoff_error", {}, err);
+        });
       }
     } finally {
       // Always release the lead lock so subsequent messages can be processed.

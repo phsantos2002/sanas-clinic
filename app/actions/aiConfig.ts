@@ -45,8 +45,11 @@ export async function getAIConfig(): Promise<AIConfigData | null> {
 }
 
 export async function saveAIConfig(data: AIConfigData): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, error: "Não autenticado" };
+  // Config do tenant — somente dono/admin/manager.
+  const { requireManagerContext } = await import("@/lib/authGuard");
+  const ctx = await requireManagerContext();
+  if (!ctx) return { success: false, error: "Sem permissao" };
+  const user = ctx.user;
 
   // If keys contain mask chars (•), keep existing value
   const isMasked = (v: string) => v.includes("•");

@@ -3,14 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./user";
+import { getLeadWhereScope } from "@/lib/authGuard";
 import type { ActionResult } from "@/types";
 
 export async function getLeadsWithMessages() {
-  const user = await getCurrentUser();
-  if (!user) return [];
+  // Escopo por sessão: vendedor/cs veem só as conversas dos leads atribuídos a eles.
+  const scope = await getLeadWhereScope();
+  if (!scope) return [];
 
   return prisma.lead.findMany({
-    where: { userId: user.id },
+    where: scope,
     include: {
       messages: { orderBy: { createdAt: "asc" } },
       stage: true,
