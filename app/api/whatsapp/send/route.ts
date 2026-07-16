@@ -31,11 +31,11 @@ export async function POST(req: NextRequest) {
   const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
   if (
     !config ||
-    config.provider !== "uazapi" ||
+    (config.provider !== "uazapi" && config.provider !== "evolution") ||
     !config.uazapiServerUrl ||
     !config.uazapiInstanceToken
   ) {
-    return NextResponse.json({ error: "Uazapi nao configurado" }, { status: 400 });
+    return NextResponse.json({ error: "Provider nao-oficial nao configurado" }, { status: 400 });
   }
 
   // ── Idempotency-Key: dedup retries ──────────────────────────
@@ -52,6 +52,28 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
+
+  // Evolution (Baileys): suporta texto por enquanto; demais tipos são Uazapi.
+  if (config.provider === "evolution") {
+    const evoNumber = typeof body.number === "string" ? body.number : "";
+    const evoText = typeof body.text === "string" ? body.text : "";
+    if ((body.type && body.type !== "text") || Array.isArray(body.numbers)) {
+      return NextResponse.json(
+        { error: `Tipo "${body.type ?? "bulk"}" ainda nao suportado no provider Evolution` },
+        { status: 501 }
+      );
+    }
+    if (!evoNumber || !evoText) {
+      return NextResponse.json({ error: "number e text obrigatorios" }, { status: 400 });
+    }
+    const { sendMessage } = await import("@/services/whatsappService");
+    const result = await sendMessage(config, evoNumber, evoText);
+    return NextResponse.json(
+      { success: result.success, error: result.error },
+      { status: result.success ? 200 : 502 }
+    );
+  }
+
   const {
     number,
     numbers,

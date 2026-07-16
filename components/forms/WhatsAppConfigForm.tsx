@@ -33,8 +33,10 @@ type Props = {
 };
 
 export function WhatsAppConfigForm({ config }: Props) {
+  // Na UI, "uazapi" representa o tab não-oficial (QR) — que no backend pode ser
+  // provider "evolution" (Baileys, atual) ou "uazapi" (legado).
   const [provider, setProvider] = useState<"official" | "uazapi">(
-    (config?.provider as "official" | "uazapi") ?? "official"
+    config?.provider === "official" || !config?.provider ? "official" : "uazapi"
   );
 
   // Official fields
@@ -55,7 +57,10 @@ export function WhatsAppConfigForm({ config }: Props) {
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  const isUazapiConfigured = !!(config?.provider === "uazapi" && config?.uazapiInstanceToken);
+  const isUazapiConfigured = !!(
+    (config?.provider === "uazapi" || config?.provider === "evolution") &&
+    config?.uazapiInstanceToken
+  );
 
   // Check connection status
   const checkStatus = useCallback(async () => {

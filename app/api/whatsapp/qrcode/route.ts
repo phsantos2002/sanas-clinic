@@ -27,11 +27,42 @@ export async function GET() {
   const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
   if (
     !config ||
-    config.provider !== "uazapi" ||
+    (config.provider !== "uazapi" && config.provider !== "evolution") ||
     !config.uazapiServerUrl ||
     !config.uazapiInstanceToken
   ) {
-    return NextResponse.json({ error: "Uazapi não configurado" }, { status: 400 });
+    return NextResponse.json({ error: "Provider não-oficial não configurado" }, { status: 400 });
+  }
+
+  // Evolution API (Baileys)
+  if (config.provider === "evolution") {
+    const { getEvolutionState, connectEvolutionInstance } = await import(
+      "@/services/whatsappEvolution"
+    );
+    const evoStatus = await getEvolutionState(
+      config.uazapiServerUrl,
+      config.uazapiInstanceToken,
+      config.uazapiInstanceName ?? ""
+    );
+    if (evoStatus.connected) {
+      return NextResponse.json({ state: "connected", status: evoStatus.state });
+    }
+    const conn = await connectEvolutionInstance(
+      config.uazapiServerUrl,
+      config.uazapiInstanceToken,
+      config.uazapiInstanceName ?? ""
+    );
+    if (!conn.success) {
+      return NextResponse.json(
+        { state: "error", error: conn.error ?? "Falha ao iniciar conexão" },
+        { status: 502 }
+      );
+    }
+    return NextResponse.json({
+      state: conn.qrcode ? "qr" : "connecting",
+      qrcode: conn.qrcode,
+      status: evoStatus.state,
+    });
   }
 
   // First check if already connected — saves a /connect call

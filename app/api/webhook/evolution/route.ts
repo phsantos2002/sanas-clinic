@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendUazapiMessage } from "@/services/whatsappUazapi";
 import { processIncomingMessage } from "@/services/webhookProcessor";
 import { logWebhook } from "@/app/api/debug/webhook-log/route";
 import { logger } from "@/lib/logger";
@@ -73,7 +72,33 @@ function extractMessageData(payload: any): {
   token: string;
   wasSentByApi: boolean;
   messageId?: string;
+  instanceName?: string;
 } | null {
+  // Format 0: Evolution API v2 (Baileys) — event "messages.upsert"
+  // { event, instance, data: { key: {remoteJid, fromMe, id}, pushName, message: {...} } }
+  if (payload.event === "messages.upsert" && payload.data?.key) {
+    const data = payload.data;
+    const remoteJid: string = data.key.remoteJid || "";
+    const msg = data.message ?? {};
+    const text = (
+      coerceMessageText(msg.conversation) ||
+      coerceMessageText(msg.extendedTextMessage?.text) ||
+      coerceMessageText(msg.imageMessage?.caption) ||
+      coerceMessageText(msg.videoMessage?.caption)
+    ).trim();
+    return {
+      text,
+      fromMe: data.key.fromMe === true,
+      chatId: remoteJid,
+      senderName: data.pushName || "",
+      isGroup: remoteJid.endsWith("@g.us"),
+      token: payload.apikey || "",
+      wasSentByApi: false, // Evolution não distingue; fromMe já cobre os envios do app
+      messageId: data.key.id || undefined,
+      instanceName: payload.instance || "",
+    };
+  }
+
   // Format 1: New Uazapi format (EventType + message object)
   if (payload.message && payload.chat) {
     const msg = payload.message;
@@ -181,20 +206,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Find WhatsApp config by token or instance name
+    // Find WhatsApp config by token or instance name (Uazapi ou Evolution)
     const instanceToken = msgData.token;
-    const instanceName = payload.instanceName || "";
+    const instanceName = msgData.instanceName || payload.instanceName || "";
+    const unofficialProviders = ["uazapi", "evolution"];
 
-    let whatsappConfig = instanceToken
+    // Instance name é o identificador primário (Evolution manda o apikey global,
+    // que não é único por instância) — nome primeiro, token como fallback.
+    let whatsappConfig = instanceName
       ? await prisma.whatsAppConfig.findFirst({
-          where: { provider: "uazapi", uazapiInstanceToken: instanceToken },
+          where: { provider: { in: unofficialProviders }, uazapiInstanceName: instanceName },
         })
       : null;
 
-    // Fallback: find by instance name
-    if (!whatsappConfig && instanceName) {
+    if (!whatsappConfig && instanceToken) {
       whatsappConfig = await prisma.whatsAppConfig.findFirst({
-        where: { provider: "uazapi", uazapiInstanceName: instanceName },
+        where: { provider: { in: unofficialProviders }, uazapiInstanceToken: instanceToken },
       });
     }
 
@@ -254,16 +281,9 @@ export async function POST(req: NextRequest) {
             attribution,
             externalMessageId: msgData!.messageId,
             sendReply: async (replyPhone, replyText) => {
-              if (capturedConfig.uazapiServerUrl && capturedConfig.uazapiInstanceToken) {
-                const res = await sendUazapiMessage(
-                  capturedConfig.uazapiServerUrl!,
-                  capturedConfig.uazapiInstanceToken!,
-                  replyPhone,
-                  replyText
-                );
-                return { success: res.ok, error: res.ok ? undefined : res.error };
-              }
-              return { success: false, error: "Uazapi nao configurado" };
+              // Roteia pelo provider da config (evolution/uazapi/official).
+              const { sendMessage } = await import("@/services/whatsappService");
+              return sendMessage(capturedConfig, replyPhone, replyText);
             },
           })
         );

@@ -75,13 +75,22 @@ export async function saveUazapiConfig(): Promise<ActionResult<{ qrcode?: string
     if (!mgr) return { success: false, error: "Sem permissao" };
     const dbUser = mgr.user;
 
+    // Evolution API (Baileys) tem prioridade quando configurada no env —
+    // é o provider não-oficial atual. Uazapi permanece como fallback legado.
+    const evoUrl = (process.env.EVOLUTION_SERVER_URL || "").trim().replace(/\/+$/, "");
+    const evoKey = (process.env.EVOLUTION_API_KEY || "").trim();
+    if (evoUrl && evoKey) {
+      return saveEvolutionProviderConfig(dbUser.id, evoUrl, evoKey);
+    }
+
     const serverUrl = (process.env.UAZAPI_SERVER_URL || "").trim().replace(/\/+$/, "");
     const adminToken = (process.env.UAZAPI_ADMIN_TOKEN || "").trim();
 
     if (!serverUrl || !adminToken) {
       return {
         success: false,
-        error: "Uazapi não configurado no servidor. Contate o administrador.",
+        error:
+          "Nenhum provider não-oficial configurado no servidor (EVOLUTION_SERVER_URL ou UAZAPI_SERVER_URL). Contate o administrador.",
       };
     }
 
@@ -158,6 +167,59 @@ export async function saveUazapiConfig(): Promise<ActionResult<{ qrcode?: string
   }
 }
 
+// ─── Evolution API (Baileys) — provider não-oficial atual ───
+
+async function saveEvolutionProviderConfig(
+  userId: string,
+  serverUrl: string,
+  apiKey: string
+): Promise<ActionResult<{ qrcode?: string }>> {
+  const { createEvolutionInstance, connectEvolutionInstance, setEvolutionWebhook } = await import(
+    "@/services/whatsappEvolution"
+  );
+
+  const instanceName = `sanas-${userId.slice(0, 8)}`;
+
+  const created = await createEvolutionInstance(serverUrl, apiKey, instanceName);
+  if (!created.success) {
+    return { success: false, error: created.error ?? "Erro ao criar instância Evolution" };
+  }
+
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+  await setEvolutionWebhook(serverUrl, apiKey, instanceName, `${baseUrl}/api/webhook/evolution`);
+
+  // QR: da criação ou de um connect subsequente (instância já existente)
+  let qrcode = created.qrcode;
+  if (!qrcode) {
+    const conn = await connectEvolutionInstance(serverUrl, apiKey, instanceName);
+    qrcode = conn.qrcode;
+  }
+
+  await prisma.whatsAppConfig.upsert({
+    where: { userId },
+    update: {
+      provider: "evolution",
+      uazapiServerUrl: serverUrl,
+      uazapiAdminToken: null,
+      uazapiInstanceToken: apiKey,
+      uazapiInstanceName: instanceName,
+    },
+    create: {
+      userId,
+      provider: "evolution",
+      uazapiServerUrl: serverUrl,
+      uazapiAdminToken: null,
+      uazapiInstanceToken: apiKey,
+      uazapiInstanceName: instanceName,
+    },
+  });
+
+  return { success: true, data: { qrcode } };
+}
+
 // ─── Get QR Code (Uazapi) ───
 
 export async function getUazapiQR(): Promise<ActionResult<{ qrcode: string }>> {
@@ -166,13 +228,25 @@ export async function getUazapiQR(): Promise<ActionResult<{ qrcode: string }>> {
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (
-      !config ||
-      config.provider !== "uazapi" ||
-      !config.uazapiServerUrl ||
-      !config.uazapiInstanceToken
-    ) {
-      return { success: false, error: "Uazapi não configurado" };
+    if (!config || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+      return { success: false, error: "Provider não-oficial não configurado" };
+    }
+
+    if (config.provider === "evolution") {
+      const { connectEvolutionInstance } = await import("@/services/whatsappEvolution");
+      const result = await connectEvolutionInstance(
+        config.uazapiServerUrl,
+        config.uazapiInstanceToken,
+        config.uazapiInstanceName ?? ""
+      );
+      if (!result.success || !result.qrcode) {
+        return { success: false, error: result.error ?? "QR Code não disponível" };
+      }
+      return { success: true, data: { qrcode: result.qrcode } };
+    }
+
+    if (config.provider !== "uazapi") {
+      return { success: false, error: "Provider não-oficial não configurado" };
     }
 
     const { connectUazapiInstance } = await import("@/services/whatsappUazapi");
@@ -198,13 +272,22 @@ export async function getUazapiStatus(): Promise<
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (
-      !config ||
-      config.provider !== "uazapi" ||
-      !config.uazapiServerUrl ||
-      !config.uazapiInstanceToken
-    ) {
-      return { success: false, error: "Uazapi não configurado" };
+    if (!config || !config.uazapiServerUrl || !config.uazapiInstanceToken) {
+      return { success: false, error: "Provider não-oficial não configurado" };
+    }
+
+    if (config.provider === "evolution") {
+      const { getEvolutionState } = await import("@/services/whatsappEvolution");
+      const result = await getEvolutionState(
+        config.uazapiServerUrl,
+        config.uazapiInstanceToken,
+        config.uazapiInstanceName ?? ""
+      );
+      return { success: true, data: { connected: result.connected, state: result.state } };
+    }
+
+    if (config.provider !== "uazapi") {
+      return { success: false, error: "Provider não-oficial não configurado" };
     }
 
     const { getUazapiStatus: getStatus } = await import("@/services/whatsappUazapi");
@@ -226,7 +309,7 @@ export async function testWhatsAppConnection(): Promise<ActionResult> {
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
     if (!config) return { success: false, error: "WhatsApp não configurado" };
 
-    if (config.provider === "uazapi") {
+    if (config.provider === "uazapi" || config.provider === "evolution") {
       const status = await getUazapiStatus();
       if (!status.success) return status;
       if (status.data?.connected) return { success: true };
@@ -260,13 +343,22 @@ export async function disconnectUazapi(): Promise<ActionResult> {
     if (!dbUser) return { success: false, error: "Não autenticado" };
 
     const config = await prisma.whatsAppConfig.findUnique({ where: { userId: dbUser.id } });
-    if (!config || config.provider !== "uazapi") {
-      return { success: false, error: "Uazapi não configurado" };
+    if (!config || (config.provider !== "uazapi" && config.provider !== "evolution")) {
+      return { success: false, error: "Provider não-oficial não configurado" };
     }
 
     if (config.uazapiServerUrl && config.uazapiInstanceToken) {
-      const { disconnectUazapiInstance } = await import("@/services/whatsappUazapi");
-      await disconnectUazapiInstance(config.uazapiServerUrl, config.uazapiInstanceToken);
+      if (config.provider === "evolution") {
+        const { logoutEvolutionInstance } = await import("@/services/whatsappEvolution");
+        await logoutEvolutionInstance(
+          config.uazapiServerUrl,
+          config.uazapiInstanceToken,
+          config.uazapiInstanceName ?? ""
+        );
+      } else {
+        const { disconnectUazapiInstance } = await import("@/services/whatsappUazapi");
+        await disconnectUazapiInstance(config.uazapiServerUrl, config.uazapiInstanceToken);
+      }
     }
 
     await prisma.whatsAppConfig.update({

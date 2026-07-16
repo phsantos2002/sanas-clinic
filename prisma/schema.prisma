@@ -261,7 +261,7 @@ model WhatsAppConfig {
   id                  String   @id @default(cuid())
   userId              String   @unique
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider            String   @default("official") // "official" | "uazapi"
+  provider            String   @default("official") // "official" | "evolution" (Baileys) | "uazapi" (legado); campos uazapi* são compartilhados pelos providers não-oficiais
   // --- Official API fields (mantidos) ---
   phoneNumberId       String   @default("")
   accessToken         String   @default("")
