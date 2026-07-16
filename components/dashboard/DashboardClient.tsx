@@ -111,6 +111,18 @@ export function DashboardClient({ leads, columns, stages, funnels = [] }: Props)
     });
   }, []);
 
+  // Seleciona/desseleciona um conjunto de leads de uma vez (ex.: coluna inteira).
+  const toggleSelectMany = useCallback((leadIds: string[], select: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of leadIds) {
+        if (select) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
     setSelectionMode(false);
@@ -411,6 +423,7 @@ export function DashboardClient({ leads, columns, stages, funnels = [] }: Props)
           onEditLead={handleEditLead}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
+          onToggleSelectMany={toggleSelectMany}
           selectionMode={selectionMode}
           attendants={attendants}
           stages={visibleStages}

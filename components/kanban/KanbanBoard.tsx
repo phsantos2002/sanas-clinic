@@ -27,6 +27,7 @@ type Props = {
   onEditLead?: (leadId: string) => void;
   selectedIds?: Set<string>;
   onToggleSelect?: (leadId: string) => void;
+  onToggleSelectMany?: (leadIds: string[], select: boolean) => void;
   selectionMode?: boolean;
   attendants?: Attendant[];
   stages?: StageLite[];
@@ -38,6 +39,7 @@ export function KanbanBoard({
   onEditLead,
   selectedIds,
   onToggleSelect,
+  onToggleSelectMany,
   selectionMode,
   attendants,
   stages,
@@ -127,6 +129,7 @@ export function KanbanBoard({
             onEditLead={onEditLead}
             selectedIds={selectedIds}
             onToggleSelect={onToggleSelect}
+            onToggleSelectMany={onToggleSelectMany}
             selectionMode={selectionMode}
             attendants={attendants}
             stages={stages}
