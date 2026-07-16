@@ -28,7 +28,7 @@ const nodeSchema = z.object({
   // For button-driven branches
   buttons: z.array(buttonSchema).max(3).optional(),
   // Side effects
-  action: z.enum(["pause_ai", "tag", "stage", "noop"]).optional(),
+  action: z.enum(["pause_ai", "handoff", "tag", "stage", "noop"]).optional(),
   actionArg: z.string().optional(),
 });
 
@@ -109,6 +109,12 @@ export async function applyNodeAction(args: {
           data: { aiEnabled: false },
         });
         return false; // hand off to human — flow ends
+      case "handoff": {
+        // Handoff completo: pausa IA + atribui vendedor (round-robin) + notifica.
+        const { executeHumanHandoff } = await import("@/services/leadRouting");
+        await executeHumanHandoff(args.userId, args.leadId, "flow");
+        return false; // flow ends — vendedor assume
+      }
       case "tag":
         if (args.node.actionArg) {
           const lead = await prisma.lead.findUnique({
