@@ -120,7 +120,7 @@ export function OnboardingClient() {
 
     if (result.success) {
       toast.success("Tudo configurado! Bem-vindo ao Sanas Pulse");
-      router.push("/dashboard/overview");
+      router.push("/dashboard/chat");
     } else {
       toast.error("Erro ao salvar. Tente novamente.");
     }

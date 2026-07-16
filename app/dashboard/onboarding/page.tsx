@@ -4,7 +4,7 @@ import { OnboardingClient } from "@/components/onboarding/OnboardingClient";
 
 export default async function OnboardingPage() {
   const complete = await isOnboardingComplete();
-  if (complete) redirect("/dashboard/overview");
+  if (complete) redirect("/dashboard/chat");
 
   return <OnboardingClient />;
 }

@@ -386,7 +386,7 @@ export async function syncWhatsAppChats(): Promise<
 
     revalidatePath("/dashboard/chat");
     revalidatePath("/dashboard/pipeline");
-    revalidatePath("/dashboard/overview");
+    revalidatePath("/dashboard/chat");
 
     return { success: true, data: { imported, messagesImported } };
   } catch (err) {

@@ -29,14 +29,6 @@ const STEPS = [
     action: null,
   },
   {
-    icon: BarChart3,
-    color: "from-blue-500 to-cyan-500",
-    title: "Dashboard",
-    subtitle: "Visao geral do seu negocio",
-    desc: "Aqui voce ve todos os leads novos, leads quentes, vendas, postagens e agendamentos em um so lugar. Priorize os leads mais importantes.",
-    action: "/dashboard/overview",
-  },
-  {
     icon: MessageCircle,
     color: "from-green-500 to-emerald-500",
     title: "Chat WhatsApp",
@@ -98,7 +90,7 @@ const STEPS = [
     title: "Tudo pronto!",
     subtitle: "Comece agora",
     desc: "Conecte seu WhatsApp em Integracoes, configure sua IA em IA Chat, cadastre seus servicos e deixe a IA trabalhar por voce.",
-    action: "/dashboard/overview",
+    action: "/dashboard/chat",
   },
 ];
 

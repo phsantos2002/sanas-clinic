@@ -21,7 +21,7 @@ export default async function LandingPage() {
   } = await supabase.auth.getUser();
 
   if (user) {
-    redirect("/dashboard/overview");
+    redirect("/dashboard/chat");
   }
 
   return (
