@@ -173,6 +173,8 @@ export async function processIncomingMessage(params: {
   chatId?: string;
   /** Sprint 2: ID da mensagem no provider para idempotência */
   externalMessageId?: string;
+  /** Multi-conexão: WhatsAppConnection que recebeu a mensagem */
+  connectionId?: string;
 }) {
   const {
     userId,
@@ -187,6 +189,7 @@ export async function processIncomingMessage(params: {
     markUnread,
     chatId,
     externalMessageId,
+    connectionId,
   } = params;
 
   const log = logger.child({ userId, phone: maskPhone(phone), externalMessageId });
@@ -294,6 +297,14 @@ export async function processIncomingMessage(params: {
       lead = await createLead(userId, phone, pushName, attribution);
       isNewLead = true;
       log.info("webhook_lead_created", { leadId: lead.id });
+    }
+
+    // Multi-conexão: registra por qual número o lead falou (roteia respostas
+    // futuras pela mesma conexão).
+    if (connectionId && lead.connectionId !== connectionId) {
+      await prisma.lead
+        .update({ where: { id: lead.id }, data: { connectionId } })
+        .catch(() => {});
     }
 
     // Fire new_lead workflow trigger (non-blocking)

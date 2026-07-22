@@ -41,6 +41,41 @@ model User {
   googleCalendar     GoogleCalendar?
   funnels            Funnel[]
   businessProfile    BusinessProfile?
+  whatsappConnections WhatsAppConnection[]
+}
+
+// ── Multi-conexão: um número de WhatsApp por vendedor ─────────
+// Substitui gradualmente o WhatsAppConfig (1/tenant, legado). Cada conexão é
+// uma instância Evolution/Uazapi ou um número da API oficial. O webhook
+// resolve a conexão pelo instanceName (único global).
+model WhatsAppConnection {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label         String // "João — Vendas"
+  provider      String     @default("evolution") // "official" | "evolution" | "uazapi"
+  // Official Meta Cloud
+  phoneNumberId String?
+  accessToken   String?
+  verifyToken   String?
+  metaAppSecret String?
+  // Não-oficial (Evolution/Uazapi)
+  serverUrl     String?
+  instanceToken String?
+  instanceName  String?    @unique // chave de resolução do webhook
+  phoneNumber   String? // E.164 detectado após pareamento
+  attendantId   String? // vendedor dono; null = número compartilhado do tenant
+  attendant     Attendant? @relation(fields: [attendantId], references: [id], onDelete: SetNull)
+  isDefault     Boolean    @default(false) // fallback de envio
+  isActive      Boolean    @default(true)
+  aiEnabled     Boolean    @default(true) // IA atende inbound deste número
+  status        String     @default("disconnected") // "connected" | "connecting" | "disconnected"
+  lastStatusAt  DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([userId, attendantId])
 }
 
 model AIConfig {
@@ -183,6 +218,7 @@ model Lead {
   linkedinUrl        String? // Perfil LinkedIn
   industry           String? // Setor / indústria
   importBatchId      String? // Lote de importação CSV (para desfazer)
+  connectionId       String? // última WhatsAppConnection pela qual o lead falou
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -191,6 +227,7 @@ model Lead {
   @@index([stageId])
   @@index([userId, createdAt])
   @@index([userId, score])
+  @@index([userId, connectionId])
 }
 
 model Message {
@@ -576,8 +613,9 @@ model Attendant {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  funnels AttendantFunnel[]
-  stages  AttendantStage[]
+  funnels     AttendantFunnel[]
+  stages      AttendantStage[]
+  connections WhatsAppConnection[]
 
   @@index([userId])
   @@index([userId, role])

@@ -55,14 +55,12 @@ export async function sendManualMessage(leadId: string, content: string): Promis
     data: { leadId, role: "assistant", content },
   });
 
-  // Send via WhatsApp (official or Uazapi)
-  const whatsappConfig = await prisma.whatsAppConfig.findUnique({
-    where: { userId: user.id },
-  });
-
-  if (whatsappConfig) {
+  // Envia pela conexão do lead (multi-conexão), com fallback legado.
+  const { getSendConnection } = await import("@/services/connections");
+  const send = await getSendConnection(lead);
+  if (send) {
     const { sendMessage } = await import("@/services/whatsappService");
-    await sendMessage(whatsappConfig, lead.phone, content);
+    await sendMessage(send.config, lead.phone, content);
   }
 
   // Pause AI for this lead if human intervention is enabled

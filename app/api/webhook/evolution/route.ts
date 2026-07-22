@@ -206,26 +206,56 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Find WhatsApp config by token or instance name (Uazapi ou Evolution)
+    // Resolve a origem: WhatsAppConnection (multi-conexão) por instanceName,
+    // com fallback no WhatsAppConfig legado (nome → token).
     const instanceToken = msgData.token;
     const instanceName = msgData.instanceName || payload.instanceName || "";
     const unofficialProviders = ["uazapi", "evolution"];
 
-    // Instance name é o identificador primário (Evolution manda o apikey global,
-    // que não é único por instância) — nome primeiro, token como fallback.
-    let whatsappConfig = instanceName
-      ? await prisma.whatsAppConfig.findFirst({
-          where: { provider: { in: unofficialProviders }, uazapiInstanceName: instanceName },
-        })
-      : null;
+    let resolved: {
+      userId: string;
+      connectionId: string | null;
+      sendConfig: {
+        provider: string;
+        phoneNumberId: string;
+        accessToken: string;
+        uazapiServerUrl: string | null;
+        uazapiInstanceToken: string | null;
+        uazapiInstanceName?: string | null;
+      };
+    } | null = null;
 
-    if (!whatsappConfig && instanceToken) {
-      whatsappConfig = await prisma.whatsAppConfig.findFirst({
-        where: { provider: { in: unofficialProviders }, uazapiInstanceToken: instanceToken },
-      });
+    if (instanceName) {
+      const { resolveConnectionByInstanceName, connectionToSendConfig } = await import(
+        "@/services/connections"
+      );
+      const conn = await resolveConnectionByInstanceName(instanceName);
+      if (conn && conn.isActive) {
+        resolved = {
+          userId: conn.userId,
+          connectionId: conn.id,
+          sendConfig: connectionToSendConfig(conn),
+        };
+      }
     }
 
-    if (!whatsappConfig) {
+    if (!resolved) {
+      let whatsappConfig = instanceName
+        ? await prisma.whatsAppConfig.findFirst({
+            where: { provider: { in: unofficialProviders }, uazapiInstanceName: instanceName },
+          })
+        : null;
+      if (!whatsappConfig && instanceToken) {
+        whatsappConfig = await prisma.whatsAppConfig.findFirst({
+          where: { provider: { in: unofficialProviders }, uazapiInstanceToken: instanceToken },
+        });
+      }
+      if (whatsappConfig) {
+        resolved = { userId: whatsappConfig.userId, connectionId: null, sendConfig: whatsappConfig };
+      }
+    }
+
+    if (!resolved) {
       log.error("uazapi_config_not_found", {
         tokenPrefix: instanceToken?.slice(0, 8),
         instanceName,
@@ -233,7 +263,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    log.info("uazapi_processing", { userId: whatsappConfig.userId });
+    log.info("uazapi_processing", { userId: resolved.userId, connectionId: resolved.connectionId });
 
     // Resolve tracking code attribution
     const refCode = extractRefCode(msgData.text);
@@ -250,7 +280,7 @@ export async function POST(req: NextRequest) {
 
     if (refCode) {
       const tracking = await prisma.adTrackingCode.findFirst({
-        where: { code: refCode, userId: whatsappConfig.userId },
+        where: { code: refCode, userId: resolved.userId },
       });
       if (tracking) {
         attribution = {
@@ -269,21 +299,22 @@ export async function POST(req: NextRequest) {
     // 5-10s with delays) actually runs to completion instead of being killed
     // when the response is flushed. Without this, in-memory jobs vanish on
     // Vercel cold-stops and messages are silently dropped.
-    const capturedConfig = whatsappConfig;
+    const captured = resolved;
     after(async () => {
       try {
         const result = await webhookQueue.enqueue(() =>
           processIncomingMessage({
-            userId: capturedConfig.userId,
+            userId: captured.userId,
             phone,
             text: msgData!.text,
             pushName: msgData!.senderName,
             attribution,
             externalMessageId: msgData!.messageId,
+            connectionId: captured.connectionId ?? undefined,
             sendReply: async (replyPhone, replyText) => {
-              // Roteia pelo provider da config (evolution/uazapi/official).
+              // Responde pela MESMA conexão que recebeu a mensagem.
               const { sendMessage } = await import("@/services/whatsappService");
-              return sendMessage(capturedConfig, replyPhone, replyText);
+              return sendMessage(captured.sendConfig, replyPhone, replyText);
             },
           })
         );
@@ -292,7 +323,7 @@ export async function POST(req: NextRequest) {
             source: "uazapi",
             rawPayload: payload,
             error: result.error,
-            userId: capturedConfig.userId,
+            userId: captured.userId,
             phone: maskPhone(phone),
           });
         }
@@ -302,7 +333,7 @@ export async function POST(req: NextRequest) {
           source: "uazapi",
           rawPayload: payload,
           error: err,
-          userId: capturedConfig.userId,
+          userId: captured.userId,
           phone: maskPhone(phone),
         }).catch(() => {});
       }

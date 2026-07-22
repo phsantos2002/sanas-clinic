@@ -303,8 +303,15 @@ async function executeAction(config: StepConfig, lead: any, userId: string): Pro
 
   switch (actionType) {
     case "send_whatsapp": {
-      const waConfig = await prisma.whatsAppConfig.findUnique({ where: { userId } });
-      if (!waConfig) return "WhatsApp nao configurado";
+      // Multi-conexão: envia pela conexão do lead (fallback legado incluso).
+      const { getSendConnection } = await import("@/services/connections");
+      const send = await getSendConnection({
+        userId,
+        connectionId: lead.connectionId,
+        assignedTo: lead.assignedTo,
+      });
+      if (!send) return "WhatsApp nao configurado";
+      const waConfig = send.config;
 
       const aiConfig = await prisma.aIConfig.findUnique({ where: { userId } });
       const clinicName = aiConfig?.clinicName || "nossa clinica";
