@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageCircle, Bot, FileText, Megaphone, Users } from "lucide-react";
+import { MessageCircle, Bot, FileText, Megaphone, Users, Inbox } from "lucide-react";
 
 const ALL_TABS = [
   { href: "/dashboard/chat", label: "WhatsApp", icon: MessageCircle, exact: true, key: "whatsapp" },
+  {
+    href: "/dashboard/atendimentos",
+    label: "Atendimentos",
+    icon: Inbox,
+    exact: false,
+    key: "atendimentos",
+  },
   {
     href: "/dashboard/chat/assistant",
     label: "Assistente IA",
@@ -33,8 +40,10 @@ const ALL_TABS = [
 export function ChatTabsNav({ visibleTabs }: { visibleTabs: string[] }) {
   const pathname = usePathname();
 
-  // Always show WhatsApp (conversations). Extras filtered by settings.
-  const tabs = ALL_TABS.filter((t) => t.key === "whatsapp" || visibleTabs.includes(t.key));
+  // Always show WhatsApp + Atendimentos. Extras filtered by settings.
+  const tabs = ALL_TABS.filter(
+    (t) => t.key === "whatsapp" || t.key === "atendimentos" || visibleTabs.includes(t.key)
+  );
 
   // If user disabled all extras, hide the entire nav bar
   if (tabs.length <= 1) return null;

@@ -43,16 +43,30 @@ export async function toggleAI(leadId: string): Promise<ActionResult> {
 }
 
 export async function sendManualMessage(leadId: string, content: string): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, error: "Não autenticado" };
+  const { resolveSession } = await import("./user");
+  const ctx = await resolveSession();
+  if (!ctx) return { success: false, error: "Não autenticado" };
+  const user = ctx.user;
 
   const lead = await prisma.lead.findFirst({
     where: { id: leadId, userId: user.id },
   });
   if (!lead) return { success: false, error: "Lead não encontrado" };
 
+  // Estampa o ticket ativo (TME/TMA) e o autor humano da mensagem.
+  const { stampHumanReply, getActiveTicket } = await import("@/services/ticketService");
+  const activeTicket = await getActiveTicket(leadId).catch(() => null);
+  await stampHumanReply({ leadId, attendantId: ctx.attendantId }).catch(() => null);
+
   await prisma.message.create({
-    data: { leadId, role: "assistant", content },
+    data: {
+      leadId,
+      role: "assistant",
+      content,
+      ticketId: activeTicket?.id ?? null,
+      attendantId: ctx.attendantId,
+      connectionId: lead.connectionId,
+    },
   });
 
   // Envia pela conexão do lead (multi-conexão), com fallback legado.

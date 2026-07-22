@@ -363,6 +363,20 @@ export async function processIncomingMessage(params: {
       return;
     }
 
+    // ── Ticket do episódio (Atendimentos) ────────────────────
+    // "bot" se a IA vai atender; senão vai direto pra fila humana.
+    const aiWillHandle =
+      lead.aiEnabled &&
+      !(lead.humanPausedUntil && new Date() < new Date(lead.humanPausedUntil)) &&
+      !!aiConfig?.apiKey;
+    const { ensureTicketForInbound } = await import("@/services/ticketService");
+    const ticket = await ensureTicketForInbound({
+      userId,
+      leadId: lead.id,
+      connectionId,
+      aiWillHandle,
+    }).catch(() => null);
+
     // ── Save incoming message + update lastInteractionAt ─────
     await prisma.$transaction([
       prisma.message.create({
@@ -371,6 +385,8 @@ export async function processIncomingMessage(params: {
           role: "user",
           content: text,
           externalId: externalMessageId ?? null,
+          ticketId: ticket?.id ?? null,
+          connectionId: connectionId ?? null,
         },
       }),
       prisma.lead.update({
@@ -402,7 +418,13 @@ export async function processIncomingMessage(params: {
       await sendReply(phone, HANDOFF_CONFIRMATION).catch(() => {});
       await prisma.message
         .create({
-          data: { leadId: lead.id, role: "assistant", content: HANDOFF_CONFIRMATION },
+          data: {
+            leadId: lead.id,
+            role: "assistant",
+            content: HANDOFF_CONFIRMATION,
+            ticketId: ticket?.id ?? null,
+            connectionId: connectionId ?? null,
+          },
         })
         .catch(() => {});
       return;
@@ -620,7 +642,13 @@ export async function processIncomingMessage(params: {
 
       // ── Save AI reply ─────────────────────────────────────────
       await prisma.message.create({
-        data: { leadId: lead.id, role: "assistant", content: finalReply },
+        data: {
+          leadId: lead.id,
+          role: "assistant",
+          content: finalReply,
+          ticketId: ticket?.id ?? null,
+          connectionId: connectionId ?? null,
+        },
       });
 
       // ── Humanized delay before sending ────────────────────────
@@ -723,6 +751,68 @@ export async function processIncomingMessage(params: {
       await releaseLeadLock(lead.id);
     }
   }
+}
+
+/**
+ * Mensagem fromMe digitada no CELULAR do vendedor (não via API/app):
+ * persiste no histórico do ticket como resposta humana, estampa TME e pausa
+ * a IA (intervenção humana). Sem pipeline de IA. Idempotente por externalId.
+ */
+export async function persistSellerPhoneMessage(params: {
+  userId: string;
+  phone: string;
+  text: string;
+  externalMessageId?: string;
+  connectionId: string | null;
+}) {
+  const { userId, phone, text, externalMessageId, connectionId } = params;
+  const log = logger.child({ userId, phone: maskPhone(phone), fromMe: true });
+
+  const lead = await findLead(userId, phone);
+  if (!lead) {
+    // Conversa iniciada pelo vendedor com número desconhecido — não cria lead
+    // a partir de outbound (evita poluir o CRM com contatos pessoais).
+    log.debug("fromme_no_lead_skip");
+    return;
+  }
+
+  // Dedup por externalId
+  if (externalMessageId) {
+    const existing = await prisma.message.findFirst({
+      where: { leadId: lead.id, externalId: externalMessageId },
+      select: { id: true },
+    });
+    if (existing) return;
+  }
+
+  // Atendente humano = dono da conexão que enviou (número do vendedor)
+  let attendantId: string | null = null;
+  if (connectionId) {
+    const conn = await prisma.whatsAppConnection.findUnique({
+      where: { id: connectionId },
+      select: { attendantId: true },
+    });
+    attendantId = conn?.attendantId ?? null;
+  }
+
+  const { stampHumanReply, getActiveTicket } = await import("@/services/ticketService");
+  const activeTicket = await getActiveTicket(lead.id).catch(() => null);
+  await stampHumanReply({ leadId: lead.id, attendantId }).catch(() => null);
+
+  await prisma.message.create({
+    data: {
+      leadId: lead.id,
+      role: "assistant",
+      content: text,
+      externalId: externalMessageId ?? null,
+      ticketId: activeTicket?.id ?? null,
+      attendantId,
+      connectionId,
+    },
+  });
+
+  await onManualMessageSent(userId, lead.id);
+  log.info("fromme_persisted", { leadId: lead.id, attendantId });
 }
 
 /**

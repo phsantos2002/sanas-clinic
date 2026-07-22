@@ -76,6 +76,10 @@ export async function executeHumanHandoff(
 
   const attendant = await autoAssignLead(userId, leadId);
 
+  // Atendimentos: ticket sai do estado "bot" e entra na fila humana.
+  const { moveTicketToHumanQueue } = await import("@/services/ticketService");
+  await moveTicketToHumanQueue({ leadId, attendantId: attendant?.id ?? null }).catch(() => null);
+
   const lead = await prisma.lead.findFirst({
     where: { id: leadId, userId },
     select: { name: true },
