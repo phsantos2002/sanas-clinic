@@ -45,6 +45,7 @@ export type Lead = {
   scoreLabel: string | null;
   tags: string[];
   assignedTo: string | null;
+  birthday: Date | null;
   lastInteractionAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

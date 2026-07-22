@@ -1,14 +1,15 @@
 import { listTickets, getTicketCounts } from "@/app/actions/tickets";
-import { getAttendants } from "@/app/actions/whatsappHub";
+import { getAttendants, getMessageTemplates } from "@/app/actions/whatsappHub";
 import { AtendimentosClient } from "@/components/atendimentos/AtendimentosClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AtendimentosPage() {
-  const [initialTickets, initialCounts, attendants] = await Promise.all([
+  const [initialTickets, initialCounts, attendants, templates] = await Promise.all([
     listTickets("pending"),
     getTicketCounts(),
     getAttendants(),
+    getMessageTemplates(),
   ]);
 
   return (
@@ -23,6 +24,7 @@ export default async function AtendimentosPage() {
         initialTickets={initialTickets}
         initialCounts={initialCounts}
         attendants={attendants}
+        templates={templates}
       />
     </div>
   );

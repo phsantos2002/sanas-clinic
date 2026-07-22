@@ -47,6 +47,7 @@ const DEFAULTS: AIResponseConfig = {
   followUpUseAI: true,
   followUpRespectBH: false,
   unknownTypeMsg: "Você pode me dar mais detalhes?",
+  birthdayMessage: "",
   audioVoice: "alloy",
   audioMinChars: 50,
   audioAutoReply: false,
@@ -244,6 +245,21 @@ export function AIResponseConfigForm({
             type="text"
             value={config.unknownTypeMsg}
             onChange={(e) => update("unknownTypeMsg", e.target.value)}
+            className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        <div className="py-2">
+          <label className="text-sm text-slate-700 font-medium block">
+            Mensagem de aniversário
+          </label>
+          <span className="text-xs text-slate-400 block mt-0.5 mb-1.5">
+            Enviada automaticamente no aniversário do lead (use {"{{nome}}"}). Vazio = desativado
+          </span>
+          <input
+            type="text"
+            value={config.birthdayMessage}
+            onChange={(e) => update("birthdayMessage", e.target.value)}
+            placeholder="Feliz aniversário, {{nome}}! 🎉"
             className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>

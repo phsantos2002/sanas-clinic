@@ -5,10 +5,6 @@
       "schedule": "0 8 * * *"
     },
     {
-      "path": "/api/cron/score-leads",
-      "schedule": "0 6 * * *"
-    },
-    {
       "path": "/api/cron/collect-metrics",
       "schedule": "0 7 * * *"
     },
@@ -19,6 +15,14 @@
     {
       "path": "/api/cron/run-workflows",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/birthdays",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/dispatch",
+      "schedule": "0 13 * * *"
     }
   ]
 }

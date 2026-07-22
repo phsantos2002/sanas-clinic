@@ -137,6 +137,7 @@ export type UpdateLeadData = {
   photoUrl?: string | null;
   stageId?: string | null;
   aiEnabled?: boolean;
+  birthday?: Date | string | null;
 };
 
 export async function updateLead(
@@ -168,6 +169,7 @@ export async function updateLead(
     if (data.photoUrl !== undefined) updateData.photoUrl = data.photoUrl || null;
     if (data.stageId !== undefined) updateData.stageId = data.stageId;
     if (data.aiEnabled !== undefined) updateData.aiEnabled = data.aiEnabled;
+    if (data.birthday !== undefined) updateData.birthday = data.birthday;
 
     const stageChanged = data.stageId && data.stageId !== existing.stageId;
 

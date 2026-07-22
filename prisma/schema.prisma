@@ -143,6 +143,8 @@ model AIConfig {
   hunterApiKey       String? // chave Hunter.io
   // ── Assistente IA (Claude) ──
   anthropicKey       String? // chave Anthropic para o assistente do dashboard
+  // ── Aniversário ──
+  birthdayMessage    String? // template ({{nome}}); null = não envia
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -187,6 +189,7 @@ model Lead {
   stageHistory       LeadStageHistory[]
   messages           Message[]
   tickets            Ticket[]
+  scheduledMessages  ScheduledMessage[]
   aiEnabled          Boolean             @default(true)
   humanPausedUntil   DateTime? // IA pausada até esta data (intervenção humana)
   lastFollowUpAt     DateTime? // última msg de follow-up enviada
@@ -220,6 +223,7 @@ model Lead {
   industry           String? // Setor / indústria
   importBatchId      String? // Lote de importação CSV (para desfazer)
   connectionId       String? // última WhatsAppConnection pela qual o lead falou
+  birthday           DateTime? // aniversário (mensagem automática via cron diário)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -259,6 +263,26 @@ model Message {
 // Ticket = um episódio de atendimento de um lead numa conexão. A IA é um
 // estado de ticket ("bot") — diferencial: a fila humana só recebe o que a
 // IA não resolve.
+
+// Mensagem 1:1 agendada (não é broadcast nem workflow) — despachada pelo
+// cron /api/cron/dispatch. Precisão depende da cadência do cron (5min no
+// Vercel Pro; diária no Hobby — avisar o tenant).
+model ScheduledMessage {
+  id          String    @id @default(cuid())
+  userId      String
+  leadId      String
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  attendantId String? // quem agendou
+  content     String
+  scheduledAt DateTime
+  status      String    @default("pending") // "pending" | "sent" | "failed" | "cancelled"
+  sentAt      DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+
+  @@index([status, scheduledAt])
+  @@index([userId, leadId])
+}
 
 model Queue {
   id        String   @id @default(cuid())

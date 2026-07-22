@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bot,
   CheckCheck,
+  Clock,
   Inbox,
   Loader2,
   MessageCircle,
@@ -22,16 +23,19 @@ import {
   resolveTicketAction,
   transferTicketAction,
   sendTicketMessage,
+  scheduleTicketMessage,
   type TicketListItem,
   type TicketStatus,
   type TicketConversation,
 } from "@/app/actions/tickets";
-import type { AttendantData } from "@/app/actions/whatsappHub";
+import { trackTemplateUsage } from "@/app/actions/whatsappHub";
+import type { AttendantData, TemplateData } from "@/app/actions/whatsappHub";
 
 type Props = {
   initialTickets: TicketListItem[];
   initialCounts: Record<TicketStatus, number>;
   attendants: AttendantData[];
+  templates: TemplateData[];
 };
 
 const TABS: { key: TicketStatus; label: string; icon: typeof Inbox }[] = [
@@ -52,7 +56,7 @@ function timeAgo(date: Date | string | null): string {
   return `${Math.floor(h / 24)}d`;
 }
 
-export function AtendimentosClient({ initialTickets, initialCounts, attendants }: Props) {
+export function AtendimentosClient({ initialTickets, initialCounts, attendants, templates }: Props) {
   const [tab, setTab] = useState<TicketStatus>("pending");
   const [tickets, setTickets] = useState<TicketListItem[]>(initialTickets);
   const [counts, setCounts] = useState(initialCounts);
@@ -63,7 +67,28 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants }
   const [sending, setSending] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Quick replies: "/" no início do texto abre o picker filtrado pelo atalho
+  const slashQuery = composer.startsWith("/") ? composer.slice(1).toLowerCase() : null;
+  const matchingTemplates =
+    slashQuery !== null
+      ? templates
+          .filter(
+            (t) =>
+              (t.shortcut ?? "").toLowerCase().replace(/^\//, "").startsWith(slashQuery) ||
+              t.name.toLowerCase().includes(slashQuery)
+          )
+          .slice(0, 6)
+      : [];
+
+  const applyTemplate = (t: TemplateData) => {
+    const leadFirstName = conversation?.lead.name.split(" ")[0] ?? "";
+    setComposer(t.content.replace(/\{\{nome\}\}/gi, leadFirstName));
+    trackTemplateUsage(t.id).catch(() => {});
+  };
 
   const refreshList = useCallback(
     async (activeTab: TicketStatus, showSpinner = false) => {
@@ -147,6 +172,23 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants }
     }
     setComposer("");
     refreshConversation(selectedId);
+  };
+
+  const handleSchedule = async () => {
+    if (!selectedId || !composer.trim() || !scheduleAt) return;
+    const result = await scheduleTicketMessage(
+      selectedId,
+      composer,
+      new Date(scheduleAt).toISOString()
+    );
+    setShowSchedule(false);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Mensagem agendada!");
+    setComposer("");
+    setScheduleAt("");
   };
 
   return (
@@ -356,7 +398,27 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants }
             </div>
 
             {/* Composer */}
-            <div className="border-t border-slate-50 p-3 space-y-1.5">
+            <div className="border-t border-slate-50 p-3 space-y-1.5 relative">
+              {/* Quick replies picker */}
+              {matchingTemplates.length > 0 && (
+                <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-20">
+                  <p className="text-[10px] text-slate-400 px-3 pt-2">Respostas rapidas</p>
+                  {matchingTemplates.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => applyTemplate(t)}
+                      className="w-full text-left px-3 py-2 hover:bg-indigo-50 transition-colors"
+                    >
+                      <span className="text-xs font-semibold text-indigo-600">
+                        {t.shortcut ?? `/${t.name}`}
+                      </span>
+                      <span className="text-xs text-slate-500 ml-2 line-clamp-1">
+                        {t.content.slice(0, 70)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsNote((v) => !v)}
@@ -369,6 +431,19 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants }
                   <StickyNote className="h-3 w-3" />
                   {isNote ? "Nota interna (nao envia)" : "Nota"}
                 </button>
+                <button
+                  onClick={() => setShowSchedule(true)}
+                  disabled={!composer.trim() || isNote}
+                  className="flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:opacity-40"
+                  title="Agendar envio desta mensagem"
+                >
+                  <Clock className="h-3 w-3" /> Agendar
+                </button>
+                {templates.length > 0 && !composer && (
+                  <span className="text-[10px] text-slate-300 ml-auto">
+                    Digite / para respostas rapidas
+                  </span>
+                )}
               </div>
               <div className="flex items-end gap-2">
                 <textarea
@@ -406,6 +481,44 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants }
           </>
         )}
       </div>
+
+      {/* Modal de agendamento */}
+      {showSchedule && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-3">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-indigo-500" /> Agendar mensagem
+            </h3>
+            <p className="text-xs text-slate-400 line-clamp-2 bg-slate-50 rounded-lg p-2">
+              {composer}
+            </p>
+            <input
+              type="datetime-local"
+              value={scheduleAt}
+              onChange={(e) => setScheduleAt(e.target.value)}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p className="text-[10px] text-slate-400">
+              O envio acontece no proximo ciclo do despachante apos o horario.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowSchedule(false)}
+                className="flex-1 border border-slate-200 text-slate-600 text-sm font-medium py-2 rounded-xl hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSchedule}
+                disabled={!scheduleAt}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-xl"
+              >
+                Agendar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

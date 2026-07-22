@@ -20,6 +20,7 @@ export const updateLeadSchema = z.object({
   photoUrl: z.string().url().nullable().optional(),
   stageId: z.string().nullable().optional(),
   aiEnabled: z.boolean().optional(),
+  birthday: z.coerce.date().nullable().optional(),
 });
 
 // ── Social Post ──────────────────────────────────────────────

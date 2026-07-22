@@ -189,8 +189,17 @@ export async function POST(req: NextRequest) {
       messageId: msgData.messageId,
     });
 
-    // Skip: own messages, API-sent messages, empty text, group messages
-    if (msgData.fromMe || msgData.wasSentByApi || !msgData.text || msgData.isGroup) {
+    // fromMe digitado no celular (não via API): persistimos no histórico do
+    // ticket mais adiante — sem IA. API-sent/grupo/vazio continuam ignorados.
+    const isSellerPhoneMessage = msgData.fromMe && !msgData.wasSentByApi && !!msgData.text;
+
+    // Skip: API-sent messages, empty text, group messages, fromMe sem texto
+    if (
+      msgData.wasSentByApi ||
+      !msgData.text ||
+      msgData.isGroup ||
+      (msgData.fromMe && !isSellerPhoneMessage)
+    ) {
       log.debug("uazapi_msg_skipped", {
         fromMe: msgData.fromMe,
         wasSentByApi: msgData.wasSentByApi,
@@ -264,6 +273,26 @@ export async function POST(req: NextRequest) {
     }
 
     log.info("uazapi_processing", { userId: resolved.userId, connectionId: resolved.connectionId });
+
+    // ── fromMe do celular: persiste como resposta humana e pausa a IA ──
+    if (isSellerPhoneMessage) {
+      const capturedFromMe = resolved;
+      after(async () => {
+        try {
+          const { persistSellerPhoneMessage } = await import("@/services/webhookProcessor");
+          await persistSellerPhoneMessage({
+            userId: capturedFromMe.userId,
+            phone,
+            text: msgData!.text,
+            externalMessageId: msgData!.messageId,
+            connectionId: capturedFromMe.connectionId,
+          });
+        } catch (err) {
+          log.error("uazapi_fromme_persist_error", { err });
+        }
+      });
+      return NextResponse.json({ ok: true });
+    }
 
     // Resolve tracking code attribution
     const refCode = extractRefCode(msgData.text);

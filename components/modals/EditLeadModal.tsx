@@ -31,6 +31,7 @@ export function EditLeadModal({ lead, stages, open, onClose }: Props) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [cpf, setCpf] = useState("");
+  const [birthday, setBirthday] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [notes, setNotes] = useState("");
@@ -43,6 +44,7 @@ export function EditLeadModal({ lead, stages, open, onClose }: Props) {
       setPhone(lead.phone);
       setEmail(lead.email ?? "");
       setCpf(lead.cpf ?? "");
+      setBirthday(lead.birthday ? new Date(lead.birthday).toISOString().slice(0, 10) : "");
       setAddress(lead.address ?? "");
       setCity(lead.city ?? "");
       setNotes(lead.notes ?? "");
@@ -61,6 +63,7 @@ export function EditLeadModal({ lead, stages, open, onClose }: Props) {
       phone: phone.trim(),
       email: email.trim() || null,
       cpf: cpf.trim() || null,
+      birthday: birthday || null,
       address: address.trim() || null,
       city: city.trim() || null,
       notes: notes.trim() || null,
@@ -137,6 +140,18 @@ export function EditLeadModal({ lead, stages, open, onClose }: Props) {
                 value={cpf}
                 onChange={(e) => setCpf(e.target.value)}
                 placeholder="000.000.000-00"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-birthday" className="flex items-center gap-1.5 text-xs">
+                <FileText className="h-3.5 w-3.5 text-indigo-500" />
+                Aniversário
+              </Label>
+              <Input
+                id="edit-birthday"
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
               />
             </div>
           </div>

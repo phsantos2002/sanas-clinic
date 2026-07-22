@@ -31,6 +31,8 @@ export type AIResponseConfig = {
   followUpRespectBH: boolean;
   // Unknown types
   unknownTypeMsg: string;
+  // Aniversário (template com {{nome}}; vazio = não envia)
+  birthdayMessage: string;
   // Audio
   audioVoice: string;
   audioMinChars: number;
@@ -66,6 +68,7 @@ export async function getAIResponseConfig(): Promise<AIResponseConfig | null> {
     followUpUseAI: config.followUpUseAI,
     followUpRespectBH: config.followUpRespectBH,
     unknownTypeMsg: config.unknownTypeMsg || "Você pode me dar mais detalhes?",
+    birthdayMessage: config.birthdayMessage || "",
     audioVoice: config.audioVoice || "alloy",
     audioMinChars: config.audioMinChars,
     audioAutoReply: config.audioAutoReply,
@@ -101,6 +104,7 @@ export async function saveAIResponseConfig(data: AIResponseConfig) {
         followUpUseAI: data.followUpUseAI,
         followUpRespectBH: data.followUpRespectBH,
         unknownTypeMsg: data.unknownTypeMsg || null,
+        birthdayMessage: data.birthdayMessage?.trim() || null,
         audioVoice: data.audioVoice || "alloy",
         audioMinChars: data.audioMinChars,
         audioAutoReply: data.audioAutoReply,
@@ -128,6 +132,7 @@ export async function saveAIResponseConfig(data: AIResponseConfig) {
         followUpUseAI: data.followUpUseAI,
         followUpRespectBH: data.followUpRespectBH,
         unknownTypeMsg: data.unknownTypeMsg || null,
+        birthdayMessage: data.birthdayMessage?.trim() || null,
         audioVoice: data.audioVoice || "alloy",
         audioMinChars: data.audioMinChars,
         audioAutoReply: data.audioAutoReply,

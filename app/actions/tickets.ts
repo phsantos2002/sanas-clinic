@@ -225,6 +225,38 @@ export async function transferTicketAction(
   return { success: true };
 }
 
+/** Agenda uma mensagem 1:1 para o lead do ticket (despachada pelo cron). */
+export async function scheduleTicketMessage(
+  ticketId: string,
+  content: string,
+  scheduledAt: string // ISO
+): Promise<ActionResult> {
+  const ctx = await resolveSession();
+  if (!ctx) return { success: false, error: "Nao autenticado" };
+  if (!content.trim()) return { success: false, error: "Mensagem vazia" };
+
+  const when = new Date(scheduledAt);
+  if (isNaN(when.getTime()) || when <= new Date()) {
+    return { success: false, error: "Data deve ser no futuro" };
+  }
+
+  const ticket = await prisma.ticket.findFirst({
+    where: { id: ticketId, userId: ctx.tenantId },
+  });
+  if (!ticket) return { success: false, error: "Ticket nao encontrado" };
+
+  await prisma.scheduledMessage.create({
+    data: {
+      userId: ctx.tenantId,
+      leadId: ticket.leadId,
+      attendantId: ctx.attendantId,
+      content: content.trim(),
+      scheduledAt: when,
+    },
+  });
+  return { success: true };
+}
+
 /** Envia mensagem (WhatsApp) ou registra nota interna no ticket. */
 export async function sendTicketMessage(
   ticketId: string,
