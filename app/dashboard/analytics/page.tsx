@@ -99,6 +99,14 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-8">
+      <div className="flex justify-end">
+        <a
+          href="/dashboard/analytics/equipe"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl transition-colors"
+        >
+          Desempenho da equipe →
+        </a>
+      </div>
       <AnalyticsNarrative />
       <AnalyticsClient
         data={data}
