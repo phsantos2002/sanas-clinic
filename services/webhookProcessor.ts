@@ -365,10 +365,13 @@ export async function processIncomingMessage(params: {
 
     // ── Ticket do episódio (Atendimentos) ────────────────────
     // "bot" se a IA vai atender; senão vai direto pra fila humana.
+    // IA Sanas (Anthropic, chave do sistema): atende se houver créditos.
+    const { systemAiAvailable, getBalance } = await import("@/services/aiCredits");
+    const aiCreditsOk = systemAiAvailable() && (await getBalance(userId)) > 0;
     const aiWillHandle =
       lead.aiEnabled &&
       !(lead.humanPausedUntil && new Date() < new Date(lead.humanPausedUntil)) &&
-      !!aiConfig?.apiKey;
+      aiCreditsOk;
     const { ensureTicketForInbound } = await import("@/services/ticketService");
     const ticket = await ensureTicketForInbound({
       userId,
@@ -442,8 +445,12 @@ export async function processIncomingMessage(params: {
       return;
     }
 
-    if (!aiConfig?.apiKey) {
-      log.warn("webhook_ai_no_api_key", { userId });
+    // IA Sanas: precisa da chave do sistema E de créditos no tenant.
+    if (!aiCreditsOk) {
+      log.warn("webhook_ai_unavailable", {
+        userId,
+        systemKey: systemAiAvailable(),
+      });
       return;
     }
 
@@ -548,7 +555,7 @@ export async function processIncomingMessage(params: {
       // ── Build context with calendar ───────────────────────────
       let calendarContext: string | null = null;
       try {
-        const { getCalendarContextForAI } = await import("@/services/googleCalendar");
+        const { getCalendarContextForAI } = await import("@/services/localCalendar");
         calendarContext = await getCalendarContextForAI(userId);
       } catch {}
 
@@ -594,17 +601,41 @@ export async function processIncomingMessage(params: {
         enrichedSystemPrompt += `\n\n${calendarContext}`;
       }
 
+      // IA Sanas: Anthropic com a chave do sistema (tenant consome créditos).
       const { reply, newStageEventName, humanHandoff } = await generateAIReply(
         history,
         lead.name || pushName,
         {
-          provider: aiConfig.provider,
-          model: aiConfig.model,
-          apiKey: aiConfig.apiKey,
+          provider: "anthropic",
+          model: process.env.SANAS_AI_MODEL || "claude-haiku-4-5-20251001",
+          apiKey: process.env.ANTHROPIC_API_KEY || "",
           clinicName: aiConfig.clinicName,
           systemPrompt: enrichedSystemPrompt || null,
         }
       );
+
+      // Débito: 1 crédito por resposta. Se zerou, avisa o dono (uma vez).
+      const { debitOneCredit, getBalance: getBalanceAfter } = await import(
+        "@/services/aiCredits"
+      );
+      const debited = await debitOneCredit(userId);
+      if (debited) {
+        const remaining = await getBalanceAfter(userId);
+        if (remaining === 0) {
+          await prisma.notification
+            .create({
+              data: {
+                userId,
+                type: "workflow_error",
+                title: "Créditos da IA esgotados",
+                message:
+                  "Seus créditos da IA Sanas acabaram — a IA parou de responder. Recarregue para reativar o atendimento automático.",
+                actionUrl: "/dashboard/settings/ai",
+              },
+            })
+            .catch(() => {});
+        }
+      }
 
       // ── Personalize reply ─────────────────────────────────────
       let finalReply = reply;
@@ -618,13 +649,15 @@ export async function processIncomingMessage(params: {
       );
       if (bookingMatch) {
         try {
-          const { createCalendarEvent } = await import("@/services/googleCalendar");
+          const { createLocalAppointment } = await import("@/services/localCalendar");
           const [, serviceName, dateTime, clientName, durationStr] = bookingMatch;
-          const result = await createCalendarEvent(userId, {
+          const result = await createLocalAppointment(userId, {
             summary: `${serviceName} — ${clientName}`,
             description: `Agendamento via WhatsApp\nCliente: ${clientName}\nTelefone: ${phone}`,
             startDateTime: new Date(dateTime.replace(" ", "T") + ":00-03:00").toISOString(),
             durationMinutes: parseInt(durationStr) || 60,
+            leadId: lead.id,
+            attendantId: lead.assignedTo,
           });
           if (result.success) {
             log.info("webhook_calendar_event_created", { eventId: result.eventId });
@@ -683,7 +716,7 @@ export async function processIncomingMessage(params: {
             const { generateAudio } = await import("@/services/textToSpeech");
             const audioBuffer = await generateAudio(
               finalReply,
-              aiConfig.openaiKey || aiConfig.apiKey || ""
+              aiConfig.openaiKey || "" // TTS é OpenAI; requer chave própria do tenant
             );
             if (audioBuffer) {
               const { put } = await import("@vercel/blob");
@@ -841,7 +874,9 @@ function sleep(ms: number) {
 }
 
 async function getAIConfigForWebhook(userId: string) {
-  return prisma.aIConfig.findUnique({ where: { userId } });
+  // IA Sanas: todo tenant ganha config default lazicamente (a IA do sistema
+  // funciona out-of-the-box; os campos têm defaults no schema).
+  return prisma.aIConfig.upsert({ where: { userId }, update: {}, create: { userId } });
 }
 
 async function findLead(userId: string, phone: string) {

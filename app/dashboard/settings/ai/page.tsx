@@ -1,35 +1,43 @@
 import { getAIResponseConfig, saveAIResponseConfig } from "@/app/actions/aiResponseConfig";
 import { getAIConfig } from "@/app/actions/aiConfig";
 import { listFlows } from "@/app/actions/chatbot";
+import { getCurrentUser } from "@/app/actions/user";
+import { getBalance } from "@/services/aiCredits";
 import { AIResponseConfigForm } from "@/components/settings/AIResponseConfigForm";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
 import { ChatbotFlowsSection } from "@/components/settings/ChatbotFlowsSection";
 
+export const dynamic = "force-dynamic";
+
 export default async function AISettingsPage() {
-  const [responseConfig, aiConfig, flows] = await Promise.all([
+  const [responseConfig, aiConfig, flows, user] = await Promise.all([
     getAIResponseConfig(),
     getAIConfig(),
     listFlows(),
+    getCurrentUser(),
   ]);
+  const credits = user ? await getBalance(user.id) : 0;
 
   return (
     <div className="space-y-4 max-w-2xl">
-      {/* AI Provider (OpenAI / Gemini) */}
+      {/* IA Sanas — persona e créditos */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Provider de IA</h2>
+          <h2 className="text-base font-semibold text-slate-900">IA Sanas</h2>
           <p className="text-sm text-slate-400 mt-0.5">
-            Escolha o modelo, API key, nome da clinica e prompt personalizado
+            A inteligência que atende seus leads no WhatsApp — defina o nome do negócio e como ela
+            deve se comportar
           </p>
         </div>
         <AIConfigForm
+          credits={credits}
           config={
             aiConfig ?? {
               clinicName: "Sanas Pulse",
               systemPrompt: "",
               sendAudio: false,
-              provider: "openai",
-              model: "gpt-4o-mini",
+              provider: "anthropic",
+              model: "sanas-ai",
               capabilities: "text",
               apiKey: "",
               voiceClonePrompt: "",

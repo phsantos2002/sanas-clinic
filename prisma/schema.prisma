@@ -267,6 +267,53 @@ model Message {
 // estado de ticket ("bot") — diferencial: a fila humana só recebe o que a
 // IA não resolve.
 
+// ── Agenda nativa (B6): calendário independente do Google ─────
+// Agendamentos vivem no banco e conversam com leads/atendentes/tickets.
+model Appointment {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  startAt     DateTime
+  endAt       DateTime
+  attendantId String? // profissional responsável (coluna no grid)
+  leadId      String? // cliente vinculado
+  status      String   @default("scheduled") // "scheduled" | "done" | "cancelled"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, startAt])
+  @@index([userId, attendantId, startAt])
+}
+
+// ── Créditos da IA Sanas (Anthropic, chave do sistema) ────────
+// 1 crédito = 1 resposta da IA no WhatsApp. Saldo por tenant; débito
+// atômico condicional (nunca fica negativo). Recarga: grant manual do
+// operador (pagamento automatizado é fase futura).
+model AiWallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Int      @default(0) // créditos restantes
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  transactions AiWalletTransaction[]
+}
+
+model AiWalletTransaction {
+  id           String   @id @default(cuid())
+  walletId     String
+  wallet       AiWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  userId       String // denormalizado p/ consulta
+  type         String // "grant" | "debit" | "bonus"
+  amount       Int // sempre positivo; sinal implícito no type
+  balanceAfter Int
+  reason       String? // "resposta IA", "recarga manual", "bônus inicial"
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
 // Mensagem 1:1 agendada (não é broadcast nem workflow) — despachada pelo
 // cron /api/cron/dispatch. Precisão depende da cadência do cron (5min no
 // Vercel Pro; diária no Hobby — avisar o tenant).

@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -10,7 +11,7 @@ export type AIResponse = {
 };
 
 export type AIProviderConfig = {
-  provider: string; // "openai" | "gemini"
+  provider: string; // "anthropic" (IA Sanas) | "openai" | "gemini" (legado)
   model: string;
   apiKey: string;
   clinicName?: string;
@@ -54,6 +55,9 @@ Seus objetivos em ordem:
 }
 
 const MAX_HISTORY_MESSAGES = 20;
+// IA Sanas (Anthropic): janela ampla — a IA conhece o histórico completo da
+// conversa com o lead (Claude lida bem com contexto longo).
+const MAX_HISTORY_ANTHROPIC = 100;
 
 function parseResponse(fullText: string): AIResponse {
   const stageMatch = fullText.match(/STAGE:\s*(\w+)/);
@@ -64,6 +68,43 @@ function parseResponse(fullText: string): AIResponse {
     .replace(/\n?HANDOFF:\s*\w+\n?/gi, "")
     .trim();
   return { reply, newStageEventName, humanHandoff };
+}
+
+async function generateWithAnthropic(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  messages: ChatMessage[]
+): Promise<string> {
+  const anthropic = new Anthropic({ apiKey });
+
+  // A API exige turnos alternados começando por "user": funde mensagens
+  // consecutivas do mesmo papel (comum em rajadas de WhatsApp) e descarta
+  // assistants iniciais.
+  const merged: { role: "user" | "assistant"; content: string }[] = [];
+  for (const m of messages) {
+    const role = m.role === "assistant" ? "assistant" : "user";
+    if (merged.length === 0 && role === "assistant") continue;
+    const last = merged[merged.length - 1];
+    if (last && last.role === role) {
+      last.content += `\n${m.content}`;
+    } else {
+      merged.push({ role, content: m.content });
+    }
+  }
+  if (merged.length === 0) merged.push({ role: "user", content: "Olá" });
+
+  const response = await anthropic.messages.create({
+    model,
+    max_tokens: 500,
+    system: systemPrompt,
+    messages: merged,
+  });
+
+  return response.content
+    .map((b) => (b.type === "text" ? b.text : ""))
+    .join("")
+    .trim();
 }
 
 async function generateWithOpenAI(
@@ -120,12 +161,21 @@ export async function generateAIReply(
   const systemPrompt = buildSystemPrompt(clinicName, config.systemPrompt);
   const systemWithName = `${systemPrompt}\n\nNome do lead atual: ${leadName}`;
 
-  const recentMessages = messages.slice(-MAX_HISTORY_MESSAGES);
+  const historyCap =
+    config.provider === "anthropic" ? MAX_HISTORY_ANTHROPIC : MAX_HISTORY_MESSAGES;
+  const recentMessages = messages.slice(-historyCap);
 
   try {
     let fullText: string;
 
-    if (config.provider === "gemini") {
+    if (config.provider === "anthropic") {
+      fullText = await generateWithAnthropic(
+        config.apiKey,
+        config.model,
+        systemWithName,
+        recentMessages
+      );
+    } else if (config.provider === "gemini") {
       fullText = await generateWithGemini(
         config.apiKey,
         config.model,

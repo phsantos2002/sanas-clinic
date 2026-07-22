@@ -205,6 +205,43 @@ export async function sendEvolutionAudio(
   return { ok: r.ok, error: r.error };
 }
 
+export type EvolutionContact = {
+  id: string; // "5511999999999@s.whatsapp.net"
+  pushName?: string | null;
+  profilePicUrl?: string | null;
+};
+
+/** Lista os contatos da agenda/conversas do número conectado. */
+export async function fetchEvolutionContacts(
+  serverUrl: string,
+  apiKey: string,
+  instanceName: string
+): Promise<{ success: boolean; contacts: EvolutionContact[]; error?: string }> {
+  const r = await evolutionRequest(
+    serverUrl,
+    apiKey,
+    "POST",
+    `/chat/findContacts/${encodeURIComponent(instanceName)}`,
+    {}
+  );
+  if (!r.ok) return { success: false, contacts: [], error: r.error };
+
+  const raw = Array.isArray(r.data)
+    ? r.data
+    : ((r.data as { contacts?: unknown[] })?.contacts ?? []);
+  const contacts: EvolutionContact[] = [];
+  for (const item of raw as Record<string, unknown>[]) {
+    const id = String(item.id ?? item.remoteJid ?? "");
+    if (!id.endsWith("@s.whatsapp.net")) continue; // ignora grupos/broadcast
+    contacts.push({
+      id,
+      pushName: (item.pushName as string) ?? (item.name as string) ?? null,
+      profilePicUrl: (item.profilePicUrl as string) ?? null,
+    });
+  }
+  return { success: true, contacts };
+}
+
 /** Desloga o WhatsApp da instância (mantém a instância p/ reparear). */
 export async function logoutEvolutionInstance(
   serverUrl: string,

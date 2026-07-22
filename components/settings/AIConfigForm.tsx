@@ -4,21 +4,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { saveAIConfig, testAIConnection, type AIConfigData } from "@/app/actions/aiConfig";
+import { saveAIConfig, type AIConfigData } from "@/app/actions/aiConfig";
 import { toast } from "sonner";
-import { Copy, Check, Upload, X, Mic, Plug, Loader2 } from "lucide-react";
-import { CustomSelect } from "@/components/ui/custom-select";
-import Image from "next/image";
+import { Copy, Check, Upload, X, Mic, Sparkles, Coins } from "lucide-react";
 
 type Props = {
   config: AIConfigData;
+  credits: number;
 };
-
-const OPENAI_MODELS = [
-  { id: "gpt-4o-mini", label: "GPT-4o Mini", capabilities: "text" },
-  { id: "gpt-4o", label: "GPT-4o", capabilities: "multimodal" },
-  { id: "gpt-4-turbo", label: "GPT-4 Turbo", capabilities: "multimodal" },
-];
 
 const VOICE_CLONE_PROMPT = `Olá! Vou gravar um áudio de referência para que a IA possa clonar minha voz e responder aos clientes com naturalidade.
 
@@ -34,61 +27,23 @@ Agora vou repetir com variações de tom e velocidade para capturar melhor as nu
 
 "Perfeito! Deixa eu verificar aqui na agenda... Temos disponibilidade na terça-feira às 14h ou na quinta às 10h. Qual fica melhor para você?"`;
 
-export function AIConfigForm({ config }: Props) {
+export function AIConfigForm({ config, credits }: Props) {
   const [clinicName, setClinicName] = useState(config.clinicName);
   const [systemPrompt, setSystemPrompt] = useState(config.systemPrompt);
   const [sendAudio, setSendAudio] = useState(config.sendAudio);
-  // Provider is always "openai" after simplification
-  const provider = "openai";
-  const initialModel = OPENAI_MODELS.find((m) => m.id === config.model)
-    ? config.model
-    : OPENAI_MODELS[0].id;
-  const [model, setModel] = useState(initialModel);
-  const [capabilities, setCapabilities] = useState(
-    OPENAI_MODELS.find((m) => m.id === initialModel)?.capabilities ?? "text"
-  );
-  const [apiKey, setApiKey] = useState(config.apiKey);
   const [voiceClonePrompt, setVoiceClonePrompt] = useState(
     config.voiceClonePrompt || VOICE_CLONE_PROMPT
   );
   const [openaiKey, setOpenaiKey] = useState(config.openaiKey);
   const [loading, setLoading] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<
-    | { ok: true; model: string; latencyMs: number; sample?: string }
-    | { ok: false; error: string }
-    | null
-  >(null);
   const [copied, setCopied] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-
-  const availableModels = OPENAI_MODELS;
-
-  function handleModelChange(modelId: string) {
-    setModel(modelId);
-    const found = availableModels.find((m) => m.id === modelId);
-    if (found) setCapabilities(found.capabilities);
-  }
 
   async function handleCopyPrompt() {
     await navigator.clipboard.writeText(voiceClonePrompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }
-
-  async function handleTestConnection() {
-    setTesting(true);
-    setTestResult(null);
-    const result = await testAIConnection();
-    setTesting(false);
-    if (result.success && result.data) {
-      setTestResult({ ok: true, ...result.data });
-      toast.success(`Conectado — ${result.data.latencyMs}ms`);
-    } else {
-      setTestResult({ ok: false, error: result.success ? "Sem dados" : result.error });
-      toast.error(result.success ? "Sem dados" : result.error);
-    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -98,10 +53,10 @@ export function AIConfigForm({ config }: Props) {
       clinicName,
       systemPrompt,
       sendAudio,
-      provider,
-      model,
-      capabilities,
-      apiKey,
+      provider: "anthropic",
+      model: "sanas-ai",
+      capabilities: "text",
+      apiKey: "",
       voiceClonePrompt,
       openaiKey,
       anthropicKey: "",
@@ -116,96 +71,37 @@ export function AIConfigForm({ config }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Provider — fixed on OpenAI (ChatGPT) */}
-      <div className="flex items-center gap-2 py-3 px-4 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700">
-        <Image src="/icons/openai.svg" alt="OpenAI" width={20} height={20} />
-        <div className="text-sm">
-          <p className="font-medium">Provedor: ChatGPT (OpenAI)</p>
-          <p className="text-xs text-indigo-600/70">
-            Configure abaixo a chave, o modelo e o comportamento.
-          </p>
+      {/* IA Sanas — integrada ao sistema, cobrada por créditos */}
+      <div className="rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 to-indigo-50 p-4 space-y-3">
+        <div className="flex items-center gap-2.5">
+          <div className="h-9 w-9 rounded-xl bg-violet-600 flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-slate-900">IA Sanas</p>
+            <p className="text-xs text-slate-500">
+              Inteligência integrada ao sistema — nada para instalar ou configurar. Cada resposta
+              da IA no WhatsApp consome 1 crédito.
+            </p>
+          </div>
         </div>
-      </div>
-
-      {/* Model selection */}
-      <div className="space-y-1.5">
-        <Label>Modelo</Label>
-        <CustomSelect
-          options={availableModels.map((m) => ({
-            value: m.id,
-            label: `${m.label} — ${m.capabilities === "multimodal" ? "Texto + Áudio + Imagem" : "Somente Texto"}`,
-          }))}
-          value={model}
-          onChange={handleModelChange}
-        />
-        <p className="text-xs text-slate-400">
-          {capabilities === "multimodal"
-            ? "Este modelo aceita texto, áudio e imagens."
-            : "Este modelo aceita apenas texto."}
-        </p>
-      </div>
-
-      {/* API Key */}
-      <div className="space-y-1.5">
-        <Label htmlFor="apiKey">Chave de API OpenAI</Label>
-        <Input
-          id="apiKey"
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="sk-..."
-        />
-        <p className="text-xs text-slate-400">
-          Obtenha em platform.openai.com/api-keys. Você é responsável pelo uso e custos da sua
-          chave.
-        </p>
-
-        {/* Test connection */}
-        <div className="flex items-start gap-3 pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleTestConnection}
-            disabled={testing}
-            className="rounded-xl gap-2"
+        <div className="flex items-center justify-between bg-white rounded-xl border border-violet-100 px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <Coins className="h-4 w-4 text-amber-500" />
+            <span className="text-sm text-slate-600">Créditos disponíveis</span>
+          </div>
+          <span
+            className={`text-lg font-bold ${credits > 0 ? "text-slate-900" : "text-red-500"}`}
           >
-            {testing ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Plug className="h-3.5 w-3.5" />
-            )}
-            {testing ? "Testando..." : "Testar conexão"}
-          </Button>
-          {testResult && (
-            <div
-              className={`flex-1 text-xs rounded-xl px-3 py-2 ${
-                testResult.ok
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : "bg-rose-50 text-rose-700 border border-rose-200"
-              }`}
-            >
-              {testResult.ok ? (
-                <>
-                  <div className="font-semibold">
-                    ✓ {testResult.model} respondeu em {testResult.latencyMs}ms
-                  </div>
-                  {testResult.sample && (
-                    <div className="text-slate-500 mt-0.5">
-                      Resposta: &quot;{testResult.sample}&quot;
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div>✗ {testResult.error}</div>
-              )}
-            </div>
-          )}
+            {credits}
+          </span>
         </div>
-        <p className="text-[11px] text-slate-400">
-          Salve as configurações antes de testar. O teste faz uma chamada curta ao provedor com a
-          chave salva.
-        </p>
+        {credits === 0 && (
+          <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
+            Sem créditos, a IA para de responder e os leads vão direto para a fila do time. Fale
+            com o suporte Sanas para recarregar.
+          </p>
+        )}
       </div>
 
       {/* Business name */}
