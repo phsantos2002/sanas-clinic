@@ -249,6 +249,9 @@ model Message {
   ticket       Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
   attendantId  String? // atendente humano que enviou (null = IA/lead)
   connectionId String?
+  // Mídia (B5): anexo de imagem/vídeo/documento/áudio
+  mediaUrl     String?
+  mediaType    String? // "image" | "video" | "document" | "audio"
   createdAt    DateTime @default(now())
 
   // TODO: re-add @@unique([leadId, externalId]) depois de limpar

@@ -125,6 +125,8 @@ export type TicketConversation = {
     role: string;
     content: string;
     attendantId: string | null;
+    mediaUrl: string | null;
+    mediaType: string | null;
     createdAt: Date;
   }[];
 };
@@ -161,7 +163,15 @@ export async function getTicketConversation(
     where: { leadId: ticket.leadId },
     orderBy: { createdAt: "asc" },
     take: 200,
-    select: { id: true, role: true, content: true, attendantId: true, createdAt: true },
+    select: {
+      id: true,
+      role: true,
+      content: true,
+      attendantId: true,
+      mediaUrl: true,
+      mediaType: true,
+      createdAt: true,
+    },
   });
 
   return {
@@ -175,6 +185,78 @@ export async function getTicketConversation(
     lead: ticket.lead,
     messages,
   };
+}
+
+/**
+ * Cria (ou reabre) um atendimento manualmente — vendedor inicia a conversa
+ * com um contato. Cria o lead se não existir e abre o ticket já atribuído.
+ */
+export async function createManualTicket(input: {
+  phone: string;
+  name?: string;
+  connectionId?: string | null;
+}): Promise<ActionResult<{ ticketId: string }>> {
+  const ctx = await resolveSession();
+  if (!ctx) return { success: false, error: "Nao autenticado" };
+
+  const { normalizePhone } = await import("@/lib/validations");
+  const phone = normalizePhone(input.phone);
+  if (!phone || phone.length < 10) return { success: false, error: "Telefone invalido" };
+
+  // Acha ou cria o lead do tenant
+  let lead = await prisma.lead.findFirst({
+    where: { userId: ctx.tenantId, phone },
+  });
+  if (!lead) {
+    // Etapa inicial do funil (menor order) para o novo lead
+    const firstStage = await prisma.stage.findFirst({
+      where: { userId: ctx.tenantId },
+      orderBy: { order: "asc" },
+      select: { id: true },
+    });
+    lead = await prisma.lead.create({
+      data: {
+        userId: ctx.tenantId,
+        phone,
+        name: input.name?.trim() || phone,
+        source: "manual",
+        stageId: firstStage?.id ?? null,
+        assignedTo: ctx.attendantId,
+        connectionId: input.connectionId ?? null,
+      },
+    });
+  } else if (ctx.attendantId && !lead.assignedTo) {
+    await prisma.lead.update({ where: { id: lead.id }, data: { assignedTo: ctx.attendantId } });
+  }
+
+  // Reaproveita ticket ativo, senão cria um aberto já atribuído
+  const { getActiveTicket } = await import("@/services/ticketService");
+  const active = await getActiveTicket(lead.id);
+  if (active) {
+    // Traz pra atendimento humano se estava com a IA
+    if (active.status !== "open") {
+      await prisma.ticket.update({
+        where: { id: active.id },
+        data: { status: "open", attendantId: ctx.attendantId, acceptedAt: new Date() },
+      });
+    }
+    return { success: true, data: { ticketId: active.id } };
+  }
+
+  const ticket = await prisma.ticket.create({
+    data: {
+      userId: ctx.tenantId,
+      leadId: lead.id,
+      connectionId: input.connectionId ?? lead.connectionId ?? null,
+      status: "open",
+      attendantId: ctx.attendantId,
+      acceptedAt: new Date(),
+      openedAt: new Date(),
+    },
+  });
+
+  revalidatePath("/dashboard/atendimentos");
+  return { success: true, data: { ticketId: ticket.id } };
 }
 
 export async function acceptTicketAction(ticketId: string): Promise<ActionResult> {
@@ -223,6 +305,72 @@ export async function transferTicketAction(
 
   revalidatePath("/dashboard/atendimentos");
   return { success: true };
+}
+
+/** Resumo IA do atendimento: TL;DR + pontos-chave + próximo passo (Claude). */
+export async function summarizeTicket(
+  ticketId: string
+): Promise<ActionResult<{ summary: string }>> {
+  const ctx = await resolveSession();
+  if (!ctx) return { success: false, error: "Nao autenticado" };
+
+  const ticket = await prisma.ticket.findFirst({
+    where: { id: ticketId, userId: ctx.tenantId },
+    include: { lead: { select: { name: true } } },
+  });
+  if (!ticket) return { success: false, error: "Ticket nao encontrado" };
+
+  const config = await prisma.aIConfig.findUnique({
+    where: { userId: ctx.tenantId },
+    select: { anthropicKey: true },
+  });
+  const apiKey = config?.anthropicKey || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return {
+      success: false,
+      error: "Configure a chave Anthropic em Config → IA Chat para usar o resumo IA.",
+    };
+  }
+
+  const messages = await prisma.message.findMany({
+    where: { leadId: ticket.leadId, role: { in: ["user", "assistant"] } },
+    orderBy: { createdAt: "asc" },
+    take: 100,
+    select: { role: true, content: true },
+  });
+  if (messages.length === 0) return { success: false, error: "Sem mensagens para resumir" };
+
+  const transcript = messages
+    .map((m) => `${m.role === "user" ? "Cliente" : "Atendimento"}: ${m.content}`)
+    .join("\n")
+    .slice(0, 12000);
+
+  try {
+    const Anthropic = (await import("@anthropic-ai/sdk")).default;
+    const anthropic = new Anthropic({ apiKey });
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 600,
+      system:
+        "Voce resume atendimentos de WhatsApp em portugues brasileiro para um vendedor que vai assumir a conversa. Seja objetivo. Formato:\n**Resumo:** (1-2 frases)\n**Interesse/necessidade:** \n**Objeções/pendências:** \n**Próximo passo sugerido:** ",
+      messages: [
+        {
+          role: "user",
+          content: `Resuma este atendimento com ${ticket.lead.name}:\n\n${transcript}`,
+        },
+      ],
+    });
+    const summary = response.content
+      .map((b) => (b.type === "text" ? b.text : ""))
+      .join("\n")
+      .trim();
+    return { success: true, data: { summary: summary || "Sem resumo disponivel." } };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message.slice(0, 200) : "Falha ao gerar resumo",
+    };
+  }
 }
 
 /** Agenda uma mensagem 1:1 para o lead do ticket (despachada pelo cron). */

@@ -159,6 +159,52 @@ export async function sendEvolutionMessage(
   return { ok: r.ok, error: r.error };
 }
 
+/** Envia mídia (imagem/vídeo/documento) a partir de uma URL pública. */
+export async function sendEvolutionMedia(
+  serverUrl: string,
+  apiKey: string,
+  instanceName: string,
+  to: string,
+  media: { mediatype: "image" | "video" | "document"; url: string; caption?: string; fileName?: string }
+): Promise<{ ok: boolean; error?: string }> {
+  const number = to.replace(/\D/g, "");
+  const r = await evolutionRequest(
+    serverUrl,
+    apiKey,
+    "POST",
+    `/message/sendMedia/${encodeURIComponent(instanceName)}`,
+    {
+      number,
+      mediatype: media.mediatype,
+      media: media.url,
+      caption: media.caption ?? "",
+      fileName: media.fileName ?? "arquivo",
+    }
+  );
+  if (!r.ok) log.error("evolution_send_media_failed", { instanceName, error: r.error });
+  return { ok: r.ok, error: r.error };
+}
+
+/** Envia áudio como nota de voz (PTT) a partir de uma URL pública. */
+export async function sendEvolutionAudio(
+  serverUrl: string,
+  apiKey: string,
+  instanceName: string,
+  to: string,
+  url: string
+): Promise<{ ok: boolean; error?: string }> {
+  const number = to.replace(/\D/g, "");
+  const r = await evolutionRequest(
+    serverUrl,
+    apiKey,
+    "POST",
+    `/message/sendWhatsAppAudio/${encodeURIComponent(instanceName)}`,
+    { number, audio: url }
+  );
+  if (!r.ok) log.error("evolution_send_audio_failed", { instanceName, error: r.error });
+  return { ok: r.ok, error: r.error };
+}
+
 /** Desloga o WhatsApp da instância (mantém a instância p/ reparear). */
 export async function logoutEvolutionInstance(
   serverUrl: string,

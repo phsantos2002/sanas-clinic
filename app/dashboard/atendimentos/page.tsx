@@ -1,15 +1,17 @@
 import { listTickets, getTicketCounts } from "@/app/actions/tickets";
 import { getAttendants, getMessageTemplates } from "@/app/actions/whatsappHub";
+import { getConnections } from "@/app/actions/connections";
 import { AtendimentosClient } from "@/components/atendimentos/AtendimentosClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AtendimentosPage() {
-  const [initialTickets, initialCounts, attendants, templates] = await Promise.all([
+  const [initialTickets, initialCounts, attendants, templates, connections] = await Promise.all([
     listTickets("pending"),
     getTicketCounts(),
     getAttendants(),
     getMessageTemplates(),
+    getConnections(),
   ]);
 
   return (
@@ -25,6 +27,7 @@ export default async function AtendimentosPage() {
         initialCounts={initialCounts}
         attendants={attendants}
         templates={templates}
+        connections={connections.filter((c) => c.isActive)}
       />
     </div>
   );

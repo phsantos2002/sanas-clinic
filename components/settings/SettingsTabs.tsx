@@ -3,7 +3,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Kanban, Brain, User, Users, ShieldCheck, Briefcase, Smartphone } from "lucide-react";
+import {
+  Kanban,
+  Brain,
+  User,
+  Users,
+  Users2,
+  ShieldCheck,
+  Briefcase,
+  Smartphone,
+} from "lucide-react";
 
 type Tab = {
   href: string;
@@ -20,6 +29,7 @@ const tabs: Tab[] = [
   { href: "/dashboard/settings/ai", label: "IA Chat", icon: Brain },
   { href: "/dashboard/settings/pipeline", label: "Pipeline", icon: Kanban },
   { href: "/dashboard/settings/team", label: "Usuarios", icon: Users },
+  { href: "/dashboard/settings/queues", label: "Setores", icon: Users2 },
   { href: "/dashboard/settings/system", label: "Sistema", icon: ShieldCheck },
   { href: "/dashboard/settings/account", label: "Conta", icon: User },
 ];

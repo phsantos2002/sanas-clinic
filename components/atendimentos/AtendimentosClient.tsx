@@ -5,14 +5,20 @@ import {
   Bot,
   CheckCheck,
   Clock,
+  FileText,
   Inbox,
   Loader2,
   MessageCircle,
+  Mic,
+  Paperclip,
   Send,
+  Sparkles,
+  Square,
   StickyNote,
   User,
   UserCheck,
   ArrowRightLeft,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -24,18 +30,22 @@ import {
   transferTicketAction,
   sendTicketMessage,
   scheduleTicketMessage,
+  summarizeTicket,
+  createManualTicket,
   type TicketListItem,
   type TicketStatus,
   type TicketConversation,
 } from "@/app/actions/tickets";
 import { trackTemplateUsage } from "@/app/actions/whatsappHub";
 import type { AttendantData, TemplateData } from "@/app/actions/whatsappHub";
+import type { ConnectionData } from "@/app/actions/connections";
 
 type Props = {
   initialTickets: TicketListItem[];
   initialCounts: Record<TicketStatus, number>;
   attendants: AttendantData[];
   templates: TemplateData[];
+  connections: ConnectionData[];
 };
 
 const TABS: { key: TicketStatus; label: string; icon: typeof Inbox }[] = [
@@ -56,7 +66,13 @@ function timeAgo(date: Date | string | null): string {
   return `${Math.floor(h / 24)}d`;
 }
 
-export function AtendimentosClient({ initialTickets, initialCounts, attendants, templates }: Props) {
+export function AtendimentosClient({
+  initialTickets,
+  initialCounts,
+  attendants,
+  templates,
+  connections,
+}: Props) {
   const [tab, setTab] = useState<TicketStatus>("pending");
   const [tickets, setTickets] = useState<TicketListItem[]>(initialTickets);
   const [counts, setCounts] = useState(initialCounts);
@@ -69,7 +85,19 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants, 
   const [showTransfer, setShowTransfer] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [newPhone, setNewPhone] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newConnId, setNewConnId] = useState(connections[0]?.id ?? "");
+  const [creatingTicket, setCreatingTicket] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   // Quick replies: "/" no início do texto abre o picker filtrado pelo atalho
   const slashQuery = composer.startsWith("/") ? composer.slice(1).toLowerCase() : null;
@@ -119,6 +147,7 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants, 
 
   useEffect(() => {
     if (!selectedId) return;
+    setSummary(null); // resumo é por ticket
     refreshConversation(selectedId);
     const interval = setInterval(() => refreshConversation(selectedId), 5000);
     return () => clearInterval(interval);
@@ -174,6 +203,91 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants, 
     refreshConversation(selectedId);
   };
 
+  const uploadMedia = async (file: File, caption: string) => {
+    if (!selectedId) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("ticketId", selectedId);
+      fd.append("file", file);
+      if (caption) fd.append("caption", caption);
+      const res = await fetch("/api/whatsapp/ticket-media", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Falha ao enviar mídia");
+      } else {
+        setComposer("");
+        refreshConversation(selectedId);
+      }
+    } catch {
+      toast.error("Falha ao enviar mídia");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite reenviar o mesmo arquivo
+    if (file) uploadMedia(file, composer.trim());
+  };
+
+  const handleToggleRecording = async () => {
+    if (recording) {
+      recorderRef.current?.stop();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = (ev) => ev.data.size > 0 && chunksRef.current.push(ev.data);
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const file = new File([blob], `audio-${Date.now()}.webm`, { type: "audio/webm" });
+        uploadMedia(file, "");
+        setRecording(false);
+      };
+      recorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+    } catch {
+      toast.error("Sem acesso ao microfone");
+    }
+  };
+
+  const handleCreateTicket = async () => {
+    if (!newPhone.trim() || creatingTicket) return;
+    setCreatingTicket(true);
+    const result = await createManualTicket({
+      phone: newPhone,
+      name: newName.trim() || undefined,
+      connectionId: newConnId || undefined,
+    });
+    setCreatingTicket(false);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setShowNew(false);
+    setNewPhone("");
+    setNewName("");
+    toast.success("Atendimento criado");
+    setTab("open");
+    setSelectedId(result.data?.ticketId ?? null);
+  };
+
+  const handleSummarize = async () => {
+    if (!selectedId) return;
+    setSummarizing(true);
+    setSummary(null);
+    const result = await summarizeTicket(selectedId);
+    setSummarizing(false);
+    if (!result.success) toast.error(result.error);
+    else setSummary(result.data?.summary ?? null);
+  };
+
   const handleSchedule = async () => {
     if (!selectedId || !composer.trim() || !scheduleAt) return;
     const result = await scheduleTicketMessage(
@@ -195,6 +309,15 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants, 
     <div className="flex gap-3 h-[calc(100vh-180px)] min-h-[480px]">
       {/* ── Lista ── */}
       <div className="w-80 shrink-0 bg-white border border-slate-100 rounded-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-slate-50">
+          <span className="text-xs font-semibold text-slate-500">Atendimentos</span>
+          <button
+            onClick={() => setShowNew(true)}
+            className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800"
+          >
+            <Plus className="h-3.5 w-3.5" /> Novo
+          </button>
+        </div>
         <div className="flex items-center gap-0.5 p-1.5 border-b border-slate-50">
           {TABS.map((t) => (
             <button
@@ -311,6 +434,19 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants, 
                   {conversation.ticket.queueName ? ` · ${conversation.ticket.queueName}` : ""}
                 </p>
               </div>
+              <button
+                onClick={handleSummarize}
+                disabled={summarizing}
+                className="flex items-center gap-1.5 border border-violet-200 text-violet-600 text-xs font-medium px-3 py-1.5 rounded-xl hover:bg-violet-50 disabled:opacity-50"
+                title="Resumo IA do atendimento"
+              >
+                {summarizing ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden sm:inline">Resumo IA</span>
+              </button>
               {conversation.ticket.status === "pending" && (
                 <button
                   onClick={() => handleAccept(conversation.ticket.id)}
@@ -354,6 +490,22 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants, 
               )}
             </div>
 
+            {/* Resumo IA */}
+            {summary && (
+              <div className="mx-4 mt-3 bg-violet-50 border border-violet-200 rounded-xl p-3 relative">
+                <p className="text-[10px] font-semibold text-violet-700 flex items-center gap-1 mb-1">
+                  <Sparkles className="h-3 w-3" /> Resumo IA
+                </p>
+                <div className="text-xs text-slate-700 whitespace-pre-wrap">{summary}</div>
+                <button
+                  onClick={() => setSummary(null)}
+                  className="absolute top-2 right-2 text-violet-400 hover:text-violet-600 text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {/* Mensagens */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-slate-50/40">
               {conversation.messages.map((m) => {
@@ -375,7 +527,31 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants, 
                           <StickyNote className="h-3 w-3" /> Nota interna
                         </p>
                       )}
-                      <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                      {m.mediaUrl && m.mediaType === "image" && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={m.mediaUrl}
+                          alt="imagem"
+                          className="rounded-lg max-w-full mb-1 max-h-64 object-cover"
+                        />
+                      )}
+                      {m.mediaUrl && m.mediaType === "video" && (
+                        <video src={m.mediaUrl} controls className="rounded-lg max-w-full mb-1 max-h-64" />
+                      )}
+                      {m.mediaUrl && m.mediaType === "audio" && (
+                        <audio src={m.mediaUrl} controls className="mb-1 max-w-full" />
+                      )}
+                      {m.mediaUrl && m.mediaType === "document" && (
+                        <a
+                          href={m.mediaUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 text-xs underline mb-1"
+                        >
+                          <FileText className="h-3.5 w-3.5" /> Abrir documento
+                        </a>
+                      )}
+                      {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
                       <p
                         className={`text-[9px] mt-0.5 ${
                           isNoteMsg
@@ -446,6 +622,27 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants, 
                 )}
               </div>
               <div className="flex items-end gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+                  className="hidden"
+                  onChange={handleFilePick}
+                />
+                {!isNote && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading || recording}
+                    className="p-2.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-50 disabled:opacity-40"
+                    title="Anexar arquivo"
+                  >
+                    {uploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Paperclip className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
                 <textarea
                   value={composer}
                   onChange={(e) => setComposer(e.target.value)}
@@ -455,32 +652,107 @@ export function AtendimentosClient({ initialTickets, initialCounts, attendants, 
                       handleSend();
                     }
                   }}
-                  placeholder={isNote ? "Escreva uma nota para a equipe..." : "Digite sua mensagem..."}
+                  placeholder={
+                    recording
+                      ? "Gravando áudio..."
+                      : isNote
+                        ? "Escreva uma nota para a equipe..."
+                        : "Digite sua mensagem..."
+                  }
                   rows={2}
+                  disabled={recording}
                   className={`flex-1 border rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 ${
                     isNote
                       ? "border-amber-200 bg-amber-50/50 focus:ring-amber-400"
                       : "border-slate-200 focus:ring-indigo-500"
                   }`}
                 />
-                <button
-                  onClick={handleSend}
-                  disabled={sending || !composer.trim()}
-                  className={`p-2.5 rounded-xl text-white disabled:opacity-40 ${
-                    isNote ? "bg-amber-500 hover:bg-amber-600" : "bg-indigo-600 hover:bg-indigo-700"
-                  }`}
-                >
-                  {sending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </button>
+                {!isNote && !composer.trim() && (
+                  <button
+                    onClick={handleToggleRecording}
+                    disabled={uploading}
+                    className={`p-2.5 rounded-xl disabled:opacity-40 ${
+                      recording
+                        ? "bg-red-600 hover:bg-red-700 text-white animate-pulse"
+                        : "text-slate-400 hover:text-indigo-600 hover:bg-slate-50"
+                    }`}
+                    title={recording ? "Parar e enviar" : "Gravar áudio"}
+                  >
+                    {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </button>
+                )}
+                {(composer.trim() || isNote) && (
+                  <button
+                    onClick={handleSend}
+                    disabled={sending || !composer.trim()}
+                    className={`p-2.5 rounded-xl text-white disabled:opacity-40 ${
+                      isNote ? "bg-amber-500 hover:bg-amber-600" : "bg-indigo-600 hover:bg-indigo-700"
+                    }`}
+                  >
+                    {sending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </>
         )}
       </div>
+
+      {/* Modal Novo Ticket */}
+      {showNew && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-3">
+            <h3 className="font-semibold text-slate-900">Novo atendimento</h3>
+            <input
+              type="tel"
+              value={newPhone}
+              onChange={(e) => setNewPhone(e.target.value)}
+              placeholder="WhatsApp com DDD (ex.: 11999998888)"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Nome do contato (opcional)"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {connections.length > 1 && (
+              <select
+                value={newConnId}
+                onChange={(e) => setNewConnId(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {connections.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                    {c.attendantName ? ` — ${c.attendantName}` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setShowNew(false)}
+                className="flex-1 border border-slate-200 text-slate-600 text-sm font-medium py-2 rounded-xl hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateTicket}
+                disabled={creatingTicket || !newPhone.trim()}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-xl"
+              >
+                {creatingTicket ? "Criando..." : "Abrir atendimento"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de agendamento */}
       {showSchedule && (
