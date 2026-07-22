@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Briefcase,
   Smartphone,
+  Workflow,
 } from "lucide-react";
 
 type Tab = {
@@ -36,6 +37,7 @@ const groups: { title: string; tabs: Tab[] }[] = [
     title: "Atendimento",
     tabs: [
       { href: "/dashboard/settings/ai", label: "IA Sanas", icon: Sparkles },
+      { href: "/dashboard/settings/flows", label: "Fluxo", icon: Workflow },
       { href: "/dashboard/settings/pipeline", label: "Funil", icon: Kanban },
       { href: "/dashboard/settings/queues", label: "Setores", icon: Users2 },
       { href: "/dashboard/settings/team", label: "Equipe", icon: Users },

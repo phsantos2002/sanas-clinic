@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Kanban, BarChart3, MessageCircle, Settings, Calendar } from "lucide-react";
+import { Kanban, BarChart3, MessageCircle, Settings, Calendar, BookUser } from "lucide-react";
 import { MetaIcon } from "@/components/icons/SourceIcons";
 
 // Bloco principal: Chat abre primeiro (rota inicial do sistema).
 const navItems = [
   { href: "/dashboard/chat", label: "Chat", icon: MessageCircle },
   { href: "/dashboard/pipeline", label: "CRM", icon: Kanban },
+  { href: "/dashboard/contatos", label: "Contatos", icon: BookUser },
   { href: "/dashboard/calendar", label: "Calendário", icon: Calendar },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Config", icon: Settings },

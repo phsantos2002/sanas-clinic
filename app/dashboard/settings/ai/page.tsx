@@ -1,19 +1,16 @@
 import { getAIResponseConfig, saveAIResponseConfig } from "@/app/actions/aiResponseConfig";
 import { getAIConfig } from "@/app/actions/aiConfig";
-import { listFlows } from "@/app/actions/chatbot";
 import { getCurrentUser } from "@/app/actions/user";
 import { getBalance } from "@/services/aiCredits";
 import { AIResponseConfigForm } from "@/components/settings/AIResponseConfigForm";
 import { AIConfigForm } from "@/components/settings/AIConfigForm";
-import { ChatbotFlowsSection } from "@/components/settings/ChatbotFlowsSection";
 
 export const dynamic = "force-dynamic";
 
 export default async function AISettingsPage() {
-  const [responseConfig, aiConfig, flows, user] = await Promise.all([
+  const [responseConfig, aiConfig, user] = await Promise.all([
     getAIResponseConfig(),
     getAIConfig(),
-    listFlows(),
     getCurrentUser(),
   ]);
   const credits = user ? await getBalance(user.id) : 0;
@@ -58,9 +55,6 @@ export default async function AISettingsPage() {
         </div>
         <AIResponseConfigForm initial={responseConfig} onSave={saveAIResponseConfig} />
       </div>
-
-      {/* Chatbot flows */}
-      <ChatbotFlowsSection flows={flows} />
     </div>
   );
 }
