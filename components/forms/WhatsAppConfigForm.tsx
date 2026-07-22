@@ -30,13 +30,15 @@ type WhatsAppConfig = {
 
 type Props = {
   config: WhatsAppConfig;
+  /** Modo apenas-oficial (embutido na aba Conexão — o não-oficial usa ConnectionsClient). */
+  officialOnly?: boolean;
 };
 
-export function WhatsAppConfigForm({ config }: Props) {
+export function WhatsAppConfigForm({ config, officialOnly = false }: Props) {
   // Na UI, "uazapi" representa o tab não-oficial (QR) — que no backend pode ser
   // provider "evolution" (Baileys, atual) ou "uazapi" (legado).
   const [provider, setProvider] = useState<"official" | "uazapi">(
-    config?.provider === "official" || !config?.provider ? "official" : "uazapi"
+    officialOnly || config?.provider === "official" || !config?.provider ? "official" : "uazapi"
   );
 
   // Official fields
@@ -152,7 +154,8 @@ export function WhatsAppConfigForm({ config }: Props) {
 
   return (
     <div className="space-y-5 max-w-md">
-      {/* Provider Toggle */}
+      {/* Provider Toggle — oculto quando embutido como "apenas oficial" */}
+      {!officialOnly && (
       <div className="space-y-2">
         <Label>Tipo de conexão</Label>
         <div className="flex gap-2">
@@ -212,6 +215,7 @@ export function WhatsAppConfigForm({ config }: Props) {
           </div>
         )}
       </div>
+      )}
 
       {/* ─── Official API Form ─── */}
       {provider === "official" && (

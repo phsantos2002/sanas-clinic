@@ -3,8 +3,7 @@ import Image from "next/image";
 import { LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/actions/auth";
-import { SystemStatus } from "@/components/dashboard/WhatsAppStatus";
-import { NavItems } from "@/components/dashboard/NavItems";
+import { NavItems, AdsButton } from "@/components/dashboard/NavItems";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 import { SearchButton } from "@/components/dashboard/SearchButton";
 
@@ -12,27 +11,26 @@ export function Header() {
   return (
     <header className="border-b border-slate-100 bg-white/90 backdrop-blur-md sticky top-0 z-30">
       {/* Desktop header */}
-      <div className="hidden md:flex max-w-screen-2xl mx-auto px-6 h-14 items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Image
-            src="/logo.png"
-            alt="Sanas Pulse"
-            width={32}
-            height={32}
-            className="rounded-lg object-contain"
-          />
-          <div className="h-6 w-px bg-slate-200" />
-          <SystemStatus />
-        </div>
+      <div className="hidden md:flex max-w-screen-2xl mx-auto px-6 h-14 items-center justify-between gap-4">
+        <Image
+          src="/logo.png"
+          alt="Sanas Pulse"
+          width={32}
+          height={32}
+          className="rounded-lg object-contain shrink-0"
+        />
         <NavItems />
-        <div className="flex items-center gap-1">
+        {/* Meta Ads: logo standalone, centralizado entre a nav e as ações */}
+        <AdsButton />
+        <div className="flex items-center gap-1 shrink-0">
           <SearchButton />
           <NotificationCenter />
-          <Link href="/dashboard/settings/account">
+          <Link href="/dashboard/settings/business">
             <Button
               variant="ghost"
               size="sm"
               className="text-slate-400 hover:text-slate-600 gap-1.5 rounded-lg"
+              title="Configurações"
             >
               <Settings className="h-4 w-4" />
             </Button>
@@ -43,6 +41,7 @@ export function Header() {
               size="sm"
               type="submit"
               className="text-slate-400 hover:text-red-500 gap-1.5 rounded-lg"
+              title="Sair"
             >
               <LogOut className="h-4 w-4" />
             </Button>
@@ -53,19 +52,16 @@ export function Header() {
       {/* Mobile header */}
       <div className="md:hidden">
         <div className="flex items-center justify-between px-4 h-12">
-          <div className="flex items-center gap-2.5">
-            <Image
-              src="/logo.png"
-              alt="Sanas Pulse"
-              width={28}
-              height={28}
-              className="rounded-lg object-contain"
-            />
-            <SystemStatus />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="Sanas Pulse"
+            width={28}
+            height={28}
+            className="rounded-lg object-contain"
+          />
           <div className="flex items-center gap-0.5">
             <NotificationCenter />
-            <Link href="/dashboard/settings/account">
+            <Link href="/dashboard/settings/business">
               <Button
                 variant="ghost"
                 size="sm"

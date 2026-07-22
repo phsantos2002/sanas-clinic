@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Users, Trash2, UserCircle, Filter } from "lucide-react";
+import { Plus, Users, Trash2, UserCircle, Filter, Link2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { createAttendant, deleteAttendant, type AttendantData } from "@/app/actions/whatsappHub";
 import { updateAttendantRole } from "@/app/actions/prospeccao";
 import { setAttendantFunnelAccess } from "@/app/actions/attendantAssignments";
+import { getAttendantWork, setAttendantWork } from "@/app/actions/attendantWork";
 import { ATTENDANT_ROLES, toCanonicalRole, type AttendantRole } from "@/lib/prospeccao";
 import type { FunnelData } from "@/app/actions/funnels";
+import type { ConnectionData } from "@/app/actions/connections";
+import type { QueueData } from "@/app/actions/queues";
 import type { Stage } from "@/types";
 
 const ROLE_COLORS: Record<string, string> = {
@@ -30,11 +33,54 @@ type Props = {
   attendants: TeamAttendant[];
   funnels?: FunnelData[];
   stages?: Stage[];
+  connections?: ConnectionData[];
+  queues?: QueueData[];
 };
 
-export function TeamClient({ attendants, funnels = [], stages = [] }: Props) {
+export function TeamClient({
+  attendants,
+  funnels = [],
+  stages = [],
+  connections = [],
+  queues = [],
+}: Props) {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
+  // Modal de vínculos (número/setor/funil) de um vendedor
+  const [workAttendant, setWorkAttendant] = useState<TeamAttendant | null>(null);
+  const [workLoading, setWorkLoading] = useState(false);
+  const [workSaving, setWorkSaving] = useState(false);
+  const [workConnId, setWorkConnId] = useState<string>("");
+  const [workQueueIds, setWorkQueueIds] = useState<Set<string>>(new Set());
+  const [workFunnelId, setWorkFunnelId] = useState<string>("");
+
+  const openWork = async (att: TeamAttendant) => {
+    setWorkAttendant(att);
+    setWorkLoading(true);
+    const work = await getAttendantWork(att.id);
+    setWorkConnId(work.connectionId ?? "");
+    setWorkQueueIds(new Set(work.queueIds));
+    setWorkFunnelId(work.funnelId ?? "");
+    setWorkLoading(false);
+  };
+
+  const saveWork = async () => {
+    if (!workAttendant) return;
+    setWorkSaving(true);
+    const result = await setAttendantWork(workAttendant.id, {
+      connectionId: workConnId || null,
+      queueIds: Array.from(workQueueIds),
+      funnelId: workFunnelId || null,
+    });
+    setWorkSaving(false);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Vínculos salvos");
+    setWorkAttendant(null);
+    router.refresh();
+  };
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -222,18 +268,152 @@ export function TeamClient({ attendants, funnels = [], stages = [] }: Props) {
                         </select>
                       </div>
 
-                      <button
-                        onClick={() => handleDelete(att.id)}
-                        className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1"
-                      >
-                        <Trash2 className="h-3 w-3" /> Remover
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => openWork(att)}
+                          className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 font-medium"
+                        >
+                          <Link2 className="h-3 w-3" /> Número, setor e funil
+                        </button>
+                        <button
+                          onClick={() => handleDelete(att.id)}
+                          className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1 ml-auto"
+                        >
+                          <Trash2 className="h-3 w-3" /> Remover
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Modal de vínculos: número/conexão, setor(es) e funil de trabalho */}
+      {workAttendant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div>
+              <h3 className="font-semibold text-slate-900">Vínculos de {workAttendant.name}</h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Em qual número trabalha, de quais setores recebe e em qual funil classifica os
+                leads.
+              </p>
+            </div>
+
+            {workLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 text-slate-300 animate-spin" />
+              </div>
+            ) : (
+              <>
+                {/* Número / conexão */}
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">
+                    Número de WhatsApp
+                  </label>
+                  <select
+                    value={workConnId}
+                    onChange={(e) => setWorkConnId(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Nenhum número fixo</option>
+                    {connections
+                      .filter((c) => c.isActive)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                          {c.phoneNumber ? ` · ${c.phoneNumber}` : ""}
+                        </option>
+                      ))}
+                  </select>
+                  {connections.length === 0 && (
+                    <p className="text-[10px] text-amber-600 mt-1">
+                      Nenhuma conexão criada. Vá em Config → Conexão.
+                    </p>
+                  )}
+                </div>
+
+                {/* Setores */}
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1.5 block">
+                    Setores de onde recebe
+                  </label>
+                  {queues.length === 0 ? (
+                    <p className="text-[10px] text-slate-400">
+                      Nenhum setor criado. Vá em Config → Setores.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {queues.map((q) => {
+                        const active = workQueueIds.has(q.id);
+                        return (
+                          <button
+                            key={q.id}
+                            onClick={() =>
+                              setWorkQueueIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(q.id)) next.delete(q.id);
+                                else next.add(q.id);
+                                return next;
+                              })
+                            }
+                            className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${
+                              active
+                                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                                : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"
+                            }`}
+                          >
+                            {q.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Funil */}
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">
+                    Funil de trabalho
+                  </label>
+                  <select
+                    value={workFunnelId}
+                    onChange={(e) => setWorkFunnelId(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Todos os funis</option>
+                    {funnels.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Classifica os leads neste funil — as etapas voltam como evento pro Pixel.
+                  </p>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => setWorkAttendant(null)}
+                    className="flex-1 border border-slate-200 text-slate-600 text-sm font-medium py-2 rounded-xl hover:bg-slate-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={saveWork}
+                    disabled={workSaving}
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-xl"
+                  >
+                    {workSaving ? "Salvando..." : "Salvar vínculos"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

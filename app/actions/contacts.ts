@@ -29,7 +29,10 @@ export type ContactRow = {
   createdAt: Date;
 };
 
-export async function getContacts(search?: string): Promise<ContactRow[]> {
+export async function getContacts(
+  search?: string,
+  attendantId?: string
+): Promise<ContactRow[]> {
   const ctx = await resolveSession();
   if (!ctx) return [];
 
@@ -37,6 +40,7 @@ export async function getContacts(search?: string): Promise<ContactRow[]> {
   const leads = await prisma.lead.findMany({
     where: {
       userId: ctx.tenantId,
+      ...(attendantId ? { assignedTo: attendantId === "none" ? null : attendantId } : {}),
       ...(q
         ? {
             OR: [
@@ -77,6 +81,82 @@ export async function getContacts(search?: string): Promise<ContactRow[]> {
     lastInteractionAt: l.lastInteractionAt,
     createdAt: l.createdAt,
   }));
+}
+
+/**
+ * Importa contatos de uma planilha (linhas já parseadas no client de
+ * xlsx/csv). Cada linha: { name, phone, email?, city? }. Upsert por telefone.
+ */
+export async function importContactsRows(
+  rows: { name?: string; phone: string; email?: string; city?: string }[]
+): Promise<ActionResult<{ imported: number; updated: number; skipped: number }>> {
+  const ctx = await requireManagerContext();
+  if (!ctx) return { success: false, error: "Sem permissao" };
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { success: false, error: "Planilha vazia" };
+  }
+  if (rows.length > 5000) {
+    return { success: false, error: "Máximo de 5000 contatos por importação" };
+  }
+
+  const firstStage = await prisma.stage.findFirst({
+    where: { userId: ctx.tenantId },
+    orderBy: { order: "asc" },
+    select: { id: true },
+  });
+
+  let imported = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  for (const row of rows) {
+    const phone = normalizePhone(String(row.phone ?? ""));
+    if (!phone || phone.length < 10) {
+      skipped++;
+      continue;
+    }
+    const name = row.name?.trim() || phone;
+    const email = row.email?.trim() || null;
+    const city = row.city?.trim() || null;
+
+    try {
+      const existing = await prisma.lead.findUnique({
+        where: { userId_phone: { userId: ctx.tenantId, phone } },
+        select: { id: true },
+      });
+      if (existing) {
+        await prisma.lead.update({
+          where: { id: existing.id },
+          data: {
+            ...(row.name?.trim() ? { name } : {}),
+            ...(email ? { email } : {}),
+            ...(city ? { city } : {}),
+          },
+        });
+        updated++;
+      } else {
+        await prisma.lead.create({
+          data: {
+            userId: ctx.tenantId,
+            phone,
+            name,
+            email,
+            city,
+            source: "import",
+            stageId: firstStage?.id ?? null,
+            aiEnabled: false,
+          },
+        });
+        imported++;
+      }
+    } catch {
+      skipped++;
+    }
+  }
+
+  revalidatePath("/dashboard/contatos");
+  return { success: true, data: { imported, updated, skipped } };
 }
 
 /**

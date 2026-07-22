@@ -1,11 +1,16 @@
 import { getContacts } from "@/app/actions/contacts";
 import { getConnections } from "@/app/actions/connections";
+import { getAttendants } from "@/app/actions/whatsappHub";
 import { ContactsClient } from "@/components/contacts/ContactsClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContatosPage() {
-  const [contacts, connections] = await Promise.all([getContacts(), getConnections()]);
+  const [contacts, connections, attendants] = await Promise.all([
+    getContacts(),
+    getConnections(),
+    getAttendants(),
+  ]);
 
   return (
     <div className="space-y-3 pb-6">
@@ -15,7 +20,11 @@ export default async function ContatosPage() {
           Banco de contatos do seu WhatsApp — sincronizado com a agenda do número conectado
         </p>
       </div>
-      <ContactsClient initialContacts={contacts} connections={connections} />
+      <ContactsClient
+        initialContacts={contacts}
+        connections={connections}
+        attendants={attendants}
+      />
     </div>
   );
 }

@@ -1,37 +1,109 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MessageCircle, RefreshCw, Search, Users } from "lucide-react";
+import { Loader2, MessageCircle, RefreshCw, Search, Upload, Users } from "lucide-react";
 import { toast } from "sonner";
-import { getContacts, syncContactsFromConnection, type ContactRow } from "@/app/actions/contacts";
+import * as XLSX from "xlsx";
+import {
+  getContacts,
+  syncContactsFromConnection,
+  importContactsRows,
+  type ContactRow,
+} from "@/app/actions/contacts";
 import type { ConnectionData } from "@/app/actions/connections";
+import type { AttendantData } from "@/app/actions/whatsappHub";
 
 type Props = {
   initialContacts: ContactRow[];
   connections: ConnectionData[];
+  attendants: AttendantData[];
 };
+
+// Detecta a coluna certa por nomes comuns nos cabeçalhos.
+function pick(row: Record<string, unknown>, keys: string[]): string {
+  for (const k of Object.keys(row)) {
+    const norm = k.trim().toLowerCase();
+    if (keys.some((want) => norm.includes(want))) {
+      const v = row[k];
+      if (v != null && String(v).trim()) return String(v).trim();
+    }
+  }
+  return "";
+}
 
 function fmtDate(d: Date | string | null): string {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("pt-BR");
 }
 
-export function ContactsClient({ initialContacts, connections }: Props) {
+export function ContactsClient({ initialContacts, connections, attendants }: Props) {
   const router = useRouter();
   const [contacts, setContacts] = useState(initialContacts);
   const [search, setSearch] = useState("");
+  const [carteira, setCarteira] = useState(""); // "" todos | "none" | attendantId
   const [searching, setSearching] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const evolutionConns = connections.filter((c) => c.provider === "evolution" && c.isActive);
 
-  const handleSearch = async (value: string) => {
-    setSearch(value);
+  const reload = async (value: string, cart: string) => {
     setSearching(true);
-    const rows = await getContacts(value);
+    const rows = await getContacts(value, cart || undefined);
     setContacts(rows);
     setSearching(false);
+  };
+
+  const handleSearch = async (value: string) => {
+    setSearch(value);
+    reload(value, carteira);
+  };
+
+  const handleCarteira = async (value: string) => {
+    setCarteira(value);
+    reload(search, value);
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImporting(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+      const rows = json
+        .map((r) => ({
+          name: pick(r, ["nome", "name", "contato"]),
+          phone: pick(r, ["telefone", "phone", "whatsapp", "celular", "fone", "numero"]),
+          email: pick(r, ["email", "e-mail"]),
+          city: pick(r, ["cidade", "city"]),
+        }))
+        .filter((r) => r.phone);
+
+      if (rows.length === 0) {
+        toast.error("Nenhum telefone encontrado. Verifique a coluna de telefone.");
+        setImporting(false);
+        return;
+      }
+      const result = await importContactsRows(rows);
+      if (!result.success) toast.error(result.error);
+      else if (result.data) {
+        toast.success(
+          `Importados: ${result.data.imported} novos, ${result.data.updated} atualizados` +
+            (result.data.skipped ? `, ${result.data.skipped} ignorados` : "")
+        );
+        reload(search, carteira);
+      }
+    } catch {
+      toast.error("Falha ao ler a planilha");
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleSync = async () => {
@@ -53,8 +125,7 @@ export function ContactsClient({ initialContacts, connections }: Props) {
     }
     setSyncing(false);
     toast.success(`Sincronizado: ${imported} novos, ${updated} atualizados`);
-    const rows = await getContacts(search);
-    setContacts(rows);
+    reload(search, carteira);
   };
 
   return (
@@ -69,9 +140,41 @@ export function ContactsClient({ initialContacts, connections }: Props) {
             className="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
+        {/* Filtro por carteira (vendedor) */}
+        <select
+          value={carteira}
+          onChange={(e) => handleCarteira(e.target.value)}
+          className="border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">Todas as carteiras</option>
+          <option value="none">Sem vendedor</option>
+          {attendants
+            .filter((a) => a.isActive)
+            .map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+        </select>
         {searching && <Loader2 className="h-4 w-4 text-slate-300 animate-spin" />}
         <div className="flex-1" />
         <span className="text-xs text-slate-400">{contacts.length} contatos</span>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          className="hidden"
+          onChange={handleImport}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={importing}
+          className="flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 text-sm font-medium px-3.5 py-2 rounded-xl"
+          title="Importar planilha xlsx/csv de contatos"
+        >
+          {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          Importar planilha
+        </button>
         <button
           onClick={handleSync}
           disabled={syncing}

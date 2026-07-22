@@ -1,9 +1,22 @@
 import { getConnections } from "@/app/actions/connections";
 import { getAttendants } from "@/app/actions/whatsappHub";
-import { ConnectionsClient } from "@/components/settings/ConnectionsClient";
+import { getWhatsAppConfig as getOfficialConfig } from "@/app/actions/whatsapp";
+import { ConexaoClient } from "@/components/settings/ConexaoClient";
+
+export const dynamic = "force-dynamic";
 
 export default async function ConnectionsPage() {
-  const [connections, attendants] = await Promise.all([getConnections(), getAttendants()]);
+  const [connections, attendants, officialConfig] = await Promise.all([
+    getConnections(),
+    getAttendants(),
+    getOfficialConfig(),
+  ]);
 
-  return <ConnectionsClient connections={connections} attendants={attendants} />;
+  return (
+    <ConexaoClient
+      connections={connections}
+      attendants={attendants}
+      officialConfig={officialConfig}
+    />
+  );
 }

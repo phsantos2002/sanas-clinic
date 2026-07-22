@@ -3,17 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import {
-  Kanban,
-  Sparkles,
-  User,
-  Users,
-  Users2,
-  ShieldCheck,
-  Briefcase,
-  Smartphone,
-  Workflow,
-} from "lucide-react";
+import { Kanban, Sparkles, User, Users, Users2, Briefcase, Smartphone, Workflow } from "lucide-react";
 
 type Tab = {
   href: string;
@@ -23,14 +13,15 @@ type Tab = {
   exact?: boolean;
 };
 
-// Agrupado pra leitura de leigo: primeiro o negócio, depois o atendimento,
-// por último o avançado.
+// Ordem pedida: Meu Negócio → Conta → Meta Ads → Conexão, depois Atendimento.
 const groups: { title: string; tabs: Tab[] }[] = [
   {
     title: "Seu negócio",
     tabs: [
       { href: "/dashboard/settings/business", label: "Meu Negocio", icon: Briefcase },
-      { href: "/dashboard/settings/connections", label: "WhatsApp", icon: Smartphone },
+      { href: "/dashboard/settings/account", label: "Conta", icon: User },
+      { href: "/dashboard/settings/integrations", label: "Meta Ads", logo: "/icons/meta.svg" },
+      { href: "/dashboard/settings/connections", label: "Conexao", icon: Smartphone },
     ],
   },
   {
@@ -41,14 +32,6 @@ const groups: { title: string; tabs: Tab[] }[] = [
       { href: "/dashboard/settings/pipeline", label: "Funil", icon: Kanban },
       { href: "/dashboard/settings/queues", label: "Setores", icon: Users2 },
       { href: "/dashboard/settings/team", label: "Equipe", icon: Users },
-    ],
-  },
-  {
-    title: "Avançado",
-    tabs: [
-      { href: "/dashboard/settings/integrations", label: "Meta Ads", logo: "/icons/meta.svg" },
-      { href: "/dashboard/settings/system", label: "Sistema", icon: ShieldCheck },
-      { href: "/dashboard/settings/account", label: "Conta", icon: User },
     ],
   },
 ];
