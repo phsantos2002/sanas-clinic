@@ -205,6 +205,47 @@ export async function sendEvolutionAudio(
   return { ok: r.ok, error: r.error };
 }
 
+/**
+ * Diagnóstico: o servidor Evolution está acessível e a chave é válida?
+ *  1. GET / (sem auth) → servidor no ar
+ *  2. GET /instance/fetchInstances (com apikey) → chave válida
+ */
+export async function testEvolutionServer(
+  serverUrl: string,
+  apiKey: string
+): Promise<{ reachable: boolean; authOk: boolean; version?: string; instances?: number; error?: string }> {
+  // 1) Reachability
+  let version: string | undefined;
+  try {
+    const res = await fetch(`${serverUrl}/`, {
+      headers: { apikey: apiKey },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const data = (await res.json().catch(() => null)) as { version?: string } | null;
+    version = data?.version;
+    if (!res.ok && res.status !== 401 && res.status !== 403) {
+      return { reachable: false, authOk: false, error: `Servidor respondeu HTTP ${res.status}` };
+    }
+  } catch (err) {
+    return {
+      reachable: false,
+      authOk: false,
+      error: err instanceof Error ? err.message : "servidor inacessível",
+    };
+  }
+
+  // 2) Auth
+  const r = await evolutionRequest(serverUrl, apiKey, "GET", "/instance/fetchInstances");
+  if (!r.ok) {
+    if (r.status === 401 || r.status === 403) {
+      return { reachable: true, authOk: false, version, error: "Chave (apikey) inválida" };
+    }
+    return { reachable: true, authOk: false, version, error: r.error };
+  }
+  const instances = Array.isArray(r.data) ? r.data.length : undefined;
+  return { reachable: true, authOk: true, version, instances };
+}
+
 export type EvolutionContact = {
   id: string; // "5511999999999@s.whatsapp.net"
   pushName?: string | null;

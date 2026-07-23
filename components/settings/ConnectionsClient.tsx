@@ -2,7 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Smartphone, QrCode, Power, Star, RefreshCw, Bot } from "lucide-react";
+import {
+  Plus,
+  Smartphone,
+  QrCode,
+  Power,
+  Star,
+  RefreshCw,
+  Bot,
+  ServerCog,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   createConnection,
@@ -10,6 +22,7 @@ import {
   getConnectionStatus,
   disconnectConnection,
   setDefaultConnection,
+  testEvolutionConnection,
   type ConnectionData,
 } from "@/app/actions/connections";
 import type { AttendantData } from "@/app/actions/whatsappHub";
@@ -36,6 +49,22 @@ export function ConnectionsClient({ connections, attendants }: Props) {
   const [statuses, setStatuses] = useState<Record<string, { connected: boolean; state?: string }>>(
     {}
   );
+  const [testing, setTesting] = useState(false);
+  const [serverTest, setServerTest] = useState<
+    { ok: true; version?: string; instances?: number } | { ok: false; error: string } | null
+  >(null);
+
+  const handleTestServer = async () => {
+    setTesting(true);
+    setServerTest(null);
+    const result = await testEvolutionConnection();
+    setTesting(false);
+    if (result.success && result.data) {
+      setServerTest({ ok: true, version: result.data.version, instances: result.data.instances });
+    } else {
+      setServerTest({ ok: false, error: result.success ? "Sem dados" : result.error });
+    }
+  };
 
   // Vendedores sem conexão ativa (1 número por vendedor)
   const usedAttendantIds = new Set(
@@ -138,6 +167,19 @@ export function ConnectionsClient({ connections, attendants }: Props) {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={handleTestServer}
+            disabled={testing}
+            className="flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 text-sm font-medium px-3 py-2 rounded-xl transition-colors"
+            title="Verifica se o servidor Evolution está no ar e a chave é válida"
+          >
+            {testing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ServerCog className="h-4 w-4" />
+            )}
+            Testar servidor
+          </button>
+          <button
             onClick={refreshStatuses}
             className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"
             title="Atualizar status"
@@ -152,6 +194,39 @@ export function ConnectionsClient({ connections, attendants }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Resultado do diagnóstico do servidor Evolution */}
+      {serverTest && (
+        <div
+          className={`flex items-start gap-2 rounded-xl px-4 py-3 text-sm ${
+            serverTest.ok
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              : "bg-rose-50 text-rose-700 border border-rose-200"
+          }`}
+        >
+          {serverTest.ok ? (
+            <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+          ) : (
+            <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          )}
+          {serverTest.ok ? (
+            <div>
+              <p className="font-semibold">Servidor Evolution OK — pronto para conectar números.</p>
+              <p className="text-xs mt-0.5 text-emerald-600">
+                {serverTest.version ? `Versão ${serverTest.version} · ` : ""}
+                {serverTest.instances != null
+                  ? `${serverTest.instances} instância(s) no servidor`
+                  : "chave válida"}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="font-semibold">Não foi possível validar o servidor.</p>
+              <p className="text-xs mt-0.5 text-rose-600">{serverTest.error}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {connections.length === 0 ? (
         <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center">

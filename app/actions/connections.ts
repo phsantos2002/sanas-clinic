@@ -33,6 +33,42 @@ function getEvolutionEnv(): { serverUrl: string; apiKey: string } | null {
   return { serverUrl, apiKey };
 }
 
+/** Diagnóstico do servidor Evolution (usa as env vars do servidor). */
+export async function testEvolutionConnection(): Promise<
+  ActionResult<{ reachable: boolean; authOk: boolean; version?: string; instances?: number }>
+> {
+  const ctx = await requireManagerContext();
+  if (!ctx) return { success: false, error: "Sem permissao" };
+
+  const evo = getEvolutionEnv();
+  if (!evo) {
+    return {
+      success: false,
+      error:
+        "EVOLUTION_SERVER_URL e/ou EVOLUTION_API_KEY não configuradas nas variáveis de ambiente do servidor (Vercel).",
+    };
+  }
+
+  const { testEvolutionServer } = await import("@/services/whatsappEvolution");
+  const result = await testEvolutionServer(evo.serverUrl, evo.apiKey);
+
+  if (!result.reachable) {
+    return { success: false, error: `Servidor inacessível: ${result.error ?? "erro"}` };
+  }
+  if (!result.authOk) {
+    return { success: false, error: result.error ?? "Chave inválida" };
+  }
+  return {
+    success: true,
+    data: {
+      reachable: true,
+      authOk: true,
+      version: result.version,
+      instances: result.instances,
+    },
+  };
+}
+
 export async function getConnections(): Promise<ConnectionData[]> {
   const ctx = await resolveSession();
   if (!ctx) return [];
