@@ -10,19 +10,25 @@ import { SearchButton } from "@/components/dashboard/SearchButton";
 export function Header() {
   return (
     <header className="border-b border-slate-100 bg-white/90 backdrop-blur-md sticky top-0 z-30">
-      {/* Desktop header */}
-      <div className="hidden md:flex max-w-screen-2xl mx-auto px-6 h-14 items-center justify-between gap-4">
-        <Image
-          src="/logo.png"
-          alt="Sanas Pulse"
-          width={32}
-          height={32}
-          className="rounded-lg object-contain shrink-0"
-        />
-        <NavItems />
-        {/* Meta Ads: logo standalone, centralizado entre a nav e as ações */}
-        <AdsButton />
-        <div className="flex items-center gap-1 shrink-0">
+      {/* Desktop header — 3 colunas: logo à esquerda, nav+Meta centralizados,
+          ações à direita. flex-1 nas laterais mantém o miolo centrado e a
+          barra proporcionalmente ocupada. */}
+      <div className="hidden md:flex max-w-screen-2xl mx-auto px-6 h-14 items-center gap-4">
+        <div className="flex-1 flex items-center justify-start">
+          <Image
+            src="/logo.png"
+            alt="Sanas Pulse"
+            width={34}
+            height={34}
+            className="rounded-lg object-contain shrink-0"
+          />
+        </div>
+        <div className="flex items-center gap-5 shrink-0">
+          <NavItems />
+          {/* Meta Ads: logo standalone entre a nav e as ações */}
+          <AdsButton />
+        </div>
+        <div className="flex-1 flex items-center justify-end gap-1">
           <SearchButton />
           <NotificationCenter />
           <Link href="/dashboard/settings/business">

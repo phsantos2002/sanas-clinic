@@ -79,11 +79,11 @@ export function AdsButton() {
     <Link
       href="/dashboard/meta"
       title="Meta Ads"
-      className={`flex items-center justify-center h-9 px-2 rounded-lg transition-all ${
-        isActive ? "opacity-100" : "opacity-70 hover:opacity-100"
+      className={`flex items-center justify-center h-10 px-3 rounded-xl transition-colors ${
+        isActive ? "bg-blue-50" : "hover:bg-slate-50"
       }`}
     >
-      <MetaIcon size={26} />
+      <MetaIcon size={32} />
     </Link>
   );
 }
