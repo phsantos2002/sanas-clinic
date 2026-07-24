@@ -5,7 +5,7 @@ export default async function IntegrationsPage() {
   const pixel = await getPixel();
 
   return (
-    <div className="space-y-4 max-w-3xl">
+    <div className="space-y-4 max-w-5xl">
       {/* Meta Pixel + Ads */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
         <div>

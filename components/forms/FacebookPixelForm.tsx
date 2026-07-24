@@ -34,8 +34,8 @@ export function FacebookPixelForm({ pixel }: Props) {
   }
 
   return (
-    <div className="space-y-6 max-w-md">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="pixelId">Pixel ID</Label>
           <Input
@@ -61,39 +61,39 @@ export function FacebookPixelForm({ pixel }: Props) {
           </p>
         </div>
 
-        <div className="border-t border-zinc-100 pt-4 space-y-3">
+        <div className="sm:col-span-2 border-t border-zinc-100 pt-3">
           <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
             Meta Ads (Analytics)
           </p>
-          <div className="space-y-1.5">
-            <Label htmlFor="adAccountId">ID da Conta de Anúncios</Label>
-            <Input
-              id="adAccountId"
-              placeholder="Ex: act_123456789"
-              value={adAccountId}
-              onChange={(e) => setAdAccountId(e.target.value)}
-            />
-            <p className="text-xs text-zinc-400">
-              Encontre em Gerenciador de Anúncios → URL ou coluna ID da conta.
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="metaAdsToken">Token de Acesso — Marketing API</Label>
-            <Input
-              id="metaAdsToken"
-              type="password"
-              placeholder="Token com permissão ads_read"
-              value={metaAdsToken}
-              onChange={(e) => setMetaAdsToken(e.target.value)}
-            />
-            <p className="text-xs text-zinc-400">
-              Token de usuário com permissão <span className="font-mono">ads_read</span>. Gere em
-              developers.facebook.com.
-            </p>
-          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="adAccountId">ID da Conta de Anúncios</Label>
+          <Input
+            id="adAccountId"
+            placeholder="Ex: act_123456789"
+            value={adAccountId}
+            onChange={(e) => setAdAccountId(e.target.value)}
+          />
+          <p className="text-xs text-zinc-400">
+            Encontre em Gerenciador de Anúncios → URL ou coluna ID da conta.
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="metaAdsToken">Token de Acesso — Marketing API</Label>
+          <Input
+            id="metaAdsToken"
+            type="password"
+            placeholder="Token com permissão ads_read"
+            value={metaAdsToken}
+            onChange={(e) => setMetaAdsToken(e.target.value)}
+          />
+          <p className="text-xs text-zinc-400">
+            Token de usuário com permissão <span className="font-mono">ads_read</span>. Gere em
+            developers.facebook.com.
+          </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="sm:col-span-2 flex gap-2">
           <Button type="submit" disabled={loading}>
             {loading ? "Salvando..." : "Salvar Pixel"}
           </Button>

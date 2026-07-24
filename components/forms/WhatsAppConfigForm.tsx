@@ -153,7 +153,7 @@ export function WhatsAppConfigForm({ config, officialOnly = false }: Props) {
   }
 
   return (
-    <div className="space-y-5 max-w-md">
+    <div className="space-y-5">
       {/* Provider Toggle — oculto quando embutido como "apenas oficial" */}
       {!officialOnly && (
       <div className="space-y-2">
@@ -219,7 +219,10 @@ export function WhatsAppConfigForm({ config, officialOnly = false }: Props) {
 
       {/* ─── Official API Form ─── */}
       {provider === "official" && (
-        <form onSubmit={handleOfficialSubmit} className="space-y-4">
+        <form
+          onSubmit={handleOfficialSubmit}
+          className="grid gap-x-6 gap-y-4 sm:grid-cols-2 max-w-4xl"
+        >
           <div className="space-y-1.5">
             <Label htmlFor="phoneNumberId">Phone Number ID</Label>
             <Input
@@ -281,7 +284,7 @@ export function WhatsAppConfigForm({ config, officialOnly = false }: Props) {
               integração.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="sm:col-span-2 flex gap-2">
             <Button type="submit" disabled={loading}>
               {loading ? "Salvando..." : "Salvar WhatsApp"}
             </Button>
