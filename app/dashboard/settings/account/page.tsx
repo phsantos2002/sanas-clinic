@@ -7,8 +7,6 @@ export default async function AccountSettingsPage() {
   if (!account) redirect("/login");
 
   return (
-    <div className="max-w-2xl">
-      <AccountPageClient account={account} />
-    </div>
+    <AccountPageClient account={account} />
   );
 }

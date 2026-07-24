@@ -7,7 +7,7 @@ export default async function BusinessSettingsPage() {
   const [profile, services] = await Promise.all([getBusinessProfile(), getServices()]);
 
   return (
-    <div className="space-y-4 max-w-3xl">
+    <div className="grid gap-4 lg:grid-cols-2 items-start">
       {/* Dados da empresa */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
         <div>

@@ -14,7 +14,7 @@ export default async function PipelineSettingsPage() {
   ]);
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-4xl">
       <FunnelsManager
         funnels={funnels}
         stages={stages}

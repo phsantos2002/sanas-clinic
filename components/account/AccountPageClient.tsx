@@ -61,7 +61,7 @@ function resizeImage(file: File, maxSize: number): Promise<string> {
 
 export function AccountPageClient({ account }: Props) {
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="grid gap-4 lg:grid-cols-2 items-start">
       <div>
         <h1 className="text-xl font-bold text-slate-900">Minha Conta</h1>
         <p className="text-sm text-slate-400 mt-1">

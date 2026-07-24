@@ -7,7 +7,7 @@ export default async function FlowsSettingsPage() {
   const flows = await listFlows();
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="space-y-4">
       <ChatbotFlowsSection flows={flows} />
     </div>
   );

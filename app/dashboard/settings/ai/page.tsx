@@ -16,7 +16,7 @@ export default async function AISettingsPage() {
   const credits = user ? await getBalance(user.id) : 0;
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="grid gap-4 lg:grid-cols-2 items-start">
       {/* IA Sanas — persona e créditos */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
         <div>

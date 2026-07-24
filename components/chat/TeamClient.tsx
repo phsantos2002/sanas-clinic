@@ -176,7 +176,7 @@ export function TeamClient({
     ATTENDANT_ROLES.find((r) => r.value === roleKey)?.label ?? roleKey;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Usuarios</h2>

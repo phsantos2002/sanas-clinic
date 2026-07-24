@@ -9,7 +9,7 @@ export default async function AutomationsPage() {
   const totalWorkflows = workflows.length;
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="space-y-4 max-w-3xl">
       {/* Workflows summary */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6">
         <div className="flex items-center justify-between">
