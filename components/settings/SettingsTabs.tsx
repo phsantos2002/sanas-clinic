@@ -18,10 +18,10 @@ const groups: { title: string; tabs: Tab[] }[] = [
   {
     title: "Seu negócio",
     tabs: [
-      { href: "/dashboard/settings/business", label: "Meu Negocio", icon: Briefcase },
       { href: "/dashboard/settings/account", label: "Conta", icon: User },
-      { href: "/dashboard/settings/integrations", label: "Meta Ads", logo: "/icons/meta.svg" },
+      { href: "/dashboard/settings/business", label: "Meu Negocio", icon: Briefcase },
       { href: "/dashboard/settings/connections", label: "Conexao", icon: Smartphone },
+      { href: "/dashboard/settings/integrations", label: "Meta Ads", logo: "/icons/meta.svg" },
     ],
   },
   {
